@@ -1,0 +1,28 @@
+{
+  "income": [
+    "salary",
+    "refunded_money"
+  ],
+  "expense": [
+    "payments_made",
+    "payment_confirmations",
+    "money_to_india",
+    "rent",
+    "utilities",
+    "medical",
+    "groceries",
+    "gas",
+    "maintenance",
+    "insurance",
+    "grooming",
+    "growth",
+    "subscriptions",
+    "dining",
+    "travel",
+    "additional_charges",
+    "cash_out",
+    "mistake",
+    "shopping",
+    "Donation"
+  ]
+}
