@@ -15,3 +15,7 @@ This file tracks notable project changes made during development and refactoring
   - `source/Unitests/test_statement_formatter.py` -> `scripts/manual/statement_formatter_smoke.py`
   - `source/Unitests/test_gui_login_flow.py` -> `scripts/manual/gui_login_flow.py`
   - `source/Unitests/test.py` -> `examples/qt_demo.py`
+
+### Documentation pass
+- Added/expanded module, class, and method docstrings (Purpose/Goal/Steps) across `src/budget_analyser/**`.
+- Added inline comments describing key steps in the workflow and adapters.

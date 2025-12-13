@@ -1,5 +1,16 @@
+"""Domain exceptions.
+
+Purpose:
+    Define domain-specific exceptions that represent business/data constraints.
+
+Goal:
+    Allow the presentation layer to translate domain failures into user-facing messages
+    without leaking infrastructure implementation details.
+"""
+
+
 class DomainError(Exception):
-    """Base class for domain-level errors."""
+    """Base class for all domain-level errors."""
 
 
 class ValidationError(DomainError):
