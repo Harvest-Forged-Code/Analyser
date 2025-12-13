@@ -5,7 +5,7 @@ Validates that:
 - The dashboard window is opened and maximized.
 
 Run:
-    QT_QPA_PLATFORM=offscreen python source/test_gui_login_flow.py
+    QT_QPA_PLATFORM=offscreen python source/Unitests/test_gui_login_flow.py
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ def main() -> int:
         raise
 
     # Keep imports aligned with source/app.py (login.py uses local imports).
-    base_dir = Path(__file__).resolve().parent
+    base_dir = Path(__file__).resolve().parents[1]  # .../source
     view_dir = base_dir / "view"
     if str(view_dir) not in sys.path:
         sys.path.insert(0, str(view_dir))

@@ -1,2 +1,15 @@
 [MASTER]
-init-hook='import sys; sys.path.append(".")'
+init-hook='import sys; sys.path.insert(0, "src")'
+max-line-length=100
+
+[DESIGN]
+max-args=6
+max-locals=15
+max-branches=12
+max-statements=50
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring
