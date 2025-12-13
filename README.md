@@ -113,22 +113,29 @@ To log in to the Budget Analyser GUI:
 
 1. Launch the application.
 2. Enter the password in the password field (required: "123456").
+3. Theme toggle: use the 🌙/☀️ button at the top-right of the login card to switch between Dark and Light themes. Your choice is remembered across restarts.
 3. Click the "Login" button.
 
 ### Navigating the Dashboard
-The dashboard provides a modern, dark‑themed experience with subtle shadows and rounded surfaces. Navigation options:
+The dashboard provides a modern, theme‑aware experience with subtle shadows and rounded surfaces. Navigation options:
 
-- Side panel navigation with sections:
-  - **Home**: View the main dashboard overview.
-  - **Earnings**: View reports on income sources.
-  - **Expenses**: View reports on spending.
-  - **Upload**: Upload new statement data.
-  - **Mapper**: Configure transaction categorization rules.
-  - **Settings**: Adjust application settings.
+- Side panel navigation with sections (with emojis):
+  - **🗓️ Yearly Summary**: Yearly overview with totals and monthly breakdown.
+  - **💰 Earnings**: View reports on income sources.
+  - **🧾 Expenses**: View reports on spending.
+  - **⬆️ Upload**: Upload new statement data.
+  - **🧭 Mapper**: Configure transaction categorization rules.
+  - **⚙️ Settings**: Adjust application settings.
 - Menu bar:
   - **File → Exit**: Quit the application (Cmd+Q on macOS, Ctrl+Q on Windows/Linux).
+ - Header bar:
+   - Theme toggle: use the 🌙/☀️ button at the top-right of the header to switch Dark/Light themes (persists across restarts).
 
 Selecting a section in the side panel updates the central content area accordingly. The header bar shows the current section.
+
+### Yearly Summary page
+- Modern, clean layout with two equal-width panels summarizing Total Earned and Total Spent, including sub‑category tables.
+- Monthly table lists all 12 months (missing data shown as 0), with improved typography and alternating row colors.
 
 ### Viewing Reports
 To view financial reports:

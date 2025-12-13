@@ -51,6 +51,24 @@ This file tracks notable project changes made during development and refactoring
   - Kept File → Exit menu and navigation behavior unchanged.
 - Updated README to reflect the new look and header behavior in the dashboard.
 
+### Login window style tweak
+- Scoped a login-only stylesheet so styling applies only to the Login window.
+- Increased the Login title size to improve readability (36px).
+- Applied consistent input and button styles per the provided snippet (focus/hover/pressed states).
+
+### Theme system and UI polish
+- Added light/dark theme support with centralized styles and persistence:
+  - New `app_stylesheet(theme)` in `presentation/views/styles.py` (dark and light variants).
+  - Theme preference persisted in `config/budget_analyser.ini` under `[app] theme=dark|light` via `AppPreferences.get_theme/set_theme`.
+  - Theme applied at startup in `views/app_gui.py` and can be toggled at runtime.
+- Theme toggle buttons (🌙/☀️):
+  - Login: button on the top-right of the login card.
+  - Dashboard: button on the header bar’s right side.
+- Navigation emojis added to sidebar items (🗓️, 💰, 🧾, ⬆️, 🧭, ⚙️).
+- Yearly Summary page modernization:
+  - Relies on global styles; removed heavy inline QSS.
+  - Equal-width panels for earnings/expenses; improved tables with alternating rows and consistent row heights.
+
 ### Home page polish and Settings separation
 - Home page UI tweaks:
   - Enforced equal widths for the Earnings and Expenses columns using explicit stretch factors and Expanding size policies.
@@ -58,3 +76,16 @@ This file tracks notable project changes made during development and refactoring
 - Controller layer:
   - Added presentation/controller/settings_controller.py (SettingsController) to keep Settings logic out of the view.
   - Refactored SettingsPage to be UI-only; it now delegates password and log-level actions to SettingsController.
+
+### Modern dropdown styling (all pages)
+- Updated theme-aware QComboBox styling in presentation/views/styles.py for both dark and light themes:
+  - Rounded corners (10px), refined borders, comfortable padding, and min-height for touch-friendly targets.
+  - Hover and focus states with accent-colored border (#2D81FF); disabled state readability improvements.
+  - Styled drop-down subcontrol with a subtle left divider; adjusted arrow spacing.
+  - Popup list (QAbstractItemView) with themed background, visible border, and improved selection color.
+
+### Font and Login polish
+- Replaced missing Windows-only font "Segoe UI" with a cross-platform font stack to eliminate Qt font aliasing warning and speed up startup. (presentation/views/styles.py)
+- Login window tweaks (presentation/views/login_window.py):
+  - Made the theme toggle button fully transparent (no blue background) and compact.
+  - Theme-aware login styles so the title/subtitle and inputs have proper contrast in light theme (title now dark for light BG).

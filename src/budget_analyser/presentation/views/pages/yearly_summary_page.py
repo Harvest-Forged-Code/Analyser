@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple
 from PySide6 import QtCore, QtWidgets
 
 from budget_analyser.presentation.controllers import MonthlyReports
-from budget_analyser.presentation.controller import HomeStatsController
+from budget_analyser.presentation.controller import YearlySummaryStatsController
 
 
 class YearlySummaryPage(QtWidgets.QWidget):
@@ -23,32 +23,13 @@ class YearlySummaryPage(QtWidgets.QWidget):
         self._reports = reports
         self._logger = logger
         # Controller handles all data aggregation and caching
-        self._controller = HomeStatsController(self._reports, self._logger)
+        self._controller = YearlySummaryStatsController(self._reports, self._logger)
 
         self._init_ui()
 
     # ------------------------ UI SETUP ------------------------
     def _init_ui(self) -> None:
         self.setObjectName("yearlySummaryPage")
-        self.setStyleSheet(
-            """
-            #yearlySummaryPage { background-color: #1B1B1B; }
-
-            QLabel, QTableWidget { color: #ECF0F1; }
-            QHeaderView::section { background: #252A34; color: #ECF0F1; border: none; padding: 6px; }
-            QTableWidget { background-color: #1F1F1F; border: 1px solid #2B2B2B; gridline-color: #2B2B2B; }
-            QTableWidget::item:selected { background: #29434E; }
-
-            #card { background: #252A34; border-radius: 12px; border: 1px solid #2F3B45; }
-            #cardTitle { font-size: 14px; color: #AAB7C4; }
-            #valueBig { font-size: 28px; font-weight: 600; color: #F0F6FC; }
-            #headerTitle { font-size: 18px; font-weight: 600; }
-
-            QComboBox { background: #2C3440; color: #ECF0F1; border: 1px solid #2B2B2B; border-radius: 6px; padding: 6px 8px; }
-            QComboBox:hover { background: #2A313D; }
-            QComboBox QAbstractItemView { background: #2C3440; color: #ECF0F1; }
-            """
-        )
 
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
@@ -95,6 +76,8 @@ class YearlySummaryPage(QtWidgets.QWidget):
         self.earn_table.verticalHeader().setVisible(False)
         self.earn_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.earn_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.earn_table.setAlternatingRowColors(True)
+        self.earn_table.verticalHeader().setDefaultSectionSize(26)
         earn_layout.addWidget(self.earn_table)
 
         # Expenses card
@@ -120,6 +103,8 @@ class YearlySummaryPage(QtWidgets.QWidget):
         self.exp_table.verticalHeader().setVisible(False)
         self.exp_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.exp_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.exp_table.setAlternatingRowColors(True)
+        self.exp_table.verticalHeader().setDefaultSectionSize(26)
         exp_layout.addWidget(self.exp_table)
 
         two_col.addWidget(self.earn_card, 1)
@@ -142,6 +127,7 @@ class YearlySummaryPage(QtWidgets.QWidget):
         self.month_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.month_table.horizontalHeader().setStretchLastSection(True)
         self.month_table.setAlternatingRowColors(True)
+        self.month_table.verticalHeader().setDefaultSectionSize(26)
         monthly_layout.addWidget(self.month_table)
         root.addWidget(monthly_card)
 

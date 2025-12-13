@@ -8,7 +8,7 @@ from .dtos import YearlyStats
 from .utils import month_names as _month_names
 
 
-class HomeStatsController:
+class YearlySummaryStatsController:
     """Controller to compute Home page statistics from MonthlyReports.
 
     Pure Python (no Qt). Returns DTOs for the view to render.

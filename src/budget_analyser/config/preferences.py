@@ -21,9 +21,11 @@ from pathlib import Path
 APP_SECTION = "app"
 KEY_LOG_LEVEL = "log_level"
 KEY_PASSWORD_HASH = "password_hash"
+KEY_THEME = "theme"  # light | dark
 
 DEFAULT_PASSWORD = "123456"
 DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_THEME = "dark"
 
 
 def _hash_password_sha256(plain: str, *, salt: bytes | None = None) -> str:
@@ -104,5 +106,24 @@ class AppPreferences:
         if not parser.has_section(APP_SECTION):
             parser.add_section(APP_SECTION)
         parser.set(APP_SECTION, KEY_PASSWORD_HASH, hashed)
+        with self.ini_path.open("w", encoding="utf-8") as f:
+            parser.write(f)
+
+    # ---- Theme preferences ----
+    def get_theme(self) -> str:
+        """Return current UI theme ("dark" or "light")."""
+        parser = self._parser()
+        theme = parser.get(APP_SECTION, KEY_THEME, fallback=DEFAULT_THEME).strip().lower()
+        return theme if theme in {"dark", "light"} else DEFAULT_THEME
+
+    def set_theme(self, theme: str) -> None:
+        """Persist the UI theme ("dark" or "light")."""
+        t = theme.strip().lower()
+        if t not in {"dark", "light"}:
+            raise ValueError(f"Invalid theme: {theme}")
+        parser = self._parser()
+        if not parser.has_section(APP_SECTION):
+            parser.add_section(APP_SECTION)
+        parser.set(APP_SECTION, KEY_THEME, t)
         with self.ini_path.open("w", encoding="utf-8") as f:
             parser.write(f)

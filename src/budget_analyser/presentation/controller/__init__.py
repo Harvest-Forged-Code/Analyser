@@ -12,7 +12,7 @@ Design pattern:
 
 from __future__ import annotations
 
-from .yearly_summary_stats_controller import HomeStatsController
+from .yearly_summary_stats_controller import YearlySummaryStatsController
 from .settings_controller import SettingsController
 
-__all__ = ["HomeStatsController", "SettingsController"]
+__all__ = ["YearlySummaryStatsController", "SettingsController"]

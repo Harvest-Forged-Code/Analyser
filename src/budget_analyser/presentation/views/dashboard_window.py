@@ -27,7 +27,7 @@ from budget_analyser.presentation.views.pages import (
     MapperPage,
     SettingsPage,
 )
-from budget_analyser.presentation.views.styles import dashboard_stylesheet
+from budget_analyser.presentation.views.styles import app_stylesheet
 from budget_analyser.config.preferences import AppPreferences
 from budget_analyser.presentation.controller import SettingsController
 
@@ -44,8 +44,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Budget Analyser - Dashboard")
         self.setObjectName("dashboardWindow")
 
-        # Apply centralized modern stylesheet
-        self.setStyleSheet(dashboard_stylesheet())
+        # App stylesheet is applied at QApplication level; no per-window stylesheet here.
 
         # Menu bar: File -> Exit
         menubar = self.menuBar()
@@ -79,6 +78,14 @@ class DashboardWindow(QtWidgets.QMainWindow):
         self._subtitle = QtWidgets.QLabel("Yearly Summary")
         self._subtitle.setObjectName("headerSubtitleLabel")
         header_layout.addWidget(self._subtitle)
+
+        # Theme toggle button on the right
+        header_layout.addStretch(1)
+        self._theme_btn = QtWidgets.QPushButton()
+        self._theme_btn.setObjectName("themeToggle")
+        self._update_theme_button()
+        self._theme_btn.clicked.connect(self._on_toggle_theme)
+        header_layout.addWidget(self._theme_btn, alignment=QtCore.Qt.AlignRight)
 
         # Subtle shadow for header
         h_shadow = QtWidgets.QGraphicsDropShadowEffect(blurRadius=22, xOffset=0, yOffset=10)
@@ -118,12 +125,12 @@ class DashboardWindow(QtWidgets.QMainWindow):
 
         # Define sections (name, index)
         sections = [
-            ("Yearly Summary", 0),
-            ("Earnings", 1),
-            ("Expenses", 2),
-            ("Upload", 3),
-            ("Mapper", 4),
-            ("Settings", 5),
+            ("🗓️ Yearly Summary", 0),
+            ("💰 Earnings", 1),
+            ("🧾 Expenses", 2),
+            ("⬆️ Upload", 3),
+            ("🧭 Mapper", 4),
+            ("⚙️ Settings", 5),
         ]
         self._section_names = {idx: name for name, idx in sections}
 
@@ -180,6 +187,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         # Default selection
         self._buttons[0].setChecked(True)
         self._stack.setCurrentIndex(0)
+        self._subtitle.setText(self._section_names[0])
 
         # Wire navigation
         self._btn_group.idClicked.connect(self._on_nav_clicked)
@@ -195,3 +203,18 @@ class DashboardWindow(QtWidgets.QMainWindow):
         name = self._section_names.get(index, "")
         if name:
             self._subtitle.setText(name)
+
+    def _on_toggle_theme(self) -> None:
+        # Toggle theme and persist
+        current = self._prefs.get_theme()
+        new_theme = "light" if current == "dark" else "dark"
+        self._prefs.set_theme(new_theme)
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.setStyleSheet(app_stylesheet(new_theme))
+        self._update_theme_button()
+
+    def _update_theme_button(self) -> None:
+        # Show icon that indicates target theme upon click
+        cur = self._prefs.get_theme()
+        self._theme_btn.setText("☀️" if cur == "dark" else "🌙")

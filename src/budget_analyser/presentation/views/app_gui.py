@@ -28,6 +28,7 @@ from budget_analyser.infrastructure.statement_repository import CsvStatementRepo
 from budget_analyser.presentation.controllers import BackendController
 from budget_analyser.presentation.views.dashboard_window import DashboardWindow
 from budget_analyser.presentation.views.login_window import LoginWindow
+from budget_analyser.presentation.views.styles import app_stylesheet
 
 
 # Log directory under current working directory for simplicity
@@ -81,11 +82,26 @@ def run_app() -> int:
 
     app = QtWidgets.QApplication(sys.argv)
 
+    # Apply persisted theme
+    theme = prefs.get_theme()
+    app.setStyleSheet(app_stylesheet(theme))
+
     # Build controller for reports on demand after login
     controller = _build_controller(logger)
 
     # Inject password verification backed by preferences (falls back to 123456)
-    login = LoginWindow(logger, verify_password=prefs.verify_password)
+    login = LoginWindow(logger, verify_password=prefs.verify_password, current_theme=theme)
+
+    def _toggle_theme_from_login() -> None:
+        nonlocal theme
+        theme = "light" if theme == "dark" else "dark"
+        prefs.set_theme(theme)
+        app.setStyleSheet(app_stylesheet(theme))
+        # inform login to update its toggle icon
+        try:
+            login.set_theme_indicator(theme)
+        except Exception:
+            pass
 
     def _on_success():
         # Compute reports and open dashboard
@@ -106,6 +122,11 @@ def run_app() -> int:
         login.close()
 
     login.login_successful.connect(_on_success)
+    # Theme toggle from login
+    try:
+        login.theme_toggle_requested.connect(_toggle_theme_from_login)
+    except Exception:
+        pass
     login.show()
 
     rc = app.exec()

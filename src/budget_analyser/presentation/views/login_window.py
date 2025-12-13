@@ -17,79 +17,29 @@ from typing import Callable
 
 class LoginWindow(QtWidgets.QWidget):
     login_successful = QtCore.Signal()
+    theme_toggle_requested = QtCore.Signal()
 
-    def __init__(self, logger: logging.Logger, verify_password: Callable[[str], bool] | None = None):
+    def __init__(
+        self,
+        logger: logging.Logger,
+        verify_password: Callable[[str], bool] | None = None,
+        current_theme: str = "dark",
+    ):
         super().__init__()
         self._logger = logger
         # Injected password verification strategy (defaults to static 123456 check)
         self._verify_password = verify_password or (lambda s: s == "123456")
+        self._current_theme = current_theme.lower()
         self._init_ui()
 
     def _init_ui(self) -> None:
         self.setWindowTitle("Budget Analyser - Login")
         self.setObjectName("loginWindow")
 
-        # Global modern style (dark theme with accent color and rounded elements)
-        self.setStyleSheet(
-            """
-            #loginWindow {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                            stop:0 #0F172A, stop:1 #0B1220);
-                color: #E6EDF3;
-                font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
-                font-size: 14px;
-            }
-
-            /* Card container */
-            #card {
-                background-color: rgba(22, 27, 34, 0.88);
-                border: 1px solid rgba(240, 246, 252, 0.08);
-                border-radius: 16px;
-            }
-
-            /* Typography */
-            QLabel#title {
-                font-size: 28px;
-                font-weight: 600;
-                letter-spacing: 0.3px;
-                color: #F0F6FC;
-            }
-            QLabel#subtitle {
-                color: #9DA7B1;
-                font-size: 13px;
-            }
-
-            /* Inputs */
-            QLineEdit {
-                background-color: rgba(255, 255, 255, 0.06);
-                border: 1px solid rgba(240, 246, 252, 0.12);
-                border-radius: 10px;
-                padding: 10px 12px;
-                color: #E6EDF3;
-                selection-background-color: #2D81FF;
-            }
-            QLineEdit:focus {
-                border: 1px solid #2D81FF;
-            }
-
-            /* Buttons */
-            QPushButton {
-                background-color: #2D81FF;
-                color: #FFFFFF;
-                border: none;
-                border-radius: 10px;
-                padding: 10px 16px;
-                font-weight: 600;
-                min-width: 120px;
-            }
-            QPushButton:hover { background-color: #3B8BFF; }
-            QPushButton:pressed { background-color: #1F66E5; }
-            QPushButton:disabled {
-                background-color: #2f3545;
-                color: #98A1B2;
-            }
-            """
-        )
+        # Styling is provided by the application stylesheet (supports light/dark themes).
+        # Apply an additional, login-only stylesheet to keep the input/button look
+        # scoped to this window, and enlarge the title per request.
+        self.setStyleSheet(self._login_stylesheet())
 
         # Root layout with vertical centering
         root = QtWidgets.QVBoxLayout(self)
@@ -107,6 +57,16 @@ class LoginWindow(QtWidgets.QWidget):
         card_layout = QtWidgets.QVBoxLayout(card)
         card_layout.setContentsMargins(28, 28, 28, 28)
         card_layout.setSpacing(14)
+
+        # Top controls row (theme toggle on the right)
+        top_controls = QtWidgets.QHBoxLayout()
+        top_controls.addStretch(1)
+        self.theme_btn = QtWidgets.QPushButton()
+        self.theme_btn.setObjectName("themeToggle")
+        self.set_theme_indicator(self._current_theme)
+        self.theme_btn.clicked.connect(self.theme_toggle_requested.emit)
+        top_controls.addWidget(self.theme_btn, alignment=QtCore.Qt.AlignRight)
+        card_layout.addLayout(top_controls)
 
         title = QtWidgets.QLabel("Budget Analyser")
         title.setObjectName("title")
@@ -153,6 +113,87 @@ class LoginWindow(QtWidgets.QWidget):
         # Fullscreen view
         self.setWindowState(QtCore.Qt.WindowFullScreen)
 
+    def _login_stylesheet(self, theme: str | None = None) -> str:
+        """Return QSS scoped only to the login window.
+
+        Notes:
+            - Increases the title size so it doesn't look small.
+            - Styles inputs and buttons similar to the provided snippet.
+            - Scoped with QWidget#loginWindow to avoid affecting other windows.
+        """
+        t = (theme or self._current_theme or "dark").lower()
+        if t == "light":
+            title_color = "#1F2328"
+            subtitle_color = "#57606A"
+            line_bg = "#FFFFFF"
+            line_border = "#D0D7DE"
+            line_text = "#1F2328"
+        else:
+            title_color = "#F0F6FC"
+            subtitle_color = "#9DA7B1"
+            line_bg = "rgba(255, 255, 255, 0.06)"
+            line_border = "rgba(240, 246, 252, 0.12)"
+            line_text = "#E6EDF3"
+
+        return f"""
+            /* Typography */
+            QWidget#loginWindow QLabel#title {{
+                font-size: 36px;               /* enlarged from 28px */
+                font-weight: 600;
+                letter-spacing: 0.3px;
+                color: {title_color};
+            }}
+            QWidget#loginWindow QLabel#subtitle {{
+                color: {subtitle_color};
+                font-size: 13px;
+            }}
+
+            /* Inputs */
+            QWidget#loginWindow QLineEdit {{
+                background-color: {line_bg};
+                border: 1px solid {line_border};
+                border-radius: 10px;
+                padding: 10px 12px;
+                color: {line_text};
+                selection-background-color: #2D81FF;
+            }}
+            QWidget#loginWindow QLineEdit:focus {{
+                border: 1px solid #2D81FF;
+            }}
+
+            /* Buttons */
+            QWidget#loginWindow QPushButton {{
+                background-color: #2D81FF;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 10px;
+                padding: 10px 16px;
+                font-weight: 600;
+                min-width: 120px;
+            }}
+            QWidget#loginWindow QPushButton:hover {{ background-color: #3B8BFF; }}
+            QWidget#loginWindow QPushButton:pressed {{ background-color: #1F66E5; }}
+            QWidget#loginWindow QPushButton:disabled {{
+                background-color: #2f3545;
+                color: #98A1B2;
+            }}
+
+            /* Make the theme toggle button transparent (override generic QPushButton rule) */
+            QWidget#loginWindow QPushButton#themeToggle {{
+                background: transparent;
+                color: inherit;
+                border: none;
+                padding: 6px; /* compact */
+                min-width: 0px;
+            }}
+            QWidget#loginWindow QPushButton#themeToggle:hover {{
+                background: rgba(0,0,0,0.06);
+            }}
+            QWidget#loginWindow QPushButton#themeToggle:pressed {{
+                background: rgba(0,0,0,0.12);
+            }}
+        """
+
     def _on_login_clicked(self) -> None:
         entered = self.password_edit.text()
         if self._verify_password(entered):
@@ -161,3 +202,15 @@ class LoginWindow(QtWidgets.QWidget):
         else:
             self._logger.warning("Login failed")
             QtWidgets.QMessageBox.warning(self, "Login Failed", "Incorrect password.")
+
+    # External hook to update the theme toggle icon when theme changes elsewhere
+    def set_theme_indicator(self, theme: str) -> None:
+        t = theme.lower()
+        # Show the icon for the theme you will switch to on click
+        self.theme_btn.setText("☀️" if t == "dark" else "🌙")
+        self._current_theme = t
+        # Also re-apply the login stylesheet to ensure proper contrast on light/dark
+        try:
+            self.setStyleSheet(self._login_stylesheet(theme=t))
+        except Exception:  # pragma: no cover - defensive
+            pass
