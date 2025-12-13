@@ -55,7 +55,7 @@ Modified the `Statements` class to use the new factory function:
 
 ## Testing
 
-A test script `test_statement_formatter.py` was created to verify the implementation:
+A pytest unit test `tests/unit/test_statement_formatter.py` was created to verify the implementation:
 
 - Tests the factory function to ensure it creates the correct formatter class
 - Tests each formatter class to verify it applies the correct formatting
