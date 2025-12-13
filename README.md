@@ -86,25 +86,33 @@ pip install -r requirements.txt
 3. Set up any necessary configuration files (if applicable).
 
 ### Running the Application
-To run the backend processing without the GUI:
+To run the backend processing without the GUI (legacy CLI renderer under src/):
 
 ```
 python source/main_be.py
 ```
 
-To run the application with the graphical user interface:
+To run the application with the graphical user interface (PySide6):
 
 ```
-python source/view/login.py
+python -m budget_analyser
 ```
+
+The GUI composition has been modularized for clarity and faster startup (reduced duplicate imports and object creation):
+- src/budget_analyser/presentation/views/app_gui.py — composition and run_app()
+- src/budget_analyser/presentation/views/login_window.py — LoginWindow (one class per file)
+- src/budget_analyser/presentation/views/dashboard_window.py — DashboardWindow (one class per file)
+
+Backward compatibility: the previous module path
+`budget_analyser.presentation.views.gui_pyside6` remains as a thin shim re-exporting run_app.
 
 ## Usage Guide
 
-### Logging In
-To log in to the Budget Analyser:
+### Logging In (GUI)
+To log in to the Budget Analyser GUI:
 
 1. Launch the application.
-2. Enter the password in the password field (default: "password").
+2. Enter the password in the password field (required: "123456").
 3. Click the "Login" button.
 
 ### Navigating the Dashboard

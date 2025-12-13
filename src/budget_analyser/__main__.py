@@ -1,16 +1,9 @@
 """Application composition root.
 
-Purpose:
-    Wire together infrastructure + domain + presentation dependencies in one place.
+Default behavior:
+    Launch the PySide6 GUI application (fullscreen login -> dashboard).
 
-Goal:
-    Keep dependency injection out of the domain and presentation layers.
-
-Steps:
-    1. Load settings from environment / optional .env.
-    2. Configure logging.
-    3. Build adapters (INI config, CSV repo, JSON mappers).
-    4. Build controller + view and run the app.
+For the previous CLI renderer, import and call `run_cli()` from this module.
 """
 
 from __future__ import annotations
@@ -25,6 +18,7 @@ from budget_analyser.infrastructure.json_mappings import JsonCategoryMappingProv
 from budget_analyser.infrastructure.statement_repository import CsvStatementRepository
 from budget_analyser.presentation.controllers import BackendController
 from budget_analyser.presentation.views.cli import CliView
+from budget_analyser.presentation.views.app_gui import run_app as run_gui
 
 
 def _configure_logging(*, level: str) -> logging.Logger:
@@ -39,26 +33,17 @@ def _configure_logging(*, level: str) -> logging.Logger:
     # Configure global logging handlers/formatters once.
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        format="%(asctime)s | %(levelname).4s | %(name)s | %(filename)s:%(lineno)d | | %(message)s",
     )
     # Return an app-specific logger instance.
     return logging.getLogger("budget_analyser")
 
 
-def main() -> None:
-    """Run the application via CLI.
-
-    Steps:
-        1. Load runtime settings.
-        2. Build dependencies.
-        3. Execute the backend workflow.
-        4. Render results to stdout.
-    """
-    # Load settings (env + optional .env) and configure logging.
+def run_cli() -> None:
+    """Run the application via CLI renderer (legacy mode)."""
     settings = load_settings()
     logger = _configure_logging(level=settings.log_level)
 
-    # Build infrastructure adapters.
     config = IniAppConfig(path=settings.ini_config_path)
     statement_repo = CsvStatementRepository(statement_dir=settings.statement_dir, config=config)
     column_mappings = IniColumnMappingProvider(config=config)
@@ -67,7 +52,6 @@ def main() -> None:
         sub_category_to_category_path=settings.sub_category_to_category_path,
     )
 
-    # Wire dependencies into the controller (presentation layer).
     controller = BackendController(
         statement_repository=statement_repo,
         column_mappings=column_mappings,
@@ -76,9 +60,13 @@ def main() -> None:
         logger=logger,
     )
 
-    # Render to CLI (view layer).
     view = CliView()
     view.render(reports=controller.run())
+
+
+def main() -> None:
+    """Run the PySide6 GUI application by default."""
+    run_gui()
 
 
 if __name__ == "__main__":
