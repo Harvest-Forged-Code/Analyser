@@ -19,6 +19,7 @@ import sys
 from PySide6 import QtWidgets
 
 from budget_analyser.config.settings import load_settings
+from budget_analyser.config.preferences import AppPreferences
 from budget_analyser.domain.reporting import ReportService
 from budget_analyser.infrastructure.column_mappings import IniColumnMappingProvider
 from budget_analyser.infrastructure.ini_config import IniAppConfig
@@ -66,7 +67,16 @@ def _build_controller(logger: logging.Logger) -> BackendController:
 
 
 def run_app() -> int:
+    # Load settings and preferences first so we can apply log level
+    settings = load_settings()
+    prefs = AppPreferences(settings.ini_config_path)
+
     logger = _ensure_logger()
+    # Apply persisted log level (defaults to INFO)
+    try:
+        logger.setLevel(getattr(logging, prefs.get_log_level()))
+    except Exception:  # safe guard; keep INFO if invalid
+        logger.setLevel(logging.INFO)
     logger.info("Starting GUI application")
 
     app = QtWidgets.QApplication(sys.argv)
@@ -74,7 +84,8 @@ def run_app() -> int:
     # Build controller for reports on demand after login
     controller = _build_controller(logger)
 
-    login = LoginWindow(logger)
+    # Inject password verification backed by preferences (falls back to 123456)
+    login = LoginWindow(logger, verify_password=prefs.verify_password)
 
     def _on_success():
         # Compute reports and open dashboard
@@ -85,7 +96,12 @@ def run_app() -> int:
             QtWidgets.QMessageBox.critical(login, "Error", "Failed to generate reports. See logs.")
             return
 
-        dash = DashboardWindow(reports, logger)
+        # Keep a strong reference to the dashboard to prevent it from being
+        # garbage-collected after this function returns. Without this, the
+        # window may not remain visible on some platforms/PySide versions.
+        logger.info("Opening dashboard window with %d monthly reports", len(reports))
+        dash = DashboardWindow(reports, logger, prefs)
+        app._dashboard = dash  # type: ignore[attr-defined]
         dash.showMaximized()
         login.close()
 

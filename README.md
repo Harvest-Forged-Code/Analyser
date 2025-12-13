@@ -103,8 +103,8 @@ The GUI composition has been modularized for clarity and faster startup (reduced
 - src/budget_analyser/presentation/views/login_window.py — LoginWindow (one class per file)
 - src/budget_analyser/presentation/views/dashboard_window.py — DashboardWindow (one class per file)
 
-Backward compatibility: the previous module path
-`budget_analyser.presentation.views.gui_pyside6` remains as a thin shim re-exporting run_app.
+Note: the legacy path `budget_analyser.presentation.views.gui_pyside6` has been removed. 
+Please import `run_app` from `budget_analyser.presentation.views.app_gui` or simply run `python -m budget_analyser`.
 
 ## Usage Guide
 
@@ -116,15 +116,19 @@ To log in to the Budget Analyser GUI:
 3. Click the "Login" button.
 
 ### Navigating the Dashboard
-The dashboard provides several navigation options:
+The dashboard provides a modern, dark‑themed experience with subtle shadows and rounded surfaces. Navigation options:
 
-- **Home**: View the main dashboard overview.
-- **Earnings**: View reports on income sources.
-- **Expenses**: View reports on spending.
-- **Upload**: Upload new statement data.
-- **Mapper**: Configure transaction categorization rules.
-- **Settings**: Adjust application settings.
-- **Logout**: Exit the application.
+- Side panel navigation with sections:
+  - **Home**: View the main dashboard overview.
+  - **Earnings**: View reports on income sources.
+  - **Expenses**: View reports on spending.
+  - **Upload**: Upload new statement data.
+  - **Mapper**: Configure transaction categorization rules.
+  - **Settings**: Adjust application settings.
+- Menu bar:
+  - **File → Exit**: Quit the application (Cmd+Q on macOS, Ctrl+Q on Windows/Linux).
+
+Selecting a section in the side panel updates the central content area accordingly. The header bar shows the current section.
 
 ### Viewing Reports
 To view financial reports:

@@ -12,14 +12,17 @@ from __future__ import annotations
 
 import logging
 from PySide6 import QtCore, QtWidgets
+from typing import Callable
 
 
 class LoginWindow(QtWidgets.QWidget):
     login_successful = QtCore.Signal()
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self, logger: logging.Logger, verify_password: Callable[[str], bool] | None = None):
         super().__init__()
         self._logger = logger
+        # Injected password verification strategy (defaults to static 123456 check)
+        self._verify_password = verify_password or (lambda s: s == "123456")
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -152,7 +155,7 @@ class LoginWindow(QtWidgets.QWidget):
 
     def _on_login_clicked(self) -> None:
         entered = self.password_edit.text()
-        if entered == "123456":
+        if self._verify_password(entered):
             self._logger.info("Login successful")
             self.login_successful.emit()
         else:
