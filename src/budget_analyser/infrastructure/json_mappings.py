@@ -87,4 +87,53 @@ class JsonCategoryMappingProvider(CategoryMappingProvider):
                 self._log(logging.WARNING, "Mapping file is empty: %s", str(path))
         except Exception:
             pass
-        return mapping
+        return mapping or {}
+
+
+@dataclass
+class JsonCategoryMappingStore:
+    """Read/write store for category mapping JSON files.
+
+    Responsibilities:
+      - Provide mutable copies of the two mapping dicts.
+      - Persist updates atomically (write to temp then replace).
+
+    Notes:
+      - Deduplication is caller's responsibility; this class writes what it receives.
+    """
+
+    description_to_sub_category_path: Path
+    sub_category_to_category_path: Path
+    logger: logging.Logger | None = None
+
+    # ---- Loaders ----
+    def load_desc_to_sub(self) -> dict[str, list[str]]:
+        return dict(_load_json(self.description_to_sub_category_path))
+
+    def load_sub_to_cat(self) -> dict[str, list[str]]:
+        return dict(_load_json(self.sub_category_to_category_path))
+
+    # ---- Savers ----
+    def save_desc_to_sub(self, mapping: Mapping[str, list[str]]) -> None:
+        self._atomic_write(self.description_to_sub_category_path, mapping)
+
+    def save_sub_to_cat(self, mapping: Mapping[str, list[str]]) -> None:
+        self._atomic_write(self.sub_category_to_category_path, mapping)
+
+    # ---- Helpers ----
+    def _atomic_write(self, path: Path, data: Mapping[str, list[str]]) -> None:
+        try:
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+            tmp.replace(path)
+            if self.logger:
+                try:
+                    self.logger.info("Saved mapping: %s (size=%d)", str(path), len(data))
+                except Exception:
+                    pass
+        except Exception as exc:  # pragma: no cover - defensive
+            raise DataSourceError(f"Failed to save mapping file: {path}: {exc}") from exc
+
+    # Note: loading of sub_category->category for read-only use is provided by
+    # JsonCategoryMappingProvider. The store focuses on read/write helpers above.
