@@ -14,7 +14,10 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 import sys
+from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 from PySide6 import QtWidgets
 
@@ -28,19 +31,34 @@ from budget_analyser.infrastructure.statement_repository import CsvStatementRepo
 from budget_analyser.presentation.controllers import BackendController
 from budget_analyser.presentation.views.dashboard_window import DashboardWindow
 from budget_analyser.presentation.views.login_window import LoginWindow
-from budget_analyser.presentation.views.styles import app_stylesheet
+from budget_analyser.presentation.views.styles import app_stylesheet, select_app_font
 
+def _logs_dir() -> Path:
+    """Return user-writable logs directory with optional env override.
 
-# Log directory under current working directory for simplicity
-LOG_DIR = os.path.abspath(os.path.join(os.getcwd(), "logs"))
+    Order of precedence:
+      1) BUDGET_ANALYSER_LOG_DIR (if set)
+      2) ~/.budget_analyser/logs
+    """
+    env_dir = os.environ.get("BUDGET_ANALYSER_LOG_DIR")
+    if env_dir:
+        return Path(env_dir).expanduser().resolve()
+    return Path.home() / ".budget_analyser" / "logs"
 
 
 def _ensure_logger() -> logging.Logger:
-    os.makedirs(LOG_DIR, exist_ok=True)
+    log_dir = _logs_dir()
+    log_dir.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger("budget_analyser.gui")
     logger.setLevel(logging.INFO)
-    if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
-        fh = logging.FileHandler(os.path.join(LOG_DIR, "gui_app.log"), encoding="utf-8")
+    # Avoid duplicate handlers if called multiple times
+    if not any(isinstance(h, RotatingFileHandler) for h in logger.handlers):
+        fh = RotatingFileHandler(
+            filename=str(log_dir / "gui_app.log"),
+            encoding="utf-8",
+            maxBytes=5 * 1024 * 1024,  # 5 MB
+            backupCount=3,
+        )
         fmt = logging.Formatter(
             fmt="%(asctime)s | %(levelname).4s | %(name)s | %(filename)s:%(lineno)d | %(message)s"
         )
@@ -52,11 +70,14 @@ def _ensure_logger() -> logging.Logger:
 def _build_controller(logger: logging.Logger) -> BackendController:
     settings = load_settings()
     config = IniAppConfig(path=settings.ini_config_path)
-    statement_repo = CsvStatementRepository(statement_dir=settings.statement_dir, config=config)
+    statement_repo = CsvStatementRepository(
+        statement_dir=settings.statement_dir, config=config, logger=logger
+    )
     column_mappings = IniColumnMappingProvider(config=config)
     category_mappings = JsonCategoryMappingProvider(
         description_to_sub_category_path=settings.description_to_sub_category_path,
         sub_category_to_category_path=settings.sub_category_to_category_path,
+        logger=logger,
     )
     return BackendController(
         statement_repository=statement_repo,
@@ -78,9 +99,37 @@ def run_app() -> int:
         logger.setLevel(getattr(logging, prefs.get_log_level()))
     except Exception:  # safe guard; keep INFO if invalid
         logger.setLevel(logging.INFO)
+    log_file = _logs_dir() / "gui_app.log"
     logger.info("Starting GUI application")
+    # Startup diagnostics (single line per item to keep readable)
+    try:
+        logger.info("Log file: %s", log_file)
+        logger.info(
+            "Settings: statement_dir=%s | ini=%s | desc_map=%s | subcat_map=%s",
+            settings.statement_dir,
+            settings.ini_config_path,
+            settings.description_to_sub_category_path,
+            settings.sub_category_to_category_path,
+        )
+        logger.info(
+            "Platform: %s | Python: %s | CWD: %s",
+            platform.platform(),
+            sys.version.split(" ")[0],
+            os.getcwd(),
+        )
+    except Exception:
+        pass
 
     app = QtWidgets.QApplication(sys.argv)
+    # Set a platform-available UI font to avoid Qt aliasing warnings and costs
+    try:
+        app.setFont(select_app_font())
+        try:
+            logger.info("UI font selected: %s", app.font().family())
+        except Exception:
+            pass
+    except Exception:
+        pass
 
     # Apply persisted theme
     theme = prefs.get_theme()
@@ -107,9 +156,18 @@ def run_app() -> int:
         # Compute reports and open dashboard
         try:
             reports = controller.run()
-        except Exception:  # pylint: disable=broad-except
+        except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Error generating reports")
-            QtWidgets.QMessageBox.critical(login, "Error", "Failed to generate reports. See logs.")
+            # Include the log file path and brief details in the dialog
+            QtWidgets.QMessageBox.critical(
+                login,
+                "Error",
+                (
+                    "Failed to generate reports.\n\n"
+                    f"See logs at:\n{log_file}\n\n"
+                    f"Details: {exc.__class__.__name__}: {exc}"
+                ),
+            )
             return
 
         # Keep a strong reference to the dashboard to prevent it from being

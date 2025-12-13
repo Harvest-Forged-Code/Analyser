@@ -24,7 +24,7 @@ KEY_PASSWORD_HASH = "password_hash"
 KEY_THEME = "theme"  # light | dark
 
 DEFAULT_PASSWORD = "123456"
-DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_LOG_LEVEL = "DEBUG"
 DEFAULT_THEME = "dark"
 
 

@@ -4,7 +4,7 @@ import logging
 from typing import Dict, List, Tuple
 
 from budget_analyser.presentation.controllers import MonthlyReports
-from .dtos import YearlyStats
+from .dtos import YearlyStats, YearlyCategoryBreakdown, CategoryNode
 from .utils import month_names as _month_names
 
 
@@ -18,6 +18,7 @@ class YearlySummaryStatsController:
         self._reports = reports
         self._logger = logger
         self._year_cache: Dict[int, YearlyStats] = {}
+        self._year_category_cache: Dict[int, YearlyCategoryBreakdown] = {}
 
     # ---- Public API ----
     def available_years(self) -> List[int]:
@@ -100,3 +101,72 @@ class YearlySummaryStatsController:
             exp_subcats=exp_sub_list,
             monthly_rows=monthly_rows,
         )
+
+    # ---- Category hierarchy API ----
+    def get_category_breakdown(self, year: int) -> YearlyCategoryBreakdown:
+        cached = self._year_category_cache.get(year)
+        if cached is not None:
+            return cached
+
+        # Accumulate earnings and expenses by category -> sub_category
+        earn_cat_totals: Dict[str, float] = {}
+        earn_children: Dict[str, Dict[str, float]] = {}
+
+        exp_cat_totals: Dict[str, float] = {}
+        exp_children: Dict[str, Dict[str, float]] = {}
+
+        for mr in [r for r in self._reports if int(r.month.year) == year]:
+            # Earnings (amounts positive)
+            if getattr(mr, "earnings", None) is not None and not mr.earnings.empty:
+                df = mr.earnings
+                if "category" in df.columns and "sub_category" in df.columns:
+                    grouped = (
+                        df.groupby(["category", "sub_category"])  # type: ignore[index]
+                        ["amount"].sum()
+                    )
+                    for (cat, sub), val in grouped.items():
+                        amt = float(val)
+                        if not cat:
+                            cat = "(Uncategorized)"
+                        if not sub:
+                            sub = "(Uncategorized)"
+                        earn_cat_totals[cat] = earn_cat_totals.get(cat, 0.0) + amt
+                        children = earn_children.setdefault(cat, {})
+                        children[sub] = children.get(sub, 0.0) + amt
+
+            # Expenses (amounts negative -> store positive)
+            if getattr(mr, "expenses", None) is not None and not mr.expenses.empty:
+                df = mr.expenses
+                if "category" in df.columns and "sub_category" in df.columns:
+                    grouped = (
+                        df.groupby(["category", "sub_category"])  # type: ignore[index]
+                        ["amount"].sum()
+                    )
+                    for (cat, sub), val in grouped.items():
+                        amt = float(-val)  # invert to positive for display
+                        if not cat:
+                            cat = "(Uncategorized)"
+                        if not sub:
+                            sub = "(Uncategorized)"
+                        exp_cat_totals[cat] = exp_cat_totals.get(cat, 0.0) + amt
+                        children = exp_children.setdefault(cat, {})
+                        children[sub] = children.get(sub, 0.0) + amt
+
+        # Build nodes sorted by total desc; children sorted desc
+        def build_nodes(cat_totals: Dict[str, float], child_map: Dict[str, Dict[str, float]]) -> List[CategoryNode]:
+            nodes: List[CategoryNode] = []
+            for cat, total in cat_totals.items():
+                subs_map = child_map.get(cat, {})
+                subs_list: List[Tuple[str, float]] = sorted(
+                    [(s, float(a)) for s, a in subs_map.items()], key=lambda x: x[1], reverse=True
+                )
+                nodes.append(CategoryNode(name=cat or "(Uncategorized)", amount=float(total), children=subs_list))
+            nodes.sort(key=lambda n: n.amount, reverse=True)
+            return nodes
+
+        breakdown = YearlyCategoryBreakdown(
+            earnings=build_nodes(earn_cat_totals, earn_children),
+            expenses=build_nodes(exp_cat_totals, exp_children),
+        )
+        self._year_category_cache[year] = breakdown
+        return breakdown

@@ -80,8 +80,14 @@ class BaseStatementFormatter(ABC):
             return
 
         if "Debit" not in self._statement.columns or "Credit" not in self._statement.columns:
+            present = list(self._statement.columns)
+            hint = (
+                "Add an 'amount' column to the CSV or provide both 'Debit' and 'Credit' so the "
+                "formatter can derive it. Update the INI mapping if column names differ."
+            )
             raise MappingNotFoundError(
-                "Amount column missing and Debit/Credit columns not present to derive it."
+                f"[{self._account_name}] Amount column missing and Debit/Credit columns not present to derive it. "
+                f"Present columns: {present}. Hint: {hint}"
             )
 
         debit = self._statement["Debit"].fillna(0)
@@ -96,8 +102,10 @@ class BaseStatementFormatter(ABC):
     def _required_columns(self) -> None:
         missing = [col for col in REQUIRED_COLUMNS if col not in self._statement.columns]
         if missing:
+            present = list(self._statement.columns)
             raise MappingNotFoundError(
-                f"Missing required columns after formatting for {self._account_name!r}: {missing}"
+                f"Missing required columns after formatting for {self._account_name!r}: {missing}. "
+                f"Present columns: {present}."
             )
         self._statement = self._statement[REQUIRED_COLUMNS]
 

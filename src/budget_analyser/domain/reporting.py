@@ -29,8 +29,11 @@ class ReportService:
         Returns:
             DataFrame containing earnings (amount > 0).
         """
-        # Earnings are positive amounts.
-        return statement[statement["amount"] > 0]
+        # Ensure we do not mutate the source frame; normalize sign to positive.
+        df = statement[statement["amount"] > 0].copy()
+        if not df.empty:
+            df["amount"] = df["amount"].abs()
+        return df
 
     def expenses(self, *, statement: pd.DataFrame) -> pd.DataFrame:
         """Return only rows where amount is negative.
@@ -41,8 +44,11 @@ class ReportService:
         Returns:
             DataFrame containing expenses (amount < 0).
         """
-        # Expenses are negative amounts.
-        return statement[statement["amount"] < 0]
+        # Ensure we do not mutate the source frame; normalize sign to negative.
+        df = statement[statement["amount"] < 0].copy()
+        if not df.empty:
+            df["amount"] = -df["amount"].abs()
+        return df
 
     def expenses_category(self, *, statement: pd.DataFrame) -> pd.DataFrame:
         """Return a pivot table of expenses aggregated by category and month.

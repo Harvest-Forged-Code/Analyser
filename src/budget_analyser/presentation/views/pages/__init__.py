@@ -9,11 +9,13 @@ from .expenses_page import ExpensesPage
 from .upload_page import UploadPage
 from .mapper_page import MapperPage
 from .settings_page import SettingsPage
+from .payments_page import PaymentsPage
 
 __all__ = [
     "YearlySummaryPage",
     "EarningsPage",
     "ExpensesPage",
+    "PaymentsPage",
     "UploadPage",
     "MapperPage",
     "SettingsPage",

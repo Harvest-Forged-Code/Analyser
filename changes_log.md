@@ -89,3 +89,19 @@ This file tracks notable project changes made during development and refactoring
 - Login window tweaks (presentation/views/login_window.py):
   - Made the theme toggle button fully transparent (no blue background) and compact.
   - Theme-aware login styles so the title/subtitle and inputs have proper contrast in light theme (title now dark for light BG).
+
+### Diagnostics and logging improvements
+- Switched GUI logging to RotatingFileHandler (5 MB, 3 backups) to prevent unbounded log growth. (views/app_gui.py)
+- Added pipeline diagnostics in BackendController:
+  - INFO: pipeline start/end with account count, total transactions, months, and duration.
+  - DEBUG: per-account raw/ formatted shapes and columns; merged transactions shape; rich context on failures. (presentation/backend_controller.py)
+- JSON mapping provider now logs mapping file paths and key counts; warns on empty mappings. (infrastructure/json_mappings.py)
+- Formatter error messages now include the account name and present columns, with a short remediation hint for missing amount columns. (domain/statement_formatters/base_statement_formatter.py)
+- README updated with log location, rotation, env override, and how to enable DEBUG.
+
+### Domain reporting sign normalization
+- Ensured final report tables enforce signs consistently in the domain layer:
+  - Earnings amounts are normalized to positive values.
+  - Expenses amounts are normalized to negative values.
+- Implemented in `domain/reporting.py` (ReportService.earnings/expenses) with defensive copies to avoid mutating source frames.
+- Added unit test `tests/unit/test_reporting_signs.py` to validate normalization and immutability.

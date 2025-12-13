@@ -14,5 +14,14 @@ from __future__ import annotations
 
 from .yearly_summary_stats_controller import YearlySummaryStatsController
 from .settings_controller import SettingsController
+from .earnings_stats_controller import EarningsStatsController
+from .expenses_stats_controller import ExpensesStatsController
+from .payments_reconciliation_controller import PaymentsReconciliationController
 
-__all__ = ["YearlySummaryStatsController", "SettingsController"]
+__all__ = [
+    "YearlySummaryStatsController",
+    "SettingsController",
+    "EarningsStatsController",
+    "ExpensesStatsController",
+    "PaymentsReconciliationController",
+]

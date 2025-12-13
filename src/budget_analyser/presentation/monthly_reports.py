@@ -6,7 +6,7 @@ Single responsibility:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import pandas as pd
 
 
@@ -19,3 +19,5 @@ class MonthlyReports:
     expenses: pd.DataFrame
     expenses_category: pd.DataFrame
     expenses_sub_category: pd.DataFrame
+    # Full per-month transactions used by specialized pages (e.g., reconciliation)
+    transactions: pd.DataFrame = field(default_factory=pd.DataFrame)

@@ -20,3 +20,24 @@ class YearlyStats:
     earn_subcats: List[Tuple[str, float]]
     exp_subcats: List[Tuple[str, float]]
     monthly_rows: List[Tuple[str, float, float]]
+
+
+@dataclass(frozen=True)
+class CategoryNode:
+    """Category -> Sub-categories node used for tree rendering."""
+
+    name: str
+    amount: float
+    # Direct children (sub-categories only; two-level tree for UI)
+    children: List[Tuple[str, float]]
+
+
+@dataclass(frozen=True)
+class YearlyCategoryBreakdown:
+    """Yearly category breakdown for both earnings and expenses.
+
+    Amounts for expenses are normalized to positive values for readability.
+    """
+
+    earnings: List[CategoryNode]
+    expenses: List[CategoryNode]

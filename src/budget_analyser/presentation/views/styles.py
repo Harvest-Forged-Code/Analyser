@@ -5,11 +5,13 @@ Centralizes QSS used across the application and supports light/dark themes.
 
 from __future__ import annotations
 
+from PySide6.QtGui import QFont, QFontDatabase
+
 
 def _dark_theme() -> str:
     return """
     /* Global */
-    QWidget { font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, 'Noto Sans', 'DejaVu Sans', sans-serif; font-size: 13px; }
+    QWidget { font-size: 13px; }
 
     /* Window backgrounds */
     QMainWindow#dashboardWindow { background-color: #0F172A; }
@@ -147,7 +149,7 @@ def _dark_theme() -> str:
 
 def _light_theme() -> str:
     return """
-    QWidget { font-family: -apple-system, 'Helvetica Neue', Helvetica, Arial, 'Noto Sans', 'DejaVu Sans', sans-serif; font-size: 13px; color: #1F2328; }
+    QWidget { font-size: 13px; color: #1F2328; }
 
     QMainWindow#dashboardWindow { background-color: #F6F8FA; }
     #loginWindow { background: #F6F8FA; color: #1F2328; }
@@ -261,3 +263,34 @@ def app_stylesheet(theme: str) -> str:
 
 def dashboard_stylesheet() -> str:  # Backward-compatible alias (dark default)
     return _dark_theme()
+
+
+def select_app_font() -> QFont:
+    """Select a platform-available UI font to avoid aliasing warnings.
+
+    Strategy:
+    - Prefer widely available, modern sans-serif families.
+    - Return the first family present on the current system.
+    - Fallback to Qt default if none are found.
+    """
+    candidates = [
+        "Noto Sans",
+        "DejaVu Sans",
+        "Segoe UI",
+        "Helvetica Neue",
+        "Helvetica",
+        "Arial",
+        "Tahoma",
+        "Sans Serif",
+    ]
+    available = set(QFontDatabase.families())
+    for family in candidates:
+        if family in available:
+            f = QFont(family)
+            # Set a sensible default point size similar to previous QSS value
+            f.setPointSize(10)  # roughly ~13px depending on DPI
+            return f
+    # Fallback to system default
+    f = QFont()
+    f.setPointSize(10)
+    return f

@@ -133,6 +133,15 @@ The dashboard provides a modern, theme‑aware experience with subtle shadows an
 
 Selecting a section in the side panel updates the central content area accordingly. The header bar shows the current section.
 
+### Logs and diagnostics
+- Location: logs are written to a per-user directory by default:
+  - macOS/Linux: `~/.budget_analyser/logs/gui_app.log`
+  - Windows: `%USERPROFILE%\.budget_analyser\logs\gui_app.log`
+- Override: set environment variable `BUDGET_ANALYSER_LOG_DIR` to change the logs directory.
+- Rotation: logs are automatically rotated (5 MB per file, up to 3 backups).
+- Verbosity: change the log level at runtime from Settings → Logging (DEBUG/INFO/WARNING/ERROR/CRITICAL),
+  or persist it in `config/budget_analyser.ini` under `[app] log_level=DEBUG`.
+
 ### Yearly Summary page
 - Modern, clean layout with two equal-width panels summarizing Total Earned and Total Spent, including sub‑category tables.
 - Monthly table lists all 12 months (missing data shown as 0), with improved typography and alternating row colors.

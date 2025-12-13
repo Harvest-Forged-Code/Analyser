@@ -23,6 +23,7 @@ from budget_analyser.presentation.views.pages import (
     YearlySummaryPage,
     EarningsPage,
     ExpensesPage,
+    PaymentsPage,
     UploadPage,
     MapperPage,
     SettingsPage,
@@ -128,9 +129,10 @@ class DashboardWindow(QtWidgets.QMainWindow):
             ("🗓️ Yearly Summary", 0),
             ("💰 Earnings", 1),
             ("🧾 Expenses", 2),
-            ("⬆️ Upload", 3),
-            ("🧭 Mapper", 4),
-            ("⚙️ Settings", 5),
+            ("🔁 Payments", 3),
+            ("⬆️ Upload", 4),
+            ("🧭 Mapper", 5),
+            ("⚙️ Settings", 6),
         ]
         self._section_names = {idx: name for name, idx in sections}
 
@@ -166,6 +168,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             YearlySummaryPage(self._reports, self._logger),
             EarningsPage(self._reports, self._logger),
             ExpensesPage(self._reports, self._logger),
+            PaymentsPage(self._reports, self._logger),
             UploadPage(self._logger),
             MapperPage(self._logger),
             SettingsPage(self._logger, settings_controller),

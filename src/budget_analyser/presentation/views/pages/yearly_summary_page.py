@@ -14,7 +14,9 @@ class YearlySummaryPage(QtWidgets.QWidget):
 
     Features:
       - Year selector
-      - Two columns: total Earnings (left) and total Expenses (right) with sub-categories
+      - Two cards: Earnings (left) and Expenses (right)
+        - Each card shows the yearly total and a tree widget:
+          Category (top level) -> Sub-categories (children) with right-aligned amounts
       - Monthly summary table (12 months: Month, Earnings, Expenses) with zeros for missing data
     """
 
@@ -69,16 +71,13 @@ class YearlySummaryPage(QtWidgets.QWidget):
         earn_layout.addWidget(earn_title)
         earn_layout.addWidget(self.earn_total)
         earn_layout.addSpacing(6)
-        earn_layout.addWidget(QtWidgets.QLabel("Sub-categories"))
-        self.earn_table = QtWidgets.QTableWidget(0, 2)
-        self.earn_table.setHorizontalHeaderLabels(["Sub-category", "Amount"])
-        self.earn_table.horizontalHeader().setStretchLastSection(True)
-        self.earn_table.verticalHeader().setVisible(False)
-        self.earn_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.earn_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.earn_table.setAlternatingRowColors(True)
-        self.earn_table.verticalHeader().setDefaultSectionSize(26)
-        earn_layout.addWidget(self.earn_table)
+        earn_layout.addWidget(QtWidgets.QLabel("By Category"))
+        self.earn_tree = QtWidgets.QTreeWidget()
+        self.earn_tree.setHeaderLabels(["Category / Sub-category", "Amount"])
+        self.earn_tree.header().setStretchLastSection(False)
+        self.earn_tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self.earn_tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        earn_layout.addWidget(self.earn_tree)
 
         # Expenses card
         self.exp_card = QtWidgets.QFrame()
@@ -96,16 +95,13 @@ class YearlySummaryPage(QtWidgets.QWidget):
         exp_layout.addWidget(exp_title)
         exp_layout.addWidget(self.exp_total)
         exp_layout.addSpacing(6)
-        exp_layout.addWidget(QtWidgets.QLabel("Sub-categories"))
-        self.exp_table = QtWidgets.QTableWidget(0, 2)
-        self.exp_table.setHorizontalHeaderLabels(["Sub-category", "Amount"])
-        self.exp_table.horizontalHeader().setStretchLastSection(True)
-        self.exp_table.verticalHeader().setVisible(False)
-        self.exp_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.exp_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.exp_table.setAlternatingRowColors(True)
-        self.exp_table.verticalHeader().setDefaultSectionSize(26)
-        exp_layout.addWidget(self.exp_table)
+        exp_layout.addWidget(QtWidgets.QLabel("By Category"))
+        self.exp_tree = QtWidgets.QTreeWidget()
+        self.exp_tree.setHeaderLabels(["Category / Sub-category", "Amount"])
+        self.exp_tree.header().setStretchLastSection(False)
+        self.exp_tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self.exp_tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        exp_layout.addWidget(self.exp_tree)
 
         two_col.addWidget(self.earn_card, 1)
         two_col.addWidget(self.exp_card, 1)
@@ -148,6 +144,7 @@ class YearlySummaryPage(QtWidgets.QWidget):
             # Ensure standard formatting for zero totals
             self.earn_total.setText("$0.00")
             self.exp_total.setText("$0.00")
+            self._populate_category_trees([], [])
 
     # ------------------------ DATA & EVENTS ------------------------
     def _on_year_changed(self, index: int) -> None:
@@ -162,9 +159,9 @@ class YearlySummaryPage(QtWidgets.QWidget):
         self.earn_total.setText(self._fmt_currency(data.total_earnings))
         self.exp_total.setText(self._fmt_currency(data.total_expenses))
 
-        # Fill sub-category tables
-        self._populate_kv_table(self.earn_table, data.earn_subcats)  # list[Tuple[str, float]]
-        self._populate_kv_table(self.exp_table, data.exp_subcats)    # list[Tuple[str, float]]
+        # Fill category trees
+        breakdown = self._controller.get_category_breakdown(year)
+        self._populate_category_trees(breakdown.earnings, breakdown.expenses)
 
         # Fill monthly table
         self._populate_month_table(data.monthly_rows)  # list[Tuple[str, float, float]]
@@ -178,21 +175,28 @@ class YearlySummaryPage(QtWidgets.QWidget):
             return str(value)
 
 
-    def _populate_kv_table(self, table: QtWidgets.QTableWidget, rows: List[Tuple[str, float]]):
-        table.setRowCount(0)
-        table.setSortingEnabled(False)
-        for sub, amt in rows:
-            r = table.rowCount()
-            table.insertRow(r)
-            item0 = QtWidgets.QTableWidgetItem(sub or "(Uncategorized)")
-            item1 = QtWidgets.QTableWidgetItem(self._fmt_currency(float(amt)))
-            # Align amount to right
-            item1.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            table.setItem(r, 0, item0)
-            table.setItem(r, 1, item1)
-        table.setSortingEnabled(True)
-        table.sortItems(1, QtCore.Qt.DescendingOrder)
-        table.resizeColumnsToContents()
+    def _populate_category_trees(self, earn_nodes, exp_nodes) -> None:
+        # Helper to fill a tree with CategoryNode structures
+        def fill_tree(tree: QtWidgets.QTreeWidget, nodes) -> None:
+            tree.clear()
+            for node in nodes:
+                top = QtWidgets.QTreeWidgetItem([str(node.name), self._fmt_currency(float(node.amount))])
+                top.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                # Bold top-level category
+                f = top.font(0)
+                f.setBold(True)
+                top.setFont(0, f)
+                top.setFont(1, f)
+                # Children: sub-categories
+                for sub, amt in node.children:
+                    child = QtWidgets.QTreeWidgetItem([sub or "(Uncategorized)", self._fmt_currency(float(amt))])
+                    child.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                    top.addChild(child)
+                tree.addTopLevelItem(top)
+            tree.expandAll()
+
+        fill_tree(self.earn_tree, earn_nodes or [])
+        fill_tree(self.exp_tree, exp_nodes or [])
 
     def _populate_month_table(self, rows: List[Tuple[str, float, float]]):
         self.month_table.setSortingEnabled(False)
