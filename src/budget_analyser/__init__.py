@@ -1,0 +1,1 @@
+"""Budget Analyser application package."""
