@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
+import logging
 from budget_analyser.domain.errors import DataSourceError
 from budget_analyser.domain.protocols import CategoryMappingProvider
 
@@ -43,11 +44,47 @@ class JsonCategoryMappingProvider(CategoryMappingProvider):
 
     description_to_sub_category_path: Path
     sub_category_to_category_path: Path
+    logger: logging.Logger | None = None
+
+    def _log(self, level: int, msg: str, *args) -> None:
+        log = self.logger or logging.getLogger("budget_analyser.gui")
+        try:
+            log.log(level, msg, *args)
+        except Exception:
+            pass
 
     def description_to_sub_category(self) -> Mapping[str, list[str]]:
         """Load mapping from description keywords to sub-category labels."""
-        return _load_json(self.description_to_sub_category_path)
+        path = self.description_to_sub_category_path
+        mapping = _load_json(path)
+        try:
+            size = len(mapping or {})
+            self._log(
+                logging.DEBUG,
+                "Loaded description->sub_category mapping: path=%s keys=%d",
+                str(path),
+                size,
+            )
+            if size == 0:
+                self._log(logging.WARNING, "Mapping file is empty: %s", str(path))
+        except Exception:
+            pass
+        return mapping
 
     def sub_category_to_category(self) -> Mapping[str, list[str]]:
         """Load mapping from sub-category keywords to category labels."""
-        return _load_json(self.sub_category_to_category_path)
+        path = self.sub_category_to_category_path
+        mapping = _load_json(path)
+        try:
+            size = len(mapping or {})
+            self._log(
+                logging.DEBUG,
+                "Loaded sub_category->category mapping: path=%s keys=%d",
+                str(path),
+                size,
+            )
+            if size == 0:
+                self._log(logging.WARNING, "Mapping file is empty: %s", str(path))
+        except Exception:
+            pass
+        return mapping

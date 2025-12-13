@@ -103,8 +103,8 @@ The GUI composition has been modularized for clarity and faster startup (reduced
 - src/budget_analyser/presentation/views/login_window.py — LoginWindow (one class per file)
 - src/budget_analyser/presentation/views/dashboard_window.py — DashboardWindow (one class per file)
 
-Backward compatibility: the previous module path
-`budget_analyser.presentation.views.gui_pyside6` remains as a thin shim re-exporting run_app.
+Note: the legacy path `budget_analyser.presentation.views.gui_pyside6` has been removed. 
+Please import `run_app` from `budget_analyser.presentation.views.app_gui` or simply run `python -m budget_analyser`.
 
 ## Usage Guide
 
@@ -113,18 +113,38 @@ To log in to the Budget Analyser GUI:
 
 1. Launch the application.
 2. Enter the password in the password field (required: "123456").
+3. Theme toggle: use the 🌙/☀️ button at the top-right of the login card to switch between Dark and Light themes. Your choice is remembered across restarts.
 3. Click the "Login" button.
 
 ### Navigating the Dashboard
-The dashboard provides several navigation options:
+The dashboard provides a modern, theme‑aware experience with subtle shadows and rounded surfaces. Navigation options:
 
-- **Home**: View the main dashboard overview.
-- **Earnings**: View reports on income sources.
-- **Expenses**: View reports on spending.
-- **Upload**: Upload new statement data.
-- **Mapper**: Configure transaction categorization rules.
-- **Settings**: Adjust application settings.
-- **Logout**: Exit the application.
+- Side panel navigation with sections (with emojis):
+  - **🗓️ Yearly Summary**: Yearly overview with totals and monthly breakdown.
+  - **💰 Earnings**: View reports on income sources.
+  - **🧾 Expenses**: View reports on spending.
+  - **⬆️ Upload**: Upload new statement data.
+  - **🧭 Mapper**: Configure transaction categorization rules.
+  - **⚙️ Settings**: Adjust application settings.
+- Menu bar:
+  - **File → Exit**: Quit the application (Cmd+Q on macOS, Ctrl+Q on Windows/Linux).
+ - Header bar:
+   - Theme toggle: use the 🌙/☀️ button at the top-right of the header to switch Dark/Light themes (persists across restarts).
+
+Selecting a section in the side panel updates the central content area accordingly. The header bar shows the current section.
+
+### Logs and diagnostics
+- Location: logs are written to a per-user directory by default:
+  - macOS/Linux: `~/.budget_analyser/logs/gui_app.log`
+  - Windows: `%USERPROFILE%\.budget_analyser\logs\gui_app.log`
+- Override: set environment variable `BUDGET_ANALYSER_LOG_DIR` to change the logs directory.
+- Rotation: logs are automatically rotated (5 MB per file, up to 3 backups).
+- Verbosity: change the log level at runtime from Settings → Logging (DEBUG/INFO/WARNING/ERROR/CRITICAL),
+  or persist it in `config/budget_analyser.ini` under `[app] log_level=DEBUG`.
+
+### Yearly Summary page
+- Modern, clean layout with two equal-width panels summarizing Total Earned and Total Spent, including sub‑category tables.
+- Monthly table lists all 12 months (missing data shown as 0), with improved typography and alternating row colors.
 
 ### Viewing Reports
 To view financial reports:

@@ -8,7 +8,9 @@
     "CITI CARD ONLINE PAYMENT",
     "CITI AUTOPAY     PAYMENT",
     "PAYMENT TO CHASE CARD",
-    "DISCOVER         E-PAYMENT"
+    "DISCOVER         E-PAYMENT",
+    "WELLS FARGO CARD BILTCRDCRD",
+    "WF Credit Card   AUTO PAY"
   ],
   "payment_confirmations": [
     "ONLINE PAYMENT, THANK YOU",
@@ -16,16 +18,21 @@
     "Payment Thank You-Mobile",
     "Bill Pay Payment",
     "AUTOMATIC PAYMENT - THANK YOU",
-    "INTERNET PAYMENT - THANK YOU"
+    "INTERNET PAYMENT - THANK YOU",
+    "ONLINE ACH PAYMENT ",
+    "DIRECTPAY MINIMUM PAYMENTSEE"
   ],
   "money_to_india": [
     "RIAMONEYTRANSFER"
   ],
   "rent": [
-    "BPS*BILT REWARDS B1 NEW YORK NY"
+    "BPS*BILT REWARDS B1 NEW YORK NY",
+    "BPS*BILT RENT NEW YORK NY"
   ],
   "utilities": [
-    "Abi HO"
+    "Abi HO",
+    "PG&E/EZ-PAY OAKLAND CA",
+    "COMCAST-XFINITY  CABLE SVCS"
   ],
   "medical": [
     "CVS/PHARMACY"
@@ -35,7 +42,8 @@
     "SAFEWAY",
     "COSTCO WHSE",
     "INDIA METRO HYPER",
-    "WAL-MART"
+    "WAL-MART",
+    "LEES SANDWICHES"
   ],
   "gas": [
     "gas",
@@ -54,14 +62,17 @@
     "GREAT CLIPS"
   ],
   "growth": [
-    "UDEMY"
+    "UDEMY",
+    "LEETCODE",
+    "COURSERA"
   ],
   "subscriptions": [
     "MICROSOFT*MICROSOFT",
     "GOOGLE *YOUTUBEPREMIUM",
     "GOOGLE *GOOGLE",
     "BINTANG BADMINTON",
-    "OTF MILPITAS"
+    "OTF MILPITAS",
+    "AMAZON PRIME"
   ],
   "dining": [
     "RESTAURANT",
@@ -88,7 +99,9 @@
     "PY *SAJJ",
     "EVEREST MOMO",
     "FERN THAI",
-    "SQ *LAS HERNANDEZ"
+    "SQ *LAS HERNANDEZ",
+    "YOGURTLAND MILPITAS",
+    "SPO*BRUNDAVAN"
   ],
   "travel": [
     "LYFT",
@@ -109,12 +122,18 @@
     "LENSCRAFTERS"
   ],
   "salary": [
-    "Western Digital  PAYROLL"
+    "Western Digital  PAYROLL",
+    "SANDISK TECHNOLO PAYROLL"
   ],
   "refunded_money": [
     "Zelle payment from"
   ],
   "Donation": [
     "GoFundMe"
+  ],
+  "others": [
+    "SANDISK STORAGE DIRECT-PAY",
+    "TEMU.com",
+    "ATM CASH DEPOSIT"
   ]
 }
