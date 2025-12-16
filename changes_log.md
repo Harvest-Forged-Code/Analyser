@@ -105,3 +105,8 @@ This file tracks notable project changes made during development and refactoring
   - Expenses amounts are normalized to negative values.
 - Implemented in `domain/reporting.py` (ReportService.earnings/expenses) with defensive copies to avoid mutating source frames.
 - Added unit test `tests/unit/test_reporting_signs.py` to validate normalization and immutability.
+
+### Mapper page UX enhancement
+- Unmapped items are now shown as transaction rows (Date, Description, Amount) instead of a plain list of descriptions.
+- Added controller API `MapperController.list_unmapped_transactions()` to provide the data in a UI-agnostic way.
+- Updated `presentation/views/pages/mapper_page.py` to render a filterable, multi-select table and to map selected rows based on their descriptions.

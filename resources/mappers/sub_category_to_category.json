@@ -1,55 +1,54 @@
 {
-  "mandatory_needs": [
-    "groceries",
-    "rent",
-    "mortgage",
-    "utilities",
-    "medical",
-    "gas",
-    "maintenance",
-    "insurance",
-    "grooming",
-    "growth"
+  "Needs": [
+    "Groceries",
+    "Rent",
+    "Mortgage",
+    "Utilities",
+    "Medical",
+    "Gas",
+    "Maintenance",
+    "Insurance",
+    "Grooming",
+    "Growth",
+    "TAX_Payments"
   ],
-  "flexible": [
+  "Flexible": [
     "OTP",
-    "electronics",
-    "transportation",
-    "subscriptions",
-    "Donation"
+    "Electronics",
+    "Transportation",
+    "Subscriptions",
+    "Cash_out",
+    "Farmers_Markets"
   ],
-  "luxuries": [
-    "travel",
-    "vacation",
-    "shopping",
-    "dining",
-    "entertainment",
-    "subscriptions",
-    "additional_charges",
-    "mistake"
+  "Luxuries": [
+    "Travel",
+    "Vacation",
+    "Shopping",
+    "Restaurants",
+    "Entertainment",
+    "Additional_charges",
+    "Mistake",
+    "Trips",
+    "Donation",
+    "Rental_trip"
   ],
-
-  "payments_made":[
+  "payments_made": [
     "payments_made"
   ],
   "payment_confirmations": [
     "payment_confirmations"
   ],
-
-  "income": [
+  "Income": [
     "salary"
   ],
-  "Lent_out": [
-    "cash_out"
+  "Remittance": [
+    "Remittance"
   ],
-  "returned_back": [
-    "refunded_money"
+  "Unplanned_income": [
+    "Others_income",
+    "Refunded_money"
   ],
-
-  "money_to_india": [
-    "money_to_india"
-  ],
-  "Unplanned": [
-    "others"
+  "Unplanned_Spending's": [
+    "Others_expenses"
   ]
 }

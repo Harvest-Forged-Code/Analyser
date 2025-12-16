@@ -26,12 +26,16 @@ from budget_analyser.config.preferences import AppPreferences
 from budget_analyser.domain.reporting import ReportService
 from budget_analyser.infrastructure.column_mappings import IniColumnMappingProvider
 from budget_analyser.infrastructure.ini_config import IniAppConfig
-from budget_analyser.infrastructure.json_mappings import JsonCategoryMappingProvider
+from budget_analyser.infrastructure.json_mappings import (
+    JsonCategoryMappingProvider,
+    JsonCategoryMappingStore,
+)
 from budget_analyser.infrastructure.statement_repository import CsvStatementRepository
 from budget_analyser.presentation.controllers import BackendController
 from budget_analyser.presentation.views.dashboard_window import DashboardWindow
 from budget_analyser.presentation.views.login_window import LoginWindow
 from budget_analyser.presentation.views.styles import app_stylesheet, select_app_font
+from budget_analyser.presentation.controller import MapperController
 
 def _logs_dir() -> Path:
     """Return user-writable logs directory with optional env override.
@@ -174,7 +178,14 @@ def run_app() -> int:
         # garbage-collected after this function returns. Without this, the
         # window may not remain visible on some platforms/PySide versions.
         logger.info("Opening dashboard window with %d monthly reports", len(reports))
-        dash = DashboardWindow(reports, logger, prefs)
+        # Build mapper controller for the Mapper page
+        mapping_store = JsonCategoryMappingStore(
+            description_to_sub_category_path=settings.description_to_sub_category_path,
+            sub_category_to_category_path=settings.sub_category_to_category_path,
+            logger=logger,
+        )
+        mapper_controller = MapperController(reports, logger, mapping_store)
+        dash = DashboardWindow(reports, logger, prefs, mapper_controller)
         app._dashboard = dash  # type: ignore[attr-defined]
         dash.showMaximized()
         login.close()

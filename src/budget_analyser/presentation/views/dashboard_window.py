@@ -31,14 +31,22 @@ from budget_analyser.presentation.views.pages import (
 from budget_analyser.presentation.views.styles import app_stylesheet
 from budget_analyser.config.preferences import AppPreferences
 from budget_analyser.presentation.controller import SettingsController
+from budget_analyser.presentation.controller import MapperController
 
 
 class DashboardWindow(QtWidgets.QMainWindow):
-    def __init__(self, reports: List[MonthlyReports], logger: logging.Logger, prefs: AppPreferences):
+    def __init__(
+        self,
+        reports: List[MonthlyReports],
+        logger: logging.Logger,
+        prefs: AppPreferences,
+        mapper_controller: MapperController,
+    ):
         super().__init__()
         self._reports = reports
         self._logger = logger
         self._prefs = prefs
+        self._mapper_controller = mapper_controller
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -170,7 +178,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             ExpensesPage(self._reports, self._logger),
             PaymentsPage(self._reports, self._logger),
             UploadPage(self._logger),
-            MapperPage(self._logger),
+            MapperPage(self._logger, self._mapper_controller),
             SettingsPage(self._logger, settings_controller),
         ]
         for page in self._pages:
