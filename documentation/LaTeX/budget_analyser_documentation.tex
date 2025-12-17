@@ -418,19 +418,18 @@ Before installing the Budget Analyser, ensure you have the following prerequisit
 
 \section{Running the Application}
 
-\subsection{Running the Backend}
-To run the backend processing without the GUI:
+To launch the GUI application using the current SRC layout and composition root:
 
 \begin{lstlisting}
-python source/main_be.py
+python -m budget_analyser
 \end{lstlisting}
 
-\subsection{Running the GUI}
-To run the application with the graphical user interface:
-
-\begin{lstlisting}
-python source/view/login.py
-\end{lstlisting}
+After launch:
+\begin{itemize}
+    \item Log in with the default password \texttt{123456} (unless changed in Settings).
+    \item Use the theme toggle on Login or Dashboard to switch light/dark themes. The preference persists.
+    \item Navigate using the left sidebar: Yearly Summary, Earnings, Expenses, Payments, Mapper, Settings, Upload.
+\end{itemize}
 
 \chapter{Usage Guide}
 
@@ -439,7 +438,7 @@ To log in to the Budget Analyser:
 
 \begin{enumerate}
     \item Launch the application.
-    \item Enter the password in the password field (default: "password").
+    \item Enter the password in the password field (default: \texttt{123456}).
     \item Click the "Login" button.
 \end{enumerate}
 
@@ -477,19 +476,21 @@ To upload new statement data:
 \chapter{Development Guide}
 
 \section{Project Structure}
-The Budget Analyser project follows a structured organization:
+The Budget Analyser project uses a SRC layout with clear package boundaries:
 
 \begin{itemize}
-    \item \textbf{documentation/}: Contains project documentation, including UML diagrams.
-    \item \textbf{resources/}: Contains resources needed for documentation.
-    \item \textbf{source/}: Contains the application source code.
+    \item \textbf{src/budget\_analyser/}: Application packages
         \begin{itemize}
-            \item \textbf{controller/}: Contains controller components.
-            \item \textbf{database/}: Contains database-related components.
-            \item \textbf{framework/}: Contains utility and framework components.
-            \item \textbf{model/}: Contains data model components.
-            \item \textbf{view/}: Contains UI components.
+            \item \textbf{presentation/views}: Qt windows and pages (LoginWindow, DashboardWindow, pages)
+            \item \textbf{presentation/controller}: Pure-Python controllers for each page
+            \item \textbf{domain}: Statement formatters, transaction processing, reporting
+            \item \textbf{infrastructure}: INI/JSON adapters and CSV repository
         \end{itemize}
+    \item \textbf{config/}: Application configuration (\texttt{budget\_analyser.ini})
+    \item \textbf{resources/mappers/}: JSON keyword mappings
+    \item \textbf{tests/}: Pytest unit tests
+    \item \textbf{documentation/}: LaTeX manual and UML diagrams
+    \item \textbf{scripts/}: Helper scripts (documentation and README update)
 \end{itemize}
 
 \section{Adding New Features}

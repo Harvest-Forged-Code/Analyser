@@ -121,3 +121,14 @@ This file tracks notable project changes made during development and refactoring
 - Unmapped items are now shown as transaction rows (Date, Description, Amount) instead of a plain list of descriptions.
 - Added controller API `MapperController.list_unmapped_transactions()` to provide the data in a UI-agnostic way.
 - Updated `presentation/views/pages/mapper_page.py` to render a filterable, multi-select table and to map selected rows based on their descriptions.
+ 
+## 2025-12-16
+
+### Documentation alignment with current SRC implementation
+- Overhauled `documentation/README.md` to serve as a documentation hub reflecting the SRC layout, run/test commands, config, logs, and how to rebuild docs/diagrams.
+- Refreshed `documentation/uml/README.md` to describe the Presentation (views/controllers), Domain, and Infrastructure packages; updated generation instructions; removed legacy references to `main_be.py` and old UI classes.
+- Updated LaTeX manual `documentation/LaTeX/budget_analyser_documentation.tex`:
+  - Replaced legacy run commands (`source/main_be.py`, `source/view/login.py`) with the standard entrypoint `python -m budget_analyser`.
+  - Corrected default password to `123456` and clarified theme toggle behavior.
+  - Rewrote the Project Structure section to match `src/budget_analyser/**` packages and added config/resources/tests/scripts entries.
+- Cross-checked top-level `README.md` and environment variables against code (logging dir, statement dir, config and mapper paths). No changes required.
