@@ -1,167 +1,74 @@
 # Budget Analyser
 
-## Introduction
+[![CI – unit tests](https://github.com/OWNER/REPO/actions/workflows/tests.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/tests.yml)
 
-### Overview
-Budget Analyser is an application designed to help users analyze and review their financial data by processing bank account statements. The application provides tools for categorizing transactions, generating reports, and visualizing financial data to help users better understand their spending habits and financial health.
+Modern, cross‑platform budget analysis app built with PySide6 and pandas. It processes bank statements, categorizes transactions using JSON keyword mappings, and presents reports in a polished GUI with light/dark themes.
 
-### Purpose
-The primary purpose of the Budget Analyser is to:
-- Process and analyze bank account statements
-- Categorize financial transactions automatically
-- Generate detailed reports on earnings and expenses
-- Provide insights into spending patterns and financial trends
-- Help users make informed financial decisions
+## Highlights
+- Fullscreen login with password validation (default 123456; configurable in Settings).
+- Modern Dashboard with emoji navigation and a header bar that reflects the active section.
+- Yearly Summary with Category → Sub‑category trees for Earnings and Expenses, plus a 12‑month table.
+- Earnings and Expenses pages with month selector, hierarchical trees, and a transactions table bound to selection.
+- Payments Reconciliation page comparing “payments made” vs “payment confirmations” per month (excluded from standard reports).
+- Mapper page with a filterable table of unmapped transactions (Date | Description | Amount) to quickly add mappings.
+- Settings page to change password and logging level; theme toggle in Login and Dashboard header with persistence.
+- Robust logging to a rotating per‑user log file; deep diagnostics for data loading and mapping.
 
-### Target Audience
-- Individual users who want to track their personal finances
-- Small business owners who need to monitor business expenses
-- Financial advisors who assist clients with financial planning
-- Anyone interested in gaining better insights into their financial data
+## Architecture (SRC layout)
+Layered, testable architecture with one behavior class per file:
+- Presentation (views): Qt widgets only (no business logic).
+- Presentation (controller): Pure‑Python controllers that prepare data for views.
+- Domain: Statement formatting, transaction processing, reporting services.
+- Infrastructure: INI/JSON adapters, CSV repository.
 
-## System Architecture
-The Budget Analyser application follows a layered architecture pattern, specifically implementing the Model-View-Controller (MVC) design pattern with additional framework utilities. This architecture separates the application into distinct components, each with specific responsibilities, making the system more maintainable, extensible, and testable.
+Entrypoint: `python -m budget_analyser` → Login → Dashboard.
 
-### Architectural Layers
+Key modules:
+- `src/budget_analyser/presentation/views/app_gui.py` – composition, logging, theme, and flow control.
+- `src/budget_analyser/presentation/views/dashboard_window.py` – shell (menu, header, nav, stacked pages).
+- `src/budget_analyser/presentation/views/pages/` – Yearly Summary, Earnings, Expenses, Payments, Mapper, Settings, Upload.
+- `src/budget_analyser/presentation/controller/` – Yearly/Earnings/Expenses/Payments/Settings controllers.
+- `src/budget_analyser/domain/` – statement formatters, transaction processing, reporting.
+- `src/budget_analyser/infrastructure/` – INI config, CSV repository, JSON mappers.
 
-#### View Layer
-The View layer is responsible for the user interface components and user interaction. It includes:
-- **Ui_Widget**: The login screen UI
-- **Ui_MainWindow**: The main dashboard UI
-- **InputDisplayApp** and **ExpenseReport**: Test UI components
+## Install
+Prerequisites: Python 3.10–3.12 recommended.
 
-#### Model Layer
-The Model layer is responsible for data management and business logic. It includes:
-- **Statements**: Collects and formats financial transaction data
-- **OriginalStatement**: Provides raw transaction data
-- **StatementFormatter**: Formats raw statements into a consistent format
-
-#### Controller Layer
-The Controller layer acts as an intermediary between the View and Model layers, processing user input and updating the model and view accordingly. It includes:
-- **Report**: Generates various financial reports from transaction data
-- **Processor**: Processes raw transactions by adding categorization
-
-#### Framework Layer
-The Framework layer provides utility classes and services used by the other layers. It includes:
-- **Logger**: Provides centralized logging (implemented as a Singleton)
-- **PandasToolkit**: Utility methods for pandas DataFrame operations
-- **JsonHandler**: Handles JSON file loading and parsing
-
-## Key Features
-The Budget Analyser automatically categorizes transactions based on predefined rules and mappings, helping users understand where their money is going.
-
-The application generates various financial reports, including:
-- Earnings reports showing sources of income
-- Expense reports showing where money is being spent
-- Category-based reports showing spending by category
-- Sub-category-based reports showing detailed spending patterns
-
-The application groups data by month, allowing users to analyze their financial patterns over time and identify trends or anomalies.
-
-The application features a modern, intuitive user interface with:
-- A dark theme for reduced eye strain
-- Clear navigation options
-- Responsive design elements
-- Tabular data presentation for easy comprehension
-
-## Installation and Setup
-
-### Prerequisites
-Before installing the Budget Analyser, ensure you have the following prerequisites:
-
-- Python 3.9 or higher
-- pip (Python package installer)
-- Required Python packages (listed in requirements.txt)
-
-### Installation Steps
-1. Clone the repository:
-    ```
-git clone https://github.com/username/Analyser.git
-    cd Analyser
 ```
-2. Install the required dependencies:
-    ```
 pip install -r requirements.txt
 ```
-3. Set up any necessary configuration files (if applicable).
 
-### Running the Application
-To run the backend processing without the GUI (legacy CLI renderer under src/):
-
-```
-python source/main_be.py
-```
-
-To run the application with the graphical user interface (PySide6):
-
+## Run the app (GUI)
 ```
 python -m budget_analyser
 ```
 
-The GUI composition has been modularized for clarity and faster startup (reduced duplicate imports and object creation):
-- src/budget_analyser/presentation/views/app_gui.py — composition and run_app()
-- src/budget_analyser/presentation/views/login_window.py — LoginWindow (one class per file)
-- src/budget_analyser/presentation/views/dashboard_window.py — DashboardWindow (one class per file)
+Login with `123456` (unless changed in Settings). Use the 🌙/☀️ toggle on Login or Dashboard to switch themes (persisted).
 
-Note: the legacy path `budget_analyser.presentation.views.gui_pyside6` has been removed. 
-Please import `run_app` from `budget_analyser.presentation.views.app_gui` or simply run `python -m budget_analyser`.
+## Run tests
+```
+pytest -q
+```
 
-## Usage Guide
+CI runs the full unit test suite on Linux/macOS/Windows across Python 3.10–3.12 via GitHub Actions (`.github/workflows/tests.yml`).
 
-### Logging In (GUI)
-To log in to the Budget Analyser GUI:
-
-1. Launch the application.
-2. Enter the password in the password field (required: "123456").
-3. Theme toggle: use the 🌙/☀️ button at the top-right of the login card to switch between Dark and Light themes. Your choice is remembered across restarts.
-3. Click the "Login" button.
-
-### Navigating the Dashboard
-The dashboard provides a modern, theme‑aware experience with subtle shadows and rounded surfaces. Navigation options:
-
-- Side panel navigation with sections (with emojis):
-  - **🗓️ Yearly Summary**: Yearly overview with totals and monthly breakdown.
-  - **💰 Earnings**: View reports on income sources.
-  - **🧾 Expenses**: View reports on spending.
-  - **⬆️ Upload**: Upload new statement data.
-  - **🧭 Mapper**: Configure transaction categorization rules.
-  - **⚙️ Settings**: Adjust application settings.
-- Menu bar:
-  - **File → Exit**: Quit the application (Cmd+Q on macOS, Ctrl+Q on Windows/Linux).
- - Header bar:
-   - Theme toggle: use the 🌙/☀️ button at the top-right of the header to switch Dark/Light themes (persists across restarts).
-
-Selecting a section in the side panel updates the central content area accordingly. The header bar shows the current section.
-
-### Logs and diagnostics
-- Location: logs are written to a per-user directory by default:
+## Configuration & logs
+- Config INI: `config/budget_analyser.ini` (stores logging level, password hash, theme, column mappings).
+- Statement dir: `resources/statements` (default; override via env var in `src/budget_analyser/config/settings.py`).
+- JSON mappings: `resources/mappers/*.json`.
+- Logs (rotating):
   - macOS/Linux: `~/.budget_analyser/logs/gui_app.log`
   - Windows: `%USERPROFILE%\.budget_analyser\logs\gui_app.log`
-- Override: set environment variable `BUDGET_ANALYSER_LOG_DIR` to change the logs directory.
-- Rotation: logs are automatically rotated (5 MB per file, up to 3 backups).
-- Verbosity: change the log level at runtime from Settings → Logging (DEBUG/INFO/WARNING/ERROR/CRITICAL),
-  or persist it in `config/budget_analyser.ini` under `[app] log_level=DEBUG`.
+  - Override via `BUDGET_ANALYSER_LOG_DIR`.
 
-### Yearly Summary page
-- Modern, clean layout with two equal-width panels summarizing Total Earned and Total Spent, including sub‑category tables.
-- Monthly table lists all 12 months (missing data shown as 0), with improved typography and alternating row colors.
+## Notes on data & signs
+- Domain reporting enforces signs: Earnings shown as positive, Expenses as negative.
+- “payment_confirmations” are excluded from Earnings; “payments_made” are excluded from Expenses in standard reports (still visible in Payments page).
 
-### Viewing Reports
-To view financial reports:
+## Troubleshooting
+- Set log level to DEBUG in Settings to capture detailed pipeline diagnostics.
+- If date parsing issues occur, the formatters coerce invalid dates to NaT; check the logs for column info and hints.
 
-1. Navigate to the desired report section (Earnings, Expenses, etc.).
-2. Select the desired month from the month selector.
-3. Review the tabular data presented in the report.
+—
 
-### Uploading Statements
-To upload new statement data:
-
-1. Navigate to the Upload section.
-2. Follow the prompts to select and upload statement files.
-3. The application will process the new data and update the reports.
-
----
-
-*This README is automatically generated from the comprehensive documentation. For more details, please refer to the [full documentation](documentation/budget_analyser_documentation.pdf).*
-
-*Last updated: 2025-08-10*
+For a deeper dive (architecture diagrams, flows), see `documentation/` and the LaTeX PDF.

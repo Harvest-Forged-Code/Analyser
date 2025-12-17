@@ -77,6 +77,17 @@ This file tracks notable project changes made during development and refactoring
   - Added presentation/controller/settings_controller.py (SettingsController) to keep Settings logic out of the view.
   - Refactored SettingsPage to be UI-only; it now delegates password and log-level actions to SettingsController.
 
+### Continuous Integration (CI) for unit tests
+- Added cross-platform GitHub Actions workflow `.github/workflows/tests.yml` that runs pytest on Ubuntu, macOS, and Windows across Python 3.10–3.12.
+- Ensured headless Qt by setting `QT_QPA_PLATFORM=offscreen` and `PYTHONPATH=src` in the workflow.
+- Updated existing `.github/workflows/pylint.yml` to set environment variables and run tests during lint job.
+
+### Documentation refresh to match SRC implementation
+- README.md rewritten to reflect the current architecture (SRC layout), controllers/views separation, new pages (Payments, Mapper table), theme system, logging, and CI badge.
+- LaTeX documentation updated (documentation/LaTeX/budget_analyser_documentation.tex):
+  - Added a "Current Implementation (SRC layout)" section with directory overview and composition root.
+  - Documented controllers vs views, dashboard pages, domain sign normalization, logging/diagnostics, platform independence, and CI.
+
 ### Modern dropdown styling (all pages)
 - Updated theme-aware QComboBox styling in presentation/views/styles.py for both dark and light themes:
   - Rounded corners (10px), refined borders, comfortable padding, and min-height for touch-friendly targets.

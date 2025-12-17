@@ -1,6 +1,0 @@
-<RCC>
-  <qresource prefix="images">
-    <file>resources/bugdet_laptop_no_bg.png</file>
-    <file>resources/dollar_coin.png</file>
-  </qresource>
-</RCC>
