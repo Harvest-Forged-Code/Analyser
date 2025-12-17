@@ -108,7 +108,69 @@
 \chapter{Introduction}
 
 \section{Overview}
-Budget Analyser is an application designed to help users analyze and review their financial data by processing bank account statements. The application provides tools for categorizing transactions, generating reports, and visualizing financial data to help users better understand their spending habits and financial health.
+Budget Analyser is a cross\-platform desktop application built with PySide6 (Qt for Python) and pandas. It helps users analyse and review financial data by processing bank account statements. The app categorises transactions using JSON keyword mappings, generates month\-wise reports, and presents them in a modern, theme\-aware GUI. A strict separation is maintained between UI (Views), data shaping (Controllers), and domain logic.
+
+\section{Current Implementation (SRC layout)}
+\label{sec:current-implementation}
+
+The project follows a layered architecture with one behaviour class per file under a \texttt{src/} layout.
+
+\subsection*{Directory overview}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{src/budget\_analyser/presentation/views}: PySide6 widgets only (no business logic). Contains the login window, dashboard shell, and page widgets.
+  \item \textbf{src/budget\_analyser/presentation/controller}: Pure\-Python controllers that transform domain data into view\-friendly structures (DTOs). No Qt code here.
+  \item \textbf{src/budget\_analyser/domain}: Statement formatters, transaction processor, and reporting services (pure domain logic).
+  \item \textbf{src/budget\_analyser/infrastructure}: INI config adapter, CSV repository, and JSON mappings provider/store.
+  \item \textbf{resources/}: Sample statements and JSON mapping files.
+  \item \textbf{tests/}: Pytest unit tests covering core domain and controllers.
+\end{itemize}
+
+\subsection*{Composition root}
+The GUI entrypoint is the package module:
+\begin{verbatim}
+python -m budget_analyser
+\end{verbatim}
+This calls \texttt{presentation/views/app\_gui.py}, which:
+\begin{enumerate}[leftmargin=*]
+  \item Configures rotating file logging in a per\-user directory.
+  \item Applies the persisted UI theme and a platform\-available font.
+  \item Builds the backend controller with infrastructure adapters.
+  \item Shows the fullscreen Login; on success, computes reports and opens the Dashboard.
+\end{enumerate}
+
+\section{Presentation: Views vs Controllers}
+Views (QWidgets) contain only UI code. All data preparation lives in controllers:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{YearlySummaryStatsController}: aggregates totals per year and builds Category\,$\rightarrow$\,Sub\-category trees; exposes month names (January..December).
+  \item \textbf{EarningsStatsController}: per\-month totals and sub\-category breakdown; provides filtered transactions for the table.
+  \item \textbf{ExpensesStatsController}: per\-month expenses with hierarchy Category\,$\rightarrow$\,Sub\-category; filtered transactions.
+  \item \textbf{PaymentsReconciliationController}: compares \emph{payments\_made} vs \emph{payment\_confirmations} per month (excluded from standard aggregates).
+  \item \textbf{MapperController}: lists unmapped transactions (Date, Description, Amount) and applies mapping edits; persists via JSON store.
+  \item \textbf{SettingsController}: changes log level and password; applies log level immediately.
+\end{itemize}
+
+\section{Dashboard pages}
+The Dashboard contains a menubar (File \,$\rightarrow$\, Exit), a header with a section subtitle, a left navigation, and a stacked content area.
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Yearly Summary}: two cards with totals (Earned/Spent) and trees (Category \,$\rightarrow$\, Sub\-category) for the selected year, plus a 12\-month table.
+  \item \textbf{Earnings}: month selector; tree (Total \,$\rightarrow$\, Sub\-categories); bottom table bound to current selection.
+  \item \textbf{Expenses}: month selector; hierarchy Expenses \,$\rightarrow$\, Category \,$\rightarrow$\, Sub\-category; bottom table bound to selection.
+  \item \textbf{Payments}: reconciliation view that lists both \emph{payments\_made} and \emph{payment\_confirmations} with totals and difference.
+  \item \textbf{Mapper}: filterable table of unmapped transactions showing Date, Description, and Amount; supports adding to existing sub\-categories or creating new ones.
+  \item \textbf{Settings}: update password and logging level; theme toggle also available in Login and header.
+\end{itemize}
+
+\section{Domain logic}
+The \textbf{ReportService} enforces sign normalisation: earnings are positive, expenses negative. The \textbf{TransactionProcessor} derives \texttt{sub\_category}, \texttt{category}, and \texttt{c\_or\_d} using keyword mappings loaded from JSON. Statement formatters convert heterogeneous CSVs to a canonical schema.
+
+\section{Logging and diagnostics}
+Rotating file logs (5MB, 3 backups) are written to a per\-user directory (override via \texttt{BUDGET\_ANALYSER\_LOG\_DIR}). The pipeline logs start/end, shapes/columns per account at DEBUG, and rich context on failures. Mapping providers log file paths and key counts.
+
+\section{Platform independence}
+The app selects an available system font at runtime and avoids platform\-specific shortcuts by using Qt standard keys (Quit). Paths are handled via \texttt{pathlib}. CSV reading is tolerant, and case differences in filenames are tested.
+
+\section{Continuous integration}
+Unit tests run on GitHub Actions across Linux/macOS/Windows and Python 3.10\,--\,3.12. The workflow sets \texttt{PYTHONPATH=src} and \texttt{QT\_QPA\_PLATFORM=offscreen} for headless environments. See \texttt{.github/workflows/tests.yml}.
 
 \section{Purpose}
 The primary purpose of the Budget Analyser is to:
