@@ -44,17 +44,23 @@ from budget_analyser.views.styles import app_stylesheet, select_app_font
 from budget_analyser.controller import MapperController
 from budget_analyser.controller import UploadController
 
+def _package_data_dir() -> Path:
+    """Return the package data directory (src/budget_analyser/data)."""
+    # app_gui.py lives under src/budget_analyser/views/
+    return Path(__file__).resolve().parents[1] / "data"
+
+
 def _logs_dir() -> Path:
-    """Return user-writable logs directory with optional env override.
+    """Return logs directory with optional env override.
 
     Order of precedence:
       1) BUDGET_ANALYSER_LOG_DIR (if set)
-      2) ~/.budget_analyser/logs
+      2) src/budget_analyser/data/logs/ (application data folder)
     """
     env_dir = os.environ.get("BUDGET_ANALYSER_LOG_DIR")
     if env_dir:
         return Path(env_dir).expanduser().resolve()
-    return Path.home() / ".budget_analyser" / "logs"
+    return _package_data_dir() / "logs"
 
 
 def _ensure_logger() -> logging.Logger:

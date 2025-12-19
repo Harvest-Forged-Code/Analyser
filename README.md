@@ -58,10 +58,8 @@ CI runs the full unit test suite on Linux/macOS/Windows across Python 3.10–3.1
 - Config INI: `src/budget_analyser/data/config/budget_analyser.ini` (stores logging level, password hash, theme, column mappings).
 - Statement dir: `src/budget_analyser/data/statements` (default; override via env var in `src/budget_analyser/settings/settings.py`).
 - JSON mappings: `src/budget_analyser/data/mappers/*.json`.
-- Logs (rotating):
-  - macOS/Linux: `~/.budget_analyser/logs/gui_app.log`
-  - Windows: `%USERPROFILE%\.budget_analyser\logs\gui_app.log`
-  - Override via `BUDGET_ANALYSER_LOG_DIR`.
+- Database: `src/budget_analyser/data/budget_analyser.db` (SQLite; stores processed transactions).
+- Logs (rotating): `src/budget_analyser/data/logs/gui_app.log` (override via `BUDGET_ANALYSER_LOG_DIR`).
 
 ## Notes on data & signs
 - Domain reporting enforces signs: Earnings shown as positive, Expenses as negative.
