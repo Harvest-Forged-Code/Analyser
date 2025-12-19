@@ -36,6 +36,7 @@ from budget_analyser.views.dashboard_window import DashboardWindow
 from budget_analyser.views.login_window import LoginWindow
 from budget_analyser.views.styles import app_stylesheet, select_app_font
 from budget_analyser.controller import MapperController
+from budget_analyser.controller import UploadController
 
 def _logs_dir() -> Path:
     """Return user-writable logs directory with optional env override.
@@ -185,7 +186,14 @@ def run_app() -> int:
             logger=logger,
         )
         mapper_controller = MapperController(reports, logger, mapping_store)
-        dash = DashboardWindow(reports, logger, prefs, mapper_controller)
+        # Build upload controller for the Upload page
+        ini_config = IniAppConfig(path=settings.ini_config_path)
+        upload_controller = UploadController(
+            logger=logger,
+            ini_config=ini_config,
+            statements_dir=settings.statement_dir,
+        )
+        dash = DashboardWindow(reports, logger, prefs, mapper_controller, upload_controller)
         app._dashboard = dash  # type: ignore[attr-defined]
         dash.showMaximized()
         login.close()

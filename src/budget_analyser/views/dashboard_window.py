@@ -32,6 +32,7 @@ from budget_analyser.views.styles import app_stylesheet
 from budget_analyser.settings.preferences import AppPreferences
 from budget_analyser.controller import SettingsController
 from budget_analyser.controller import MapperController
+from budget_analyser.controller import UploadController
 
 
 class DashboardWindow(QtWidgets.QMainWindow):
@@ -41,12 +42,14 @@ class DashboardWindow(QtWidgets.QMainWindow):
         logger: logging.Logger,
         prefs: AppPreferences,
         mapper_controller: MapperController,
+        upload_controller: UploadController,
     ):
         super().__init__()
         self._reports = reports
         self._logger = logger
         self._prefs = prefs
         self._mapper_controller = mapper_controller
+        self._upload_controller = upload_controller
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -177,7 +180,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             EarningsPage(self._reports, self._logger),
             ExpensesPage(self._reports, self._logger),
             PaymentsPage(self._reports, self._logger),
-            UploadPage(self._logger),
+            UploadPage(self._logger, self._upload_controller),
             MapperPage(self._logger, self._mapper_controller),
             SettingsPage(self._logger, settings_controller),
         ]
