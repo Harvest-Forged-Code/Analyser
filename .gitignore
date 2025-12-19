@@ -8,7 +8,10 @@ __pycache__/
 
 # C extensions
 *.so
+# Project specfic
 *.CSV
+*.db
+
 # Distribution / packaging
 .Python
 build/

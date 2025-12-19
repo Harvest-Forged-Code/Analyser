@@ -31,6 +31,12 @@ from budget_analyser.infrastructure.json_mappings import (
     JsonCategoryMappingStore,
 )
 from budget_analyser.infrastructure.statement_repository import CsvStatementRepository
+from budget_analyser.infrastructure.database import (
+    TransactionDatabase,
+    DatabaseTransactionRepository,
+)
+from budget_analyser.domain.transaction_ingestion import TransactionIngestionService
+from budget_analyser.domain.transaction_processing import CategoryMappers
 from budget_analyser.controller.controllers import BackendController
 from budget_analyser.views.dashboard_window import DashboardWindow
 from budget_analyser.views.login_window import LoginWindow
@@ -38,17 +44,23 @@ from budget_analyser.views.styles import app_stylesheet, select_app_font
 from budget_analyser.controller import MapperController
 from budget_analyser.controller import UploadController
 
+def _package_data_dir() -> Path:
+    """Return the package data directory (src/budget_analyser/data)."""
+    # app_gui.py lives under src/budget_analyser/views/
+    return Path(__file__).resolve().parents[1] / "data"
+
+
 def _logs_dir() -> Path:
-    """Return user-writable logs directory with optional env override.
+    """Return logs directory with optional env override.
 
     Order of precedence:
       1) BUDGET_ANALYSER_LOG_DIR (if set)
-      2) ~/.budget_analyser/logs
+      2) src/budget_analyser/data/logs/ (application data folder)
     """
     env_dir = os.environ.get("BUDGET_ANALYSER_LOG_DIR")
     if env_dir:
         return Path(env_dir).expanduser().resolve()
-    return Path.home() / ".budget_analyser" / "logs"
+    return _package_data_dir() / "logs"
 
 
 def _ensure_logger() -> logging.Logger:
@@ -159,10 +171,29 @@ def run_app() -> int:
 
     # Build upload controller early to check for missing CSVs
     ini_config = IniAppConfig(path=settings.ini_config_path)
+
+    # Create database and ingestion service for processing uploaded CSVs
+    transaction_db = TransactionDatabase(db_path=settings.database_path, logger=logger)
+    category_mapping_provider = JsonCategoryMappingProvider(
+        description_to_sub_category_path=settings.description_to_sub_category_path,
+        sub_category_to_category_path=settings.sub_category_to_category_path,
+        logger=logger,
+    )
+    category_mappers = CategoryMappers(
+        description_to_sub_category=category_mapping_provider.description_to_sub_category(),
+        sub_category_to_category=category_mapping_provider.sub_category_to_category(),
+    )
+    ingestion_service = TransactionIngestionService(
+        database=transaction_db,
+        category_mappers=category_mappers,
+        logger=logger,
+    )
+
     upload_controller = UploadController(
         logger=logger,
         ini_config=ini_config,
         statements_dir=settings.statement_dir,
+        ingestion_service=ingestion_service,
     )
 
     def _open_dashboard(reports, csv_missing: bool = False):
@@ -183,34 +214,38 @@ def run_app() -> int:
         # Connect reload signal to handle CSV upload completion
         def _on_reload_requested():
             logger.info("Reload requested after CSV upload")
-            # Check if all CSVs are now present
-            if upload_controller.all_statements_present():
+            # Check if database has data (transactions are stored during upload)
+            if db_repository.has_data():
                 try:
-                    new_reports = controller.run()
-                    logger.info("Reports regenerated with %d months", len(new_reports))
+                    transactions = db_repository.get_processed_transactions()
+                    new_reports = controller.run_from_database(transactions)
+                    logger.info("Reports regenerated from database with %d months", len(new_reports))
                     # Enable all pages and show success message
                     dash.enable_all_pages()
                     QtWidgets.QMessageBox.information(
                         dash,
                         "Success",
-                        "All statements uploaded successfully!\n\n"
+                        f"Transactions processed successfully!\n\n"
+                        f"{len(transactions)} transactions loaded.\n"
                         "You can now access all pages. Please restart the app "
                         "to see the updated reports.",
                     )
                 except Exception as exc:
-                    logger.exception("Error regenerating reports after upload")
+                    logger.exception("Error regenerating reports from database")
                     QtWidgets.QMessageBox.warning(
                         dash,
                         "Warning",
-                        f"Statements uploaded but failed to process:\n{exc}\n\n"
+                        f"Failed to generate reports:\n{exc}\n\n"
                         "Please restart the app to try again.",
                     )
             else:
-                # Log remaining missing statements but don't show popup
-                # User can see status via checkmarks on Upload page
+                # No database data yet - check missing statements
                 missing = upload_controller.get_missing_statements()
-                missing_names = [f"{bank} ({atype})" for bank, atype, _ in missing]
-                logger.info("Still missing statements: %s", ", ".join(missing_names))
+                if missing:
+                    missing_names = [f"{bank} ({atype})" for bank, atype, _ in missing]
+                    logger.info("Still missing statements: %s", ", ".join(missing_names))
+                else:
+                    logger.info("All statements uploaded but no data in database yet")
 
         dash.reload_requested.connect(_on_reload_requested)
 
@@ -219,23 +254,48 @@ def run_app() -> int:
         dash.showMaximized()
         login.close()
 
+    # Create database repository for reading transactions
+    db_repository = DatabaseTransactionRepository(database=transaction_db, logger=logger)
+
     def _on_success():
         # Check if CSVs are missing
         missing_statements = upload_controller.get_missing_statements()
 
         if missing_statements:
-            # CSVs are missing - open dashboard in restricted mode
+            # CSVs are missing - check if database has data from previous uploads
+            if db_repository.has_data():
+                logger.info("CSVs missing but database has data - using database")
+                try:
+                    transactions = db_repository.get_processed_transactions()
+                    reports = controller.run_from_database(transactions)
+                    logger.info(
+                        "Generated %d monthly reports from database", len(reports)
+                    )
+                    _open_dashboard(reports=reports, csv_missing=False)
+                    return
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.exception("Error generating reports from database")
+                    # Fall through to restricted mode
+
+            # No database data - open dashboard in restricted mode
             missing_names = [f"{bank} ({atype})" for bank, atype, _ in missing_statements]
             logger.warning(
                 "Missing CSV statements: %s. Opening in restricted mode.",
                 ", ".join(missing_names),
             )
-            # Open dashboard with empty reports in restricted mode
             _open_dashboard(reports=[], csv_missing=True)
         else:
-            # All CSVs present - compute reports and open dashboard normally
+            # All CSVs present - check database first, then fall back to CSV processing
             try:
-                reports = controller.run()
+                if db_repository.has_data():
+                    # Use database for faster startup
+                    logger.info("Loading reports from database")
+                    transactions = db_repository.get_processed_transactions()
+                    reports = controller.run_from_database(transactions)
+                else:
+                    # No database data - process CSVs (first run or after DB reset)
+                    logger.info("No database data - processing CSVs")
+                    reports = controller.run()
             except Exception as exc:  # pylint: disable=broad-except
                 logger.exception("Error generating reports")
                 QtWidgets.QMessageBox.critical(

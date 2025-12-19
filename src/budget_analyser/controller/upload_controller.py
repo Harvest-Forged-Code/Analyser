@@ -1,7 +1,8 @@
 """Upload controller for bank statement uploads.
 
 Single responsibility:
-    Validate and copy uploaded bank statement CSV files to the statements folder.
+    Validate and copy uploaded bank statement CSV files to the statements folder,
+    then process and store transactions in the database.
 """
 
 from __future__ import annotations
@@ -10,11 +11,14 @@ import logging
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import pandas as pd
 
 from budget_analyser.infrastructure.ini_config import IniAppConfig
+
+if TYPE_CHECKING:
+    from budget_analyser.domain.transaction_ingestion import TransactionIngestionService
 
 
 @dataclass(frozen=True)
@@ -24,6 +28,8 @@ class UploadResult:
     success: bool
     message: str
     destination_path: str | None = None
+    transactions_inserted: int = 0
+    duplicates_skipped: int = 0
 
 
 class UploadController:
@@ -35,10 +41,12 @@ class UploadController:
         logger: logging.Logger,
         ini_config: IniAppConfig,
         statements_dir: Path,
+        ingestion_service: Optional["TransactionIngestionService"] = None,
     ) -> None:
         self._logger = logger
         self._ini_config = ini_config
         self._statements_dir = statements_dir
+        self._ingestion_service = ingestion_service
 
     def get_available_banks(self, account_type: str) -> List[str]:
         """Return list of available bank names for the given account type.
@@ -282,14 +290,54 @@ class UploadController:
             self._logger.info(
                 "Statement uploaded: %s -> %s", source_path, dest_path
             )
-            return UploadResult(
-                success=True,
-                message=f"Statement uploaded successfully as '{dest_filename}'",
-                destination_path=str(dest_path),
-            )
         except Exception as exc:  # pylint: disable=broad-exception-caught
             self._logger.error("Failed to copy statement: %s", exc)
             return UploadResult(
                 success=False,
                 message=f"Failed to copy file: {exc}",
             )
+
+        # Process and store transactions in database if ingestion service is available
+        transactions_inserted = 0
+        duplicates_skipped = 0
+        ingestion_msg = ""
+
+        if self._ingestion_service is not None:
+            try:
+                column_mapping = self._ini_config.get_column_mapping(account_name=bank_name)
+                ingestion_result = self._ingestion_service.ingest_csv(
+                    csv_path=dest_path,
+                    account_name=bank_name,
+                    column_mapping=column_mapping,
+                )
+                if ingestion_result.success:
+                    transactions_inserted = ingestion_result.transactions_inserted
+                    duplicates_skipped = ingestion_result.duplicates_skipped
+                    ingestion_msg = (
+                        f" | {transactions_inserted} transactions added to database"
+                        f" ({duplicates_skipped} duplicates skipped)"
+                    )
+                    self._logger.info(
+                        "Ingestion complete for %s: %d inserted, %d duplicates",
+                        bank_name,
+                        transactions_inserted,
+                        duplicates_skipped,
+                    )
+                else:
+                    self._logger.warning(
+                        "Ingestion failed for %s: %s",
+                        bank_name,
+                        ingestion_result.message,
+                    )
+                    ingestion_msg = f" | Warning: {ingestion_result.message}"
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self._logger.warning("Failed to ingest transactions: %s", exc)
+                ingestion_msg = f" | Warning: Failed to process transactions: {exc}"
+
+        return UploadResult(
+            success=True,
+            message=f"Statement uploaded successfully as '{dest_filename}'{ingestion_msg}",
+            destination_path=str(dest_path),
+            transactions_inserted=transactions_inserted,
+            duplicates_skipped=duplicates_skipped,
+        )

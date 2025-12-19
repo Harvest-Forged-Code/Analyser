@@ -210,3 +210,74 @@ class BackendController:  # pylint: disable=too-few-public-methods
         except Exception:  # pylint: disable=broad-exception-caught
             pass
         return reports
+
+    def run_from_database(self, processed_transactions: pd.DataFrame) -> List[MonthlyReports]:
+        """Generate reports from pre-processed database transactions.
+
+        This method skips the CSV loading, formatting, and categorization steps
+        since the database already contains processed transactions.
+
+        Args:
+            processed_transactions: DataFrame with columns: transaction_date,
+                description, amount, from_account, sub_category, category, c_or_d
+
+        Returns:
+            A list of `MonthlyReports` objects (one per month).
+        """
+        t0 = time.perf_counter()
+        tx_count = len(processed_transactions)
+        self._logger.info("Generating reports from database: %d transactions", tx_count)
+
+        if processed_transactions.empty:
+            self._logger.info("No transactions in database")
+            return []
+
+        # Ensure transaction_date is datetime
+        if "transaction_date" in processed_transactions.columns:
+            processed_transactions["transaction_date"] = pd.to_datetime(
+                processed_transactions["transaction_date"], format="mixed", errors="coerce"
+            )
+
+        # Add year_month period column for grouping
+        date_col = processed_transactions["transaction_date"]
+        processed_transactions["year_month"] = date_col.dt.to_period("M")
+
+        # Build month-wise report tables (same logic as run())
+        reports: list[MonthlyReports] = []
+        for month, group in processed_transactions.groupby(processed_transactions["year_month"]):
+            self._logger.info("Generating reports for %s", month)
+            try:
+                earn_source = group
+                exp_source = group
+                if "sub_category" in group.columns:
+                    earn_source = group[group["sub_category"].fillna("") != "payment_confirmations"]
+                    exp_source = group[group["sub_category"].fillna("") != "payments_made"]
+            except Exception:  # pylint: disable=broad-exception-caught
+                earn_source = group
+                exp_source = group
+
+            reports.append(
+                MonthlyReports(
+                    month=month,
+                    earnings=self._report_service.earnings(statement=earn_source),
+                    expenses=self._report_service.expenses(statement=exp_source),
+                    expenses_category=self._report_service.expenses_category(statement=exp_source),
+                    expenses_sub_category=self._report_service.expenses_sub_category(
+                        statement=exp_source
+                    ),
+                    transactions=group,
+                )
+            )
+
+        try:
+            duration = time.perf_counter() - t0
+            months = processed_transactions["year_month"].nunique()
+            self._logger.info(
+                "Database pipeline end: transactions=%d months=%d duration=%.2fs",
+                len(processed_transactions.index),
+                int(months),
+                duration,
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+        return reports
