@@ -18,6 +18,7 @@ from .earnings_stats_controller import EarningsStatsController
 from .expenses_stats_controller import ExpensesStatsController
 from .payments_reconciliation_controller import PaymentsReconciliationController
 from .mapper_controller import MapperController
+from .upload_controller import UploadController
 
 __all__ = [
     "YearlySummaryStatsController",
@@ -26,4 +27,5 @@ __all__ = [
     "ExpensesStatsController",
     "PaymentsReconciliationController",
     "MapperController",
+    "UploadController",
 ]

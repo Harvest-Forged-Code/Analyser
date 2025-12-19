@@ -32,21 +32,41 @@ from budget_analyser.views.styles import app_stylesheet
 from budget_analyser.settings.preferences import AppPreferences
 from budget_analyser.controller import SettingsController
 from budget_analyser.controller import MapperController
+from budget_analyser.controller import UploadController
 
 
 class DashboardWindow(QtWidgets.QMainWindow):
+    """Main dashboard window with navigation sidebar and content pages."""
+
+    # Signal emitted when user requests to reload data after uploading CSVs
+    reload_requested = QtCore.Signal()
+
+    # Page indices
+    PAGE_YEARLY_SUMMARY = 0
+    PAGE_EARNINGS = 1
+    PAGE_EXPENSES = 2
+    PAGE_PAYMENTS = 3
+    PAGE_UPLOAD = 4
+    PAGE_MAPPER = 5
+    PAGE_SETTINGS = 6
+
     def __init__(
         self,
         reports: List[MonthlyReports],
         logger: logging.Logger,
         prefs: AppPreferences,
         mapper_controller: MapperController,
+        upload_controller: UploadController,
+        *,
+        csv_missing: bool = False,
     ):
         super().__init__()
         self._reports = reports
         self._logger = logger
         self._prefs = prefs
         self._mapper_controller = mapper_controller
+        self._upload_controller = upload_controller
+        self._csv_missing = csv_missing
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -172,18 +192,22 @@ class DashboardWindow(QtWidgets.QMainWindow):
         # Build controllers for pages that need them
         settings_controller = SettingsController(self._logger, self._prefs)
 
+        self._upload_page = UploadPage(self._logger, self._upload_controller)
         self._pages = [
             YearlySummaryPage(self._reports, self._logger),
             EarningsPage(self._reports, self._logger),
             ExpensesPage(self._reports, self._logger),
             PaymentsPage(self._reports, self._logger),
-            UploadPage(self._logger),
+            self._upload_page,
             MapperPage(self._logger, self._mapper_controller),
             SettingsPage(self._logger, settings_controller),
         ]
         for page in self._pages:
             self._stack.addWidget(page)
         content_v.addWidget(self._stack)
+
+        # Connect upload page success signal to dashboard reload signal
+        self._upload_page.upload_successful.connect(self.reload_requested.emit)
 
         # Shadow for content
         c_shadow = QtWidgets.QGraphicsDropShadowEffect(blurRadius=28, xOffset=0, yOffset=12)
@@ -195,13 +219,40 @@ class DashboardWindow(QtWidgets.QMainWindow):
         row.addWidget(content, 1)
         vroot.addLayout(row)
 
-        # Default selection
-        self._buttons[0].setChecked(True)
-        self._stack.setCurrentIndex(0)
-        self._subtitle.setText(self._section_names[0])
-
         # Wire navigation
         self._btn_group.idClicked.connect(self._on_nav_clicked)
+
+        # Apply restricted mode if CSVs are missing
+        if self._csv_missing:
+            self._apply_restricted_mode()
+        else:
+            # Default selection: Yearly Summary
+            self._buttons[0].setChecked(True)
+            self._stack.setCurrentIndex(0)
+            self._subtitle.setText(self._section_names[0])
+
+    def _apply_restricted_mode(self) -> None:
+        """Apply restricted mode: disable all pages except Upload and Settings."""
+        self._logger.info("Applying restricted mode - CSVs missing")
+        # Disable all navigation buttons except Upload and Settings
+        restricted_pages = {self.PAGE_UPLOAD, self.PAGE_SETTINGS}
+        for idx, btn in enumerate(self._buttons):
+            if idx not in restricted_pages:
+                btn.setEnabled(False)
+                btn.setToolTip("Upload all required CSV files first")
+
+        # Navigate to Upload page
+        self._buttons[self.PAGE_UPLOAD].setChecked(True)
+        self._stack.setCurrentIndex(self.PAGE_UPLOAD)
+        self._subtitle.setText(self._section_names[self.PAGE_UPLOAD])
+
+    def enable_all_pages(self) -> None:
+        """Enable all navigation pages (called after CSVs are uploaded)."""
+        self._logger.info("Enabling all navigation pages")
+        self._csv_missing = False
+        for btn in self._buttons:
+            btn.setEnabled(True)
+            btn.setToolTip("")
 
     def _on_exit(self) -> None:
         self._logger.info("Exit action triggered from File menu")
