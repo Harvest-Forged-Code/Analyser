@@ -31,7 +31,85 @@ Key modules:
 - `src/budget_analyser/views/pages/` – Yearly Summary, Earnings, Expenses, Payments, Mapper, Settings, Upload.
 - `src/budget_analyser/controller/` – Yearly/Earnings/Expenses/Payments/Settings controllers.
 - `src/budget_analyser/domain/` – statement formatters, transaction processing, reporting.
-- `src/budget_analyser/infrastructure/` – INI config, CSV repository, JSON mappers.
+- `src/budget_analyser/infrastructure/` – INI config, CSV repository, JSON mappers, SQLite database.
+
+## Implementation Flow
+
+The application follows a **DB-centric architecture** where all reports are generated from the SQLite database. CSV files are processed and ingested into the database, which serves as the single source of truth.
+
+### Data Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        APPLICATION STARTUP                          │
+│  1. Load Settings (INI config, paths, preferences)                  │
+│  2. Build controllers with injected dependencies                    │
+│  3. Show LoginWindow                                                │
+└─────────────────────────────────────────────────────────────────────┘
+                                  │
+                          [Login Success]
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    CHECK DATA AVAILABILITY                          │
+│  - If DB has data → Generate reports from DB                        │
+│  - If no DB data AND CSVs present → Ingest CSVs to DB → Reports     │
+│  - If no DB data AND no CSVs → Restricted mode (Upload page only)   │
+└─────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    CSV INGESTION PIPELINE                           │
+│  (TransactionIngestionService)                                      │
+└─────────────────────────────────────────────────────────────────────┘
+                                  │
+        ┌─────────────────────────┼─────────────────────────┐
+        ▼                         ▼                         ▼
+┌───────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│ 1. LOAD CSV   │       │ 2. FORMAT       │       │ 3. CATEGORIZE   │
+│ Raw bank      │  ──►  │ Per-bank        │  ──►  │ Keyword-based   │
+│ statements    │       │ formatters      │       │ mapping         │
+└───────────────┘       └─────────────────┘       └─────────────────┘
+                                                          │
+                                                          ▼
+                                                  ┌─────────────────┐
+                                                  │ 4. PERSIST      │
+                                                  │ Insert to SQLite│
+                                                  │ (deduplicated)  │
+                                                  └─────────────────┘
+                                                          │
+                                                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    REPORT GENERATION                                │
+│  (BackendController.run_from_database)                              │
+│  - Load transactions from DB                                        │
+│  - Group by month                                                   │
+│  - Generate: Earnings, Expenses, Category/SubCategory pivots        │
+└─────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      DASHBOARD WINDOW                               │
+│  - Earnings, Expenses, Category breakdowns, Yearly summaries        │
+│  - Upload page for adding new statements → Ingest → Update DB       │
+│  - Mapper page for managing category mappings                       │
+│  - Payments reconciliation page                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Data Structures
+
+- **MonthlyReports**: Container for one month's data (earnings, expenses, category pivots, transactions).
+- **Canonical Transaction Schema**: `transaction_date`, `description`, `amount`, `from_account`, `sub_category`, `category`, `c_or_d`.
+
+### Supported Banks
+
+Bank-specific formatters handle different CSV column layouts:
+- **Citi** (custom formatter)
+- **Discover** (custom formatter)
+- **Chase**, **Bilt** (default formatter)
+
+Column mappings are configured in `budget_analyser.ini`.
 
 ## Install
 Prerequisites: Python 3.10–3.12 recommended.
