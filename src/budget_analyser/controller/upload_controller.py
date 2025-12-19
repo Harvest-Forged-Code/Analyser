@@ -56,6 +56,82 @@ class UploadController:
             self._logger.warning("Failed to list accounts for %s: %s", section, exc)
             return []
 
+    def get_missing_statements(self) -> List[Tuple[str, str, str]]:
+        """Check which required CSV statement files are missing.
+
+        Returns:
+            List of tuples (bank_name, account_type, expected_filename) for missing files.
+        """
+        missing: List[Tuple[str, str, str]] = []
+
+        # Check credit card statements
+        for bank in self.get_available_banks("credit"):
+            try:
+                filename = self._ini_config.get_statement_filename(
+                    section="credit_cards", account=bank
+                )
+                path = self._statements_dir / filename
+                if not path.exists():
+                    missing.append((bank, "credit", filename))
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self._logger.warning("Error checking statement for %s: %s", bank, exc)
+
+        # Check checking account statements
+        for bank in self.get_available_banks("debit"):
+            try:
+                filename = self._ini_config.get_statement_filename(
+                    section="checking_accounts", account=bank
+                )
+                path = self._statements_dir / filename
+                if not path.exists():
+                    missing.append((bank, "debit", filename))
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self._logger.warning("Error checking statement for %s: %s", bank, exc)
+
+        return missing
+
+    def all_statements_present(self) -> bool:
+        """Check if all required CSV statement files exist.
+
+        Returns:
+            True if all required statements are present, False otherwise.
+        """
+        return len(self.get_missing_statements()) == 0
+
+    def get_bank_upload_status(self) -> List[Tuple[str, str, bool]]:
+        """Get upload status for all configured banks.
+
+        Returns:
+            List of tuples (bank_name, account_type, is_uploaded) for all banks.
+        """
+        status: List[Tuple[str, str, bool]] = []
+
+        # Check credit card statements
+        for bank in self.get_available_banks("credit"):
+            try:
+                filename = self._ini_config.get_statement_filename(
+                    section="credit_cards", account=bank
+                )
+                path = self._statements_dir / filename
+                status.append((bank, "credit", path.exists()))
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self._logger.warning("Error checking statement for %s: %s", bank, exc)
+                status.append((bank, "credit", False))
+
+        # Check checking account statements
+        for bank in self.get_available_banks("debit"):
+            try:
+                filename = self._ini_config.get_statement_filename(
+                    section="checking_accounts", account=bank
+                )
+                path = self._statements_dir / filename
+                status.append((bank, "debit", path.exists()))
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self._logger.warning("Error checking statement for %s: %s", bank, exc)
+                status.append((bank, "debit", False))
+
+        return status
+
     def get_expected_columns(self, bank_name: str) -> List[str]:
         """Return the expected source column names for a bank.
 
@@ -87,21 +163,33 @@ class UploadController:
     def _check_missing_columns(
         self, csv_columns: List[str], expected_columns: List[str]
     ) -> List[str]:
-        """Check for missing columns and return list of missing ones."""
+        """Check for missing columns and return list of missing ones.
+
+        Special handling for 'amount' column: If the CSV has both 'Debit' and 'Credit'
+        columns, the amount can be derived from them (as done in base_statement_formatter).
+        """
         csv_columns_lower = [c.lower() for c in csv_columns]
         missing = []
 
-        for expected in expected_columns:
-            if expected.lower() not in csv_columns_lower:
-                if expected.lower() not in ("debit", "credit"):
-                    missing.append(expected)
+        # Check if CSV has Debit+Credit (can derive amount from these)
+        has_debit_credit = (
+            "debit" in csv_columns_lower and "credit" in csv_columns_lower
+        )
 
-        # Check for amount column (can be derived from Debit+Credit)
-        if "amount" not in csv_columns_lower:
-            has_debit_credit = (
-                "debit" in csv_columns_lower and "credit" in csv_columns_lower
-            )
-            if not has_debit_credit and "amount" in [e.lower() for e in expected_columns]:
+        for expected in expected_columns:
+            expected_lower = expected.lower()
+            if expected_lower not in csv_columns_lower:
+                # Skip debit/credit as they're not directly expected
+                if expected_lower in ("debit", "credit"):
+                    continue
+                # Skip 'amount' if CSV has Debit+Credit (amount can be derived)
+                if expected_lower == "amount" and has_debit_credit:
+                    continue
+                missing.append(expected)
+
+        # If amount is expected but missing and no Debit+Credit, report it
+        if "amount" not in csv_columns_lower and not has_debit_credit:
+            if "amount" in [e.lower() for e in expected_columns]:
                 missing.append("Amount (or Debit+Credit)")
 
         return missing
@@ -173,8 +261,19 @@ class UploadController:
             )
             return UploadResult(success=False, message=message)
 
-        suffix = "credit" if account_type == "credit" else "debit"
-        dest_filename = f"{bank_name}_{suffix}.csv"
+        # Get the expected filename from INI config (ensures consistency with status checks)
+        section = "credit_cards" if account_type == "credit" else "checking_accounts"
+        try:
+            dest_filename = self._ini_config.get_statement_filename(
+                section=section, account=bank_name
+            )
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            self._logger.error("Failed to get filename from config for %s: %s", bank_name, exc)
+            return UploadResult(
+                success=False,
+                message=f"Failed to determine destination filename: {exc}",
+            )
+
         dest_path = self._statements_dir / dest_filename
 
         try:

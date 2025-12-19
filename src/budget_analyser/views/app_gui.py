@@ -157,28 +157,16 @@ def run_app() -> int:
         except Exception:
             pass
 
-    def _on_success():
-        # Compute reports and open dashboard
-        try:
-            reports = controller.run()
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Error generating reports")
-            # Include the log file path and brief details in the dialog
-            QtWidgets.QMessageBox.critical(
-                login,
-                "Error",
-                (
-                    "Failed to generate reports.\n\n"
-                    f"See logs at:\n{log_file}\n\n"
-                    f"Details: {exc.__class__.__name__}: {exc}"
-                ),
-            )
-            return
+    # Build upload controller early to check for missing CSVs
+    ini_config = IniAppConfig(path=settings.ini_config_path)
+    upload_controller = UploadController(
+        logger=logger,
+        ini_config=ini_config,
+        statements_dir=settings.statement_dir,
+    )
 
-        # Keep a strong reference to the dashboard to prevent it from being
-        # garbage-collected after this function returns. Without this, the
-        # window may not remain visible on some platforms/PySide versions.
-        logger.info("Opening dashboard window with %d monthly reports", len(reports))
+    def _open_dashboard(reports, csv_missing: bool = False):
+        """Open dashboard window with given reports and mode."""
         # Build mapper controller for the Mapper page
         mapping_store = JsonCategoryMappingStore(
             description_to_sub_category_path=settings.description_to_sub_category_path,
@@ -186,17 +174,83 @@ def run_app() -> int:
             logger=logger,
         )
         mapper_controller = MapperController(reports, logger, mapping_store)
-        # Build upload controller for the Upload page
-        ini_config = IniAppConfig(path=settings.ini_config_path)
-        upload_controller = UploadController(
-            logger=logger,
-            ini_config=ini_config,
-            statements_dir=settings.statement_dir,
+
+        dash = DashboardWindow(
+            reports, logger, prefs, mapper_controller, upload_controller,
+            csv_missing=csv_missing,
         )
-        dash = DashboardWindow(reports, logger, prefs, mapper_controller, upload_controller)
+
+        # Connect reload signal to handle CSV upload completion
+        def _on_reload_requested():
+            logger.info("Reload requested after CSV upload")
+            # Check if all CSVs are now present
+            if upload_controller.all_statements_present():
+                try:
+                    new_reports = controller.run()
+                    logger.info("Reports regenerated with %d months", len(new_reports))
+                    # Enable all pages and show success message
+                    dash.enable_all_pages()
+                    QtWidgets.QMessageBox.information(
+                        dash,
+                        "Success",
+                        "All statements uploaded successfully!\n\n"
+                        "You can now access all pages. Please restart the app "
+                        "to see the updated reports.",
+                    )
+                except Exception as exc:
+                    logger.exception("Error regenerating reports after upload")
+                    QtWidgets.QMessageBox.warning(
+                        dash,
+                        "Warning",
+                        f"Statements uploaded but failed to process:\n{exc}\n\n"
+                        "Please restart the app to try again.",
+                    )
+            else:
+                # Log remaining missing statements but don't show popup
+                # User can see status via checkmarks on Upload page
+                missing = upload_controller.get_missing_statements()
+                missing_names = [f"{bank} ({atype})" for bank, atype, _ in missing]
+                logger.info("Still missing statements: %s", ", ".join(missing_names))
+
+        dash.reload_requested.connect(_on_reload_requested)
+
+        # Keep strong reference to prevent garbage collection
         app._dashboard = dash  # type: ignore[attr-defined]
         dash.showMaximized()
         login.close()
+
+    def _on_success():
+        # Check if CSVs are missing
+        missing_statements = upload_controller.get_missing_statements()
+
+        if missing_statements:
+            # CSVs are missing - open dashboard in restricted mode
+            missing_names = [f"{bank} ({atype})" for bank, atype, _ in missing_statements]
+            logger.warning(
+                "Missing CSV statements: %s. Opening in restricted mode.",
+                ", ".join(missing_names),
+            )
+            # Open dashboard with empty reports in restricted mode
+            _open_dashboard(reports=[], csv_missing=True)
+        else:
+            # All CSVs present - compute reports and open dashboard normally
+            try:
+                reports = controller.run()
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.exception("Error generating reports")
+                QtWidgets.QMessageBox.critical(
+                    login,
+                    "Error",
+                    (
+                        "Failed to generate reports.\n\n"
+                        f"See logs at:\n{log_file}\n\n"
+                        f"Details: {exc.__class__.__name__}: {exc}"
+                    ),
+                )
+                return
+
+            logger.info("Opening dashboard window with %d monthly reports", len(reports))
+            _open_dashboard(reports=reports, csv_missing=False)
 
     login.login_successful.connect(_on_success)
     # Theme toggle from login

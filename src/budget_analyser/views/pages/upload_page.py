@@ -9,6 +9,11 @@ from budget_analyser.controller import UploadController
 
 
 class UploadPage(QtWidgets.QWidget):
+    """Page for uploading bank statement CSV files."""
+
+    # Signal emitted when a statement is successfully uploaded
+    upload_successful = QtCore.Signal()
+
     def __init__(self, logger: logging.Logger, controller: UploadController):
         super().__init__()
         self._logger = logger
@@ -123,10 +128,79 @@ class UploadPage(QtWidgets.QWidget):
 
         layout.addWidget(info_group)
 
+        # Upload Status section showing all banks with checkmarks
+        status_group = QtWidgets.QGroupBox("Upload Status")
+        self._status_layout = QtWidgets.QGridLayout(status_group)
+        self._status_layout.setContentsMargins(16, 16, 16, 16)
+        self._status_layout.setSpacing(8)
+        layout.addWidget(status_group)
+
+        # Store status labels for updates
+        self._status_labels: dict[str, QtWidgets.QLabel] = {}
+
         layout.addStretch(1)
 
         self._on_account_type_changed()
         self._bank_combo.currentIndexChanged.connect(self._update_format_info)
+
+        # Initialize status display
+        self._refresh_upload_status()
+
+    def _refresh_upload_status(self) -> None:
+        """Refresh the upload status display showing all banks with checkmarks."""
+        # Clear existing widgets
+        while self._status_layout.count():
+            item = self._status_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self._status_labels.clear()
+
+        # Get status for all banks
+        status_list = self._controller.get_bank_upload_status()
+
+        if not status_list:
+            no_banks_label = QtWidgets.QLabel("No banks configured.")
+            no_banks_label.setStyleSheet("color: #888;")
+            self._status_layout.addWidget(no_banks_label, 0, 0)
+            return
+
+        # Add headers
+        credit_header = QtWidgets.QLabel("<b>Credit Cards</b>")
+        debit_header = QtWidgets.QLabel("<b>Checking/Debit Accounts</b>")
+        self._status_layout.addWidget(credit_header, 0, 0)
+        self._status_layout.addWidget(debit_header, 0, 1)
+
+        # Separate by account type
+        credit_banks = [(b, u) for b, t, u in status_list if t == "credit"]
+        debit_banks = [(b, u) for b, t, u in status_list if t == "debit"]
+
+        # Add credit card statuses
+        for row, (bank, is_uploaded) in enumerate(credit_banks, start=1):
+            label = self._create_status_label(bank, is_uploaded)
+            self._status_layout.addWidget(label, row, 0)
+            self._status_labels[f"credit_{bank}"] = label
+
+        # Add debit account statuses
+        for row, (bank, is_uploaded) in enumerate(debit_banks, start=1):
+            label = self._create_status_label(bank, is_uploaded)
+            self._status_layout.addWidget(label, row, 1)
+            self._status_labels[f"debit_{bank}"] = label
+
+        # Add spacer rows if needed to align columns
+        max_rows = max(len(credit_banks), len(debit_banks))
+        for col in range(2):
+            self._status_layout.setRowStretch(max_rows + 1, 1)
+
+    def _create_status_label(self, bank: str, is_uploaded: bool) -> QtWidgets.QLabel:
+        """Create a status label for a bank with checkmark or X."""
+        bank_display = bank.replace("_", " ").title()
+        if is_uploaded:
+            text = f"<span style='color: #4CAF50; font-size: 16px;'>✓</span> {bank_display}"
+        else:
+            text = f"<span style='color: #f44336; font-size: 16px;'>✗</span> {bank_display}"
+        label = QtWidgets.QLabel(text)
+        label.setTextFormat(QtCore.Qt.RichText)
+        return label
 
     def _on_account_type_changed(self) -> None:
         account_type = "credit" if self._account_type_combo.currentIndex() == 0 else "debit"
@@ -217,6 +291,10 @@ class UploadPage(QtWidgets.QWidget):
         if result.success:
             self._show_message(f"✓ {result.message}", is_error=False)
             self._clear_form()
+            # Update the status display to show the new checkmark
+            self._refresh_upload_status()
+            # Notify listeners that a statement was uploaded
+            self.upload_successful.emit()
         else:
             self._show_message(f"✗ Upload failed:\n{result.message}", is_error=True)
 
