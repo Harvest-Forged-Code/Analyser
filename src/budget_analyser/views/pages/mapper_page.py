@@ -5,7 +5,7 @@ from typing import List
 
 from PySide6 import QtWidgets, QtCore
 
-from budget_analyser.presentation.controller import MapperController
+from budget_analyser.controller import MapperController
 
 
 class MapperPage(QtWidgets.QWidget):

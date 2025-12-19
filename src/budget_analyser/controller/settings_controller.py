@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import List
 
-from budget_analyser.config.preferences import AppPreferences
+from budget_analyser.settings.preferences import AppPreferences
 
 
 class SettingsController:

@@ -16,18 +16,20 @@ Modern, cross‑platform budget analysis app built with PySide6 and pandas. It p
 
 ## Architecture (SRC layout)
 Layered, testable architecture with one behavior class per file:
-- Presentation (views): Qt widgets only (no business logic).
-- Presentation (controller): Pure‑Python controllers that prepare data for views.
+- Views: Qt widgets only (no business logic).
+- Controller: Pure‑Python controllers that prepare data for views.
 - Domain: Statement formatting, transaction processing, reporting services.
 - Infrastructure: INI/JSON adapters, CSV repository.
+- Settings: Configuration code (settings.py, preferences.py).
+- Data: Application data files (config, mappers, statements).
 
 Entrypoint: `python -m budget_analyser` → Login → Dashboard.
 
 Key modules:
-- `src/budget_analyser/presentation/views/app_gui.py` – composition, logging, theme, and flow control.
-- `src/budget_analyser/presentation/views/dashboard_window.py` – shell (menu, header, nav, stacked pages).
-- `src/budget_analyser/presentation/views/pages/` – Yearly Summary, Earnings, Expenses, Payments, Mapper, Settings, Upload.
-- `src/budget_analyser/presentation/controller/` – Yearly/Earnings/Expenses/Payments/Settings controllers.
+- `src/budget_analyser/views/app_gui.py` – composition, logging, theme, and flow control.
+- `src/budget_analyser/views/dashboard_window.py` – shell (menu, header, nav, stacked pages).
+- `src/budget_analyser/views/pages/` – Yearly Summary, Earnings, Expenses, Payments, Mapper, Settings, Upload.
+- `src/budget_analyser/controller/` – Yearly/Earnings/Expenses/Payments/Settings controllers.
 - `src/budget_analyser/domain/` – statement formatters, transaction processing, reporting.
 - `src/budget_analyser/infrastructure/` – INI config, CSV repository, JSON mappers.
 
@@ -53,9 +55,9 @@ pytest -q
 CI runs the full unit test suite on Linux/macOS/Windows across Python 3.10–3.12 via GitHub Actions (`.github/workflows/tests.yml`).
 
 ## Configuration & logs
-- Config INI: `config/budget_analyser.ini` (stores logging level, password hash, theme, column mappings).
-- Statement dir: `resources/statements` (default; override via env var in `src/budget_analyser/config/settings.py`).
-- JSON mappings: `resources/mappers/*.json`.
+- Config INI: `src/budget_analyser/data/config/budget_analyser.ini` (stores logging level, password hash, theme, column mappings).
+- Statement dir: `src/budget_analyser/data/statements` (default; override via env var in `src/budget_analyser/settings/settings.py`).
+- JSON mappings: `src/budget_analyser/data/mappers/*.json`.
 - Logs (rotating):
   - macOS/Linux: `~/.budget_analyser/logs/gui_app.log`
   - Windows: `%USERPROFILE%\.budget_analyser\logs\gui_app.log`

@@ -21,8 +21,8 @@ from logging.handlers import RotatingFileHandler
 
 from PySide6 import QtWidgets
 
-from budget_analyser.config.settings import load_settings
-from budget_analyser.config.preferences import AppPreferences
+from budget_analyser.settings.settings import load_settings
+from budget_analyser.settings.preferences import AppPreferences
 from budget_analyser.domain.reporting import ReportService
 from budget_analyser.infrastructure.column_mappings import IniColumnMappingProvider
 from budget_analyser.infrastructure.ini_config import IniAppConfig
@@ -31,11 +31,11 @@ from budget_analyser.infrastructure.json_mappings import (
     JsonCategoryMappingStore,
 )
 from budget_analyser.infrastructure.statement_repository import CsvStatementRepository
-from budget_analyser.presentation.controllers import BackendController
-from budget_analyser.presentation.views.dashboard_window import DashboardWindow
-from budget_analyser.presentation.views.login_window import LoginWindow
-from budget_analyser.presentation.views.styles import app_stylesheet, select_app_font
-from budget_analyser.presentation.controller import MapperController
+from budget_analyser.controller.controllers import BackendController
+from budget_analyser.views.dashboard_window import DashboardWindow
+from budget_analyser.views.login_window import LoginWindow
+from budget_analyser.views.styles import app_stylesheet, select_app_font
+from budget_analyser.controller import MapperController
 
 def _logs_dir() -> Path:
     """Return user-writable logs directory with optional env override.

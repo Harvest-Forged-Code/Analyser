@@ -28,8 +28,18 @@ def _project_root() -> Path:
     Returns:
         The repository root directory as a `Path`.
     """
-    # `settings.py` lives under `src/budget_analyser/config/` (3 parents to repo root).
+    # `settings.py` lives under `src/budget_analyser/settings/` (3 parents to repo root).
     return Path(__file__).resolve().parents[3]
+
+
+def _package_root() -> Path:
+    """Return the budget_analyser package root directory.
+
+    Returns:
+        The package root directory (src/budget_analyser) as a `Path`.
+    """
+    # `settings.py` lives under `src/budget_analyser/settings/` (1 parent to package root).
+    return Path(__file__).resolve().parents[1]
 
 
 def _load_dotenv(dotenv_path: Path) -> None:
@@ -109,21 +119,22 @@ def load_settings() -> Settings:
     """
     # Determine project root and apply `.env` overrides.
     root = _project_root()
+    pkg_root = _package_root()
     _load_dotenv(root / ".env")
 
-    # Read statement directory from env (default: `resources/statements`).
+    # Read statement directory from env (default: `src/budget_analyser/data/statements`).
     statement_dir = Path(
         os.environ.get(
             "BUDGET_ANALYSER_STATEMENT_DIR",
-            str(root / "resources" / "statements"),
+            str(pkg_root / "data" / "statements"),
         )
     )
 
-    # Read INI config path from env (default: `config/budget_analyser.ini`).
+    # Read INI config path from env (default: `src/budget_analyser/data/config/budget_analyser.ini`).
     ini_config_path = Path(
         os.environ.get(
             "BUDGET_ANALYSER_INI_CONFIG_PATH",
-            str(root / "config" / "budget_analyser.ini"),
+            str(pkg_root / "data" / "config" / "budget_analyser.ini"),
         )
     )
 
@@ -131,13 +142,13 @@ def load_settings() -> Settings:
     description_to_sub_category_path = Path(
         os.environ.get(
             "BUDGET_ANALYSER_DESCRIPTION_TO_SUB_CATEGORY_PATH",
-            str(root / "resources" / "mappers" / "description_to_sub_category.json"),
+            str(pkg_root / "data" / "mappers" / "description_to_sub_category.json"),
         )
     )
     sub_category_to_category_path = Path(
         os.environ.get(
             "BUDGET_ANALYSER_SUB_CATEGORY_TO_CATEGORY_PATH",
-            str(root / "resources" / "mappers" / "sub_category_to_category.json"),
+            str(pkg_root / "data" / "mappers" / "sub_category_to_category.json"),
         )
     )
 

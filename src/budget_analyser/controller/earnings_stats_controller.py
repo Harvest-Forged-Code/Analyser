@@ -6,7 +6,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
-from budget_analyser.presentation.controllers import MonthlyReports
+from budget_analyser.controller.controllers import MonthlyReports
 from .utils import month_names as _month_names
 
 

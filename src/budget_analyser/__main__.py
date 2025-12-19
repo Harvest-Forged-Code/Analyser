@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from budget_analyser.presentation.views.app_gui import run_app as run_gui
+from budget_analyser.views.app_gui import run_app as run_gui
 
 
 def main() -> None:

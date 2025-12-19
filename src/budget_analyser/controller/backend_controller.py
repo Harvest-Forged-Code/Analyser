@@ -20,7 +20,7 @@ from budget_analyser.domain.protocols import (
 from budget_analyser.domain.reporting import ReportService
 from budget_analyser.domain.statement_formatter import create_statement_formatter
 from budget_analyser.domain.transaction_processing import CategoryMappers, TransactionProcessor
-from budget_analyser.presentation.monthly_reports import MonthlyReports
+from budget_analyser.controller.monthly_reports import MonthlyReports
 
 
 class BackendController:

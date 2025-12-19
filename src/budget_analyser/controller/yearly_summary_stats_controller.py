@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, List, Tuple
 
-from budget_analyser.presentation.controllers import MonthlyReports
+from budget_analyser.controller.controllers import MonthlyReports
 from .dtos import YearlyStats, YearlyCategoryBreakdown, CategoryNode
 from .utils import month_names as _month_names
 

@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple
 
 import pandas as pd
 
-from budget_analyser.presentation.controllers import MonthlyReports
+from budget_analyser.controller.controllers import MonthlyReports
 from budget_analyser.infrastructure.json_mappings import JsonCategoryMappingStore
 
 
