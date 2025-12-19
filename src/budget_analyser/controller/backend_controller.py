@@ -20,10 +20,10 @@ from budget_analyser.domain.protocols import (
 from budget_analyser.domain.reporting import ReportService
 from budget_analyser.domain.statement_formatter import create_statement_formatter
 from budget_analyser.domain.transaction_processing import CategoryMappers, TransactionProcessor
-from budget_analyser.presentation.monthly_reports import MonthlyReports
+from budget_analyser.controller.monthly_reports import MonthlyReports
 
 
-class BackendController:
+class BackendController:  # pylint: disable=too-few-public-methods
     """Controller that runs the backend reporting workflow."""
 
     def __init__(
@@ -51,7 +51,7 @@ class BackendController:
         self._report_service = report_service
         self._logger = logger
 
-    def run(self) -> List[MonthlyReports]:
+    def run(self) -> List[MonthlyReports]:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         """Execute the workflow and return month-wise report tables.
 
         Returns:
@@ -77,7 +77,7 @@ class BackendController:
                         shape,
                         cols,
                     )
-                except Exception:  # pragma: no cover - defensive
+                except Exception:  # pylint: disable=broad-exception-caught
                     pass
 
                 # Load mapping and choose a formatter.
@@ -89,7 +89,7 @@ class BackendController:
                         len(column_mapping or {}),
                         list((column_mapping or {}).keys())[:5],
                     )
-                except Exception:  # pragma: no cover
+                except Exception:  # pylint: disable=broad-exception-caught
                     pass
 
                 formatter = create_statement_formatter(
@@ -106,25 +106,30 @@ class BackendController:
                         getattr(formatted, "shape", None),
                         list(getattr(formatted, "columns", [])),
                     )
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     pass
                 formatted_frames.append(formatted)
-            except Exception as exc:  # pragma: no cover - defensive
+            except Exception:  # pylint: disable=broad-exception-caught
                 # Log rich context and re-raise
                 try:
                     head_repr = None
                     try:
                         head_repr = raw_statement.head(5).to_dict()  # type: ignore[assignment]
-                    except Exception:
-                        head_repr = str(getattr(raw_statement, "head", lambda n=5: raw_statement)())[:500]
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        fallback = getattr(raw_statement, "head", lambda n=5, rs=raw_statement: rs)
+                        head_repr = str(fallback())[:500]
+                    mapping_keys = (
+                        list((column_mapping or {}).keys())[:10]
+                        if 'column_mapping' in locals() else []
+                    )
                     self._logger.exception(
                         "Formatting failed for account=%s; cols=%s; mapping_keys=%s; head=%s",
                         account,
                         list(getattr(raw_statement, "columns", [])),
-                        list((column_mapping or {}).keys())[:10] if 'column_mapping' in locals() else [],
+                        mapping_keys,
                         head_repr,
                     )
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     self._logger.exception("Formatting failed for account=%s", account)
                 raise
 
@@ -140,7 +145,7 @@ class BackendController:
                 transactions.shape,
                 list(transactions.columns),
             )
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         # 4) Categorize using JSON keyword mappings.
@@ -171,10 +176,11 @@ class BackendController:
                     exp_source = group[group["sub_category"].fillna("") != "payments_made"]
                 else:
                     self._logger.debug(
-                        "No sub_category column present for %s; skipping payments exclusions in aggregates",
+                        "No sub_category column present for %s; "
+                        "skipping payments exclusions in aggregates",
                         month,
                     )
-            except Exception:  # pragma: no cover - defensive
+            except Exception:  # pylint: disable=broad-exception-caught
                 earn_source = group
                 exp_source = group
 
@@ -201,6 +207,6 @@ class BackendController:
                 int(months),
                 duration,
             )
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
         return reports

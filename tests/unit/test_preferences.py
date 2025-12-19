@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from budget_analyser.config.preferences import AppPreferences, DEFAULT_LOG_LEVEL, DEFAULT_THEME
+from budget_analyser.settings.preferences import AppPreferences, DEFAULT_LOG_LEVEL, DEFAULT_THEME
 
 
 def test_password_default_and_update(tmp_path: Path) -> None:

@@ -8,7 +8,7 @@ from __future__ import annotations
 from .base_statement_formatter import BaseStatementFormatter
 
 
-class CitiStatementFormatter(BaseStatementFormatter):
+class CitiStatementFormatter(BaseStatementFormatter):  # pylint: disable=too-few-public-methods
     """Citi-specific statement normalization."""
 
     def _bank_specific_formatting(self) -> None:  # noqa: D401

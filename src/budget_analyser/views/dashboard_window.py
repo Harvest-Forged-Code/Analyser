@@ -18,8 +18,8 @@ import logging
 from typing import List
 from PySide6 import QtWidgets, QtGui, QtCore
 
-from budget_analyser.presentation.controllers import MonthlyReports
-from budget_analyser.presentation.views.pages import (
+from budget_analyser.controller.controllers import MonthlyReports
+from budget_analyser.views.pages import (
     YearlySummaryPage,
     EarningsPage,
     ExpensesPage,
@@ -28,10 +28,10 @@ from budget_analyser.presentation.views.pages import (
     MapperPage,
     SettingsPage,
 )
-from budget_analyser.presentation.views.styles import app_stylesheet
-from budget_analyser.config.preferences import AppPreferences
-from budget_analyser.presentation.controller import SettingsController
-from budget_analyser.presentation.controller import MapperController
+from budget_analyser.views.styles import app_stylesheet
+from budget_analyser.settings.preferences import AppPreferences
+from budget_analyser.controller import SettingsController
+from budget_analyser.controller import MapperController
 
 
 class DashboardWindow(QtWidgets.QMainWindow):

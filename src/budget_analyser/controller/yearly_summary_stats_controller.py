@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, List, Tuple
 
-from budget_analyser.presentation.controllers import MonthlyReports
+from budget_analyser.controller.controllers import MonthlyReports
 from .dtos import YearlyStats, YearlyCategoryBreakdown, CategoryNode
 from .utils import month_names as _month_names
 
@@ -39,7 +39,7 @@ class YearlySummaryStatsController:
         return _month_names()
 
     # ---- Internal computations ----
-    def _compute_year_data(self, year: int) -> YearlyStats:
+    def _compute_year_data(self, year: int) -> YearlyStats:  # pylint: disable=too-many-locals
         # Filter reports for the year
         months = [mr for mr in self._reports if int(mr.month.year) == year]
 
@@ -103,7 +103,7 @@ class YearlySummaryStatsController:
         )
 
     # ---- Category hierarchy API ----
-    def get_category_breakdown(self, year: int) -> YearlyCategoryBreakdown:
+    def get_category_breakdown(self, year: int) -> YearlyCategoryBreakdown:  # pylint: disable=too-many-locals
         cached = self._year_category_cache.get(year)
         if cached is not None:
             return cached
@@ -153,14 +153,24 @@ class YearlySummaryStatsController:
                         children[sub] = children.get(sub, 0.0) + amt
 
         # Build nodes sorted by total desc; children sorted desc
-        def build_nodes(cat_totals: Dict[str, float], child_map: Dict[str, Dict[str, float]]) -> List[CategoryNode]:
+        def build_nodes(
+            cat_totals: Dict[str, float],
+            child_map: Dict[str, Dict[str, float]]
+        ) -> List[CategoryNode]:
             nodes: List[CategoryNode] = []
             for cat, total in cat_totals.items():
                 subs_map = child_map.get(cat, {})
                 subs_list: List[Tuple[str, float]] = sorted(
-                    [(s, float(a)) for s, a in subs_map.items()], key=lambda x: x[1], reverse=True
+                    [(s, float(a)) for s, a in subs_map.items()],
+                    key=lambda x: x[1],
+                    reverse=True
                 )
-                nodes.append(CategoryNode(name=cat or "(Uncategorized)", amount=float(total), children=subs_list))
+                node = CategoryNode(
+                    name=cat or "(Uncategorized)",
+                    amount=float(total),
+                    children=subs_list
+                )
+                nodes.append(node)
             nodes.sort(key=lambda n: n.amount, reverse=True)
             return nodes
 

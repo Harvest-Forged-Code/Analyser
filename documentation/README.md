@@ -22,12 +22,15 @@ How to build documentation locally:
 Current implementation (SRC layout):
 - Entrypoint: python -m budget_analyser → Login → Dashboard
 - Packages under src/budget_analyser/
-  - presentation/views: Qt widgets and windows (LoginWindow, DashboardWindow, pages: yearly summary, earnings, expenses, payments, mapper, settings, upload)
-  - presentation/controller: pure‑Python controllers that prepare data for the views (yearly/earnings/expenses/payments/settings/mapper)
+  - views: Qt widgets and windows (LoginWindow, DashboardWindow, pages: yearly summary, earnings, expenses, payments, mapper, settings, upload)
+  - controller: pure‑Python controllers that prepare data for the views (yearly/earnings/expenses/payments/settings/mapper)
   - domain: statement formatting, transaction processing, and reporting services
   - infrastructure: INI/JSON adapters and CSV repository
-- Config: config/budget_analyser.ini
-- Mappers: resources/mappers/*.json
+  - settings: configuration code (settings.py, preferences.py)
+  - data: application data files (config, mappers, statements)
+- Config: src/budget_analyser/data/config/budget_analyser.ini
+- Mappers: src/budget_analyser/data/mappers/*.json
+- Statements: src/budget_analyser/data/statements/
 - Tests: tests/ (pytest)
 
 Running and testing:
@@ -36,7 +39,7 @@ Running and testing:
 
 Logs and configuration:
 - Logs: per‑user rotating file; override directory via env var BUDGET_ANALYSER_LOG_DIR
-- Config and theme/password/log level live in config/budget_analyser.ini and can be overridden via environment variables documented in src/budget_analyser/config/settings.py
+- Config and theme/password/log level live in src/budget_analyser/data/config/budget_analyser.ini and can be overridden via environment variables documented in src/budget_analyser/settings/settings.py
 
 Note on generation:
 - The top‑level README is kept aligned with the PDF via scripts/update_readme.py. If you edit the LaTeX structure significantly, adjust that script’s extraction rules accordingly.

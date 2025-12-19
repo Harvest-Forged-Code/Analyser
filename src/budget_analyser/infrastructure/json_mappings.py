@@ -50,7 +50,7 @@ class JsonCategoryMappingProvider(CategoryMappingProvider):
         log = self.logger or logging.getLogger("budget_analyser.gui")
         try:
             log.log(level, msg, *args)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
     def description_to_sub_category(self) -> Mapping[str, list[str]]:
@@ -67,7 +67,7 @@ class JsonCategoryMappingProvider(CategoryMappingProvider):
             )
             if size == 0:
                 self._log(logging.WARNING, "Mapping file is empty: %s", str(path))
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
         return mapping
 
@@ -85,7 +85,7 @@ class JsonCategoryMappingProvider(CategoryMappingProvider):
             )
             if size == 0:
                 self._log(logging.WARNING, "Mapping file is empty: %s", str(path))
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
         return mapping or {}
 
@@ -125,12 +125,13 @@ class JsonCategoryMappingStore:
         try:
             tmp = path.with_suffix(path.suffix + ".tmp")
             path.parent.mkdir(parents=True, exist_ok=True)
-            tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+            content = json.dumps(data, ensure_ascii=False, indent=2, sort_keys=False)
+            tmp.write_text(content + "\n", encoding="utf-8")
             tmp.replace(path)
             if self.logger:
                 try:
                     self.logger.info("Saved mapping: %s (size=%d)", str(path), len(data))
-                except Exception:
+                except Exception:  # pylint: disable=broad-exception-caught
                     pass
         except Exception as exc:  # pragma: no cover - defensive
             raise DataSourceError(f"Failed to save mapping file: {path}: {exc}") from exc

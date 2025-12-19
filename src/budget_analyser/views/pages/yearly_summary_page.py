@@ -5,8 +5,8 @@ from typing import Dict, List, Tuple
 
 from PySide6 import QtCore, QtWidgets
 
-from budget_analyser.presentation.controllers import MonthlyReports
-from budget_analyser.presentation.controller import YearlySummaryStatsController
+from budget_analyser.controller.controllers import MonthlyReports
+from budget_analyser.controller import YearlySummaryStatsController
 
 
 class YearlySummaryPage(QtWidgets.QWidget):

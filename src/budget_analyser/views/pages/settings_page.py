@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from PySide6 import QtWidgets, QtCore
 
-from budget_analyser.presentation.controller import SettingsController
+from budget_analyser.controller import SettingsController
 
 
 class SettingsPage(QtWidgets.QWidget):

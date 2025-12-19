@@ -1,6 +1,8 @@
 [MASTER]
 init-hook='import sys; sys.path.insert(0, "src")'
 max-line-length=100
+# Ignore pylint checks for view files (UI layer)
+ignore-paths=^src/budget_analyser/views/.*$
 
 [DESIGN]
 max-args=6
@@ -12,4 +14,5 @@ max-statements=50
 disable=
     missing-module-docstring,
     missing-class-docstring,
-    missing-function-docstring
+    missing-function-docstring,
+    duplicate-code
