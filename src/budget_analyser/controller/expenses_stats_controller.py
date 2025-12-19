@@ -63,7 +63,9 @@ class ExpensesStatsController:
         self._month_total_cache[period] = total
         return total
 
-    def category_breakdown(self, period: pd.Period) -> List[Tuple[str, float, List[Tuple[str, float]]]]:
+    def category_breakdown(
+        self, period: pd.Period
+    ) -> List[Tuple[str, float, List[Tuple[str, float]]]]:
         cached = self._category_cache.get(period)
         if cached is None:
             cached = self._compute_category_nodes(period)
@@ -120,12 +122,16 @@ class ExpensesStatsController:
             # sort_values ascending since amounts negative; but we convert to positive for display
             # We'll sort by positive totals descending for UI
             cat_items = [
-                (str(cat) if cat else "(Uncategorized)", float(-total)) for cat, total in cat_series.items()
+                (str(cat) if cat else "(Uncategorized)", float(-total))
+                for cat, total in cat_series.items()
             ]
             cat_items.sort(key=lambda x: x[1], reverse=True)
         else:
             # No category column
-            cat_items = [("(Uncategorized)", float((-df["amount"]).sum()) if "amount" in df.columns else 0.0)]
+            fallback_total = (
+                float((-df["amount"]).sum()) if "amount" in df.columns else 0.0
+            )
+            cat_items = [("(Uncategorized)", fallback_total)]
 
         nodes: list[_CategoryNode] = []
         for cat_name, cat_total in cat_items:
@@ -133,12 +139,14 @@ class ExpensesStatsController:
             subcats_list: List[Tuple[str, float]] = []
             dcat = df
             if "category" in df.columns:
-                dcat = df[df["category"].fillna("") == ("" if cat_name == "(Uncategorized)" else cat_name)]
+                cat_filter = "" if cat_name == "(Uncategorized)" else cat_name
+                dcat = df[df["category"].fillna("") == cat_filter]
 
             if "sub_category" in dcat.columns and not dcat.empty:
                 sub_series = dcat.groupby("sub_category")["amount"].sum().sort_values()
                 subcats_list = [
-                    (str(sub) if sub else "(Uncategorized)", float(-val)) for sub, val in sub_series.items()
+                    (str(sub) if sub else "(Uncategorized)", float(-val))
+                    for sub, val in sub_series.items()
                 ]
                 subcats_list.sort(key=lambda x: x[1], reverse=True)
 

@@ -27,13 +27,11 @@ class SettingsController:
         return self._prefs.get_log_level()
 
     def apply_log_level(self, level: str) -> None:
-        import logging as _logging
-
         if level not in self.get_log_levels():
             raise ValueError(f"Invalid log level: {level}")
         self._prefs.set_log_level(level)
         # Apply immediately to the provided logger
-        self._logger.setLevel(getattr(_logging, level))
+        self._logger.setLevel(getattr(logging, level))
         self._logger.info("Log level changed to %s via SettingsController", level)
 
     # --- Password ---

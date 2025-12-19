@@ -72,7 +72,8 @@ class AppPreferences:
         parser = self._parser()
         level = parser.get(APP_SECTION, KEY_LOG_LEVEL, fallback=DEFAULT_LOG_LEVEL)
         level_up = level.upper().strip()
-        return level_up if level_up in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"} else DEFAULT_LOG_LEVEL
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        return level_up if level_up in valid_levels else DEFAULT_LOG_LEVEL
 
     def set_log_level(self, level: str) -> None:
         level_up = level.upper().strip()

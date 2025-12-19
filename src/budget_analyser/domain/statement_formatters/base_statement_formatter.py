@@ -17,7 +17,7 @@ from budget_analyser.domain.errors import MappingNotFoundError
 REQUIRED_COLUMNS = ["transaction_date", "description", "amount", "from_account"]
 
 
-class BaseStatementFormatter(ABC):
+class BaseStatementFormatter(ABC):  # pylint: disable=too-few-public-methods
     """Base formatter that provides common normalization steps.
 
     Child classes implement `_bank_specific_formatting` for per-bank adjustments.
@@ -86,8 +86,9 @@ class BaseStatementFormatter(ABC):
                 "formatter can derive it. Update the INI mapping if column names differ."
             )
             raise MappingNotFoundError(
-                f"[{self._account_name}] Amount column missing and Debit/Credit columns not present to derive it. "
-                f"Present columns: {present}. Hint: {hint}"
+                f"[{self._account_name}] Amount column missing and Debit/Credit "
+                f"columns not present to derive it. Present columns: {present}. "
+                f"Hint: {hint}"
             )
 
         debit = self._statement["Debit"].fillna(0)

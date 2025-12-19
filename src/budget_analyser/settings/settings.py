@@ -130,7 +130,8 @@ def load_settings() -> Settings:
         )
     )
 
-    # Read INI config path from env (default: `src/budget_analyser/data/config/budget_analyser.ini`).
+    # Read INI config path from env.
+    # Default: `src/budget_analyser/data/config/budget_analyser.ini`.
     ini_config_path = Path(
         os.environ.get(
             "BUDGET_ANALYSER_INI_CONFIG_PATH",

@@ -93,11 +93,15 @@ class PaymentsReconciliationController:
             if "transaction_date" in sub_df.columns:
                 try:
                     sub_df.sort_values(by="transaction_date", ascending=False, inplace=True)
-                except Exception:  # pragma: no cover
+                except Exception:  # pylint: disable=broad-exception-caught
                     pass
 
-        total_pm = float(pm["amount"].abs().sum()) if not pm.empty and "amount" in pm.columns else 0.0
-        total_pc = float(pc["amount"].abs().sum()) if not pc.empty and "amount" in pc.columns else 0.0
+        total_pm = (
+            float(pm["amount"].abs().sum()) if not pm.empty and "amount" in pm.columns else 0.0
+        )
+        total_pc = (
+            float(pc["amount"].abs().sum()) if not pc.empty and "amount" in pc.columns else 0.0
+        )
         diff = float(total_pc - total_pm)
 
         return PaymentsReconciliationSummary(

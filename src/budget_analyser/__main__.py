@@ -6,8 +6,6 @@ Default behavior:
 
 from __future__ import annotations
 
-import logging
-
 from budget_analyser.views.app_gui import run_app as run_gui
 
 

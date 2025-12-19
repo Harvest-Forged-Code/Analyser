@@ -8,7 +8,7 @@ from __future__ import annotations
 from .base_statement_formatter import BaseStatementFormatter
 
 
-class DefaultStatementFormatter(BaseStatementFormatter):
+class DefaultStatementFormatter(BaseStatementFormatter):  # pylint: disable=too-few-public-methods
     """Default formatter for accounts without special rules."""
 
     def _bank_specific_formatting(self) -> None:  # noqa: D401

@@ -33,7 +33,7 @@ class CsvStatementRepository(StatementRepository):
         log = self.logger or logging.getLogger("budget_analyser.gui")
         try:
             log.log(level, msg, *args)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
     def get_statements(self) -> Mapping[str, pd.DataFrame]:

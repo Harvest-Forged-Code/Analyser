@@ -24,7 +24,7 @@ def _map_by_keywords(content: str, keyword_map: Mapping[str, list[str]]) -> str:
     return ""
 
 
-class TransactionProcessor:
+class TransactionProcessor:  # pylint: disable=too-few-public-methods
     """Use-case/service to categorize transactions for reporting."""
 
     def __init__(self, *, mappers: CategoryMappers) -> None:

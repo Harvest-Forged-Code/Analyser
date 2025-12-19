@@ -50,21 +50,24 @@ class MapperController:
             else:
                 dfi = df.copy()
             # Keep only expected columns if present
-            cols = [c for c in ["transaction_date", "description", "amount", "from_account"] if c in dfi.columns]
+            expected_cols = ["transaction_date", "description", "amount", "from_account"]
+            cols = [c for c in expected_cols if c in dfi.columns]
             if not cols:
                 continue
             dfi = dfi[cols]
             frames.append(dfi)
 
         if not frames:
-            return pd.DataFrame(columns=["transaction_date", "description", "amount", "from_account"])
+            return pd.DataFrame(
+                columns=["transaction_date", "description", "amount", "from_account"]
+            )
 
         out = pd.concat(frames, ignore_index=True)
         # Stable sort by date desc when possible
         if "transaction_date" in out.columns:
             try:
                 out = out.sort_values(by="transaction_date", ascending=False, kind="mergesort")
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 pass
         return out
 
@@ -147,7 +150,7 @@ class MapperController:
             self.logger.info(
                 "Mapper: added %d descriptions to sub-category '%s'", len(to_add), sub_category
             )
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
     def create_sub_category(self, sub_category: str, category: str) -> None:
@@ -172,7 +175,7 @@ class MapperController:
         self._sub_to_cat[cat] = items
         try:
             self.logger.info("Mapper: created sub-category '%s' under category '%s'", sc, cat)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
     # ----- Persistence -----
