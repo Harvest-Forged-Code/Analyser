@@ -285,17 +285,40 @@ def run_app() -> int:
             )
             _open_dashboard(reports=[], csv_missing=True)
         else:
-            # All CSVs present - check database first, then fall back to CSV processing
+            # All CSVs present - check database first, then ingest CSVs if needed
             try:
-                if db_repository.has_data():
-                    # Use database for faster startup
-                    logger.info("Loading reports from database")
-                    transactions = db_repository.get_processed_transactions()
-                    reports = controller.run_from_database(transactions)
-                else:
-                    # No database data - process CSVs (first run or after DB reset)
-                    logger.info("No database data - processing CSVs")
-                    reports = controller.run()
+                if not db_repository.has_data():
+                    # No database data - ingest CSVs to DB first (first run or after DB reset)
+                    logger.info("No database data - ingesting CSVs to database")
+                    column_mappings = IniColumnMappingProvider(config=ini_config)
+                    for section in ("credit_cards", "checking_accounts"):
+                        for account in ini_config.list_accounts(section=section):
+                            filename = ini_config.get_statement_filename(
+                                section=section, account=account
+                            )
+                            csv_path = settings.statement_dir / filename
+                            col_mapping = column_mappings.get_column_mapping(account)
+                            logger.info("Ingesting %s from %s", account, csv_path)
+                            result = ingestion_service.ingest_csv(
+                                csv_path=csv_path,
+                                account_name=account,
+                                column_mapping=col_mapping,
+                            )
+                            if result.success:
+                                logger.info(
+                                    "Ingested %s: %d processed, %d inserted, %d duplicates",
+                                    account,
+                                    result.transactions_processed,
+                                    result.transactions_inserted,
+                                    result.duplicates_skipped,
+                                )
+                            else:
+                                logger.error("Failed to ingest %s: %s", account, result.message)
+
+                # Generate reports from database (always DB-centric)
+                logger.info("Loading reports from database")
+                transactions = db_repository.get_processed_transactions()
+                reports = controller.run_from_database(transactions)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.exception("Error generating reports")
                 QtWidgets.QMessageBox.critical(

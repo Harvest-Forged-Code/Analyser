@@ -25,13 +25,66 @@ Current implementation (SRC layout):
   - views: Qt widgets and windows (LoginWindow, DashboardWindow, pages: yearly summary, earnings, expenses, payments, mapper, settings, upload)
   - controller: pure‑Python controllers that prepare data for the views (yearly/earnings/expenses/payments/settings/mapper)
   - domain: statement formatting, transaction processing, and reporting services
-  - infrastructure: INI/JSON adapters and CSV repository
+  - infrastructure: INI/JSON adapters, CSV repository, SQLite database
   - settings: configuration code (settings.py, preferences.py)
-  - data: application data files (config, mappers, statements)
+  - data: application data files (config, mappers, statements, database)
 - Config: src/budget_analyser/data/config/budget_analyser.ini
 - Mappers: src/budget_analyser/data/mappers/*.json
 - Statements: src/budget_analyser/data/statements/
+- Database: src/budget_analyser/data/budget_analyser.db
 - Tests: tests/ (pytest)
+
+## Implementation Flow
+
+The application follows a **DB-centric architecture** where all reports are generated from the SQLite database. CSV files are processed and ingested into the database, which serves as the single source of truth.
+
+### Data Flow
+
+```
+APPLICATION STARTUP
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────┐
+│  1. Load Settings (INI config, paths, preferences)          │
+│  2. Build controllers with injected dependencies            │
+│  3. Show LoginWindow                                        │
+└─────────────────────────────────────────────────────────────┘
+    │
+    ▼ [Login Success]
+    │
+┌─────────────────────────────────────────────────────────────┐
+│  CHECK DATA AVAILABILITY                                    │
+│  - If DB has data → Generate reports from DB                │
+│  - If no DB data AND CSVs present → Ingest CSVs → Reports   │
+│  - If no DB data AND no CSVs → Restricted mode (Upload only)│
+└─────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────┐
+│  CSV INGESTION PIPELINE (TransactionIngestionService)       │
+│  Load CSV → Format (per-bank) → Categorize → Persist to DB  │
+└─────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────┐
+│  REPORT GENERATION (BackendController.run_from_database)    │
+│  Load from DB → Group by month → Generate reports           │
+└─────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────────┐
+│  DASHBOARD WINDOW                                           │
+│  Earnings, Expenses, Yearly Summary, Payments, Mapper, etc. │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+- **Statement Formatters**: Bank-specific formatters (Citi, Discover, Default) normalize CSV columns to canonical schema.
+- **TransactionProcessor**: Categorizes transactions using keyword mappings (description → sub_category → category).
+- **TransactionDatabase**: SQLite storage with deduplication for processed transactions.
+- **ReportService**: Generates earnings, expenses, and category pivot reports from transaction data.
+- **MonthlyReports**: Container for one month's data (earnings, expenses, category pivots, transactions).
 
 Running and testing:
 - Run GUI: python -m budget_analyser
