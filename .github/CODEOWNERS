@@ -1,5 +1,15 @@
 # Code owners for this repository
-# All paths default to the organization Owners team. Adjust as needed.
-# Replace OWNER with your actual GitHub organization/user.
+#
+# NOTE: The previous wildcard rule referenced a non-existent team
+# (@Harvest-Forged-Code/owners), which caused CODEOWNERS validation to fail.
+# The rule has been commented out to unblock CI. Replace the example below
+# with a real GitHub user or team that has write access to this repo.
+#
+# Examples:
+# *   @octo-org/engineering-team
+# docs/**  @octocat  (example)
 
-*  @Harvest-Forged-Code/owners
+# Repository-wide owner: all changes will request a review from this user
+*  @PrabbhukumarSivamoorthy
+
+# *  @Harvest-Forged-Code/owners  <- replace with a valid team or user
