@@ -230,24 +230,13 @@ class ExpensesStatsController:
             ]
             cat_items.sort(key=lambda x: x[1], reverse=True)
         else:
-            fallback_total = float((-combined["amount"]).sum()) if "amount" in combined.columns else 0.0
+            fallback_total = (
+                float((-combined["amount"]).sum()) if "amount" in combined.columns else 0.0
+            )
             cat_items = [("(Uncategorized)", fallback_total)]
 
         for cat_name, cat_total in cat_items:
-            subcats_list: List[Tuple[str, float]] = []
-            dcat = combined
-            if "category" in combined.columns:
-                cat_filter = "" if cat_name == "(Uncategorized)" else cat_name
-                dcat = combined[combined["category"].fillna("") == cat_filter]
-
-            if "sub_category" in dcat.columns and not dcat.empty:
-                sub_series = dcat.groupby("sub_category")["amount"].sum().sort_values()
-                subcats_list = [
-                    (str(sub) if sub else "(Uncategorized)", float(-val))
-                    for sub, val in sub_series.items()
-                ]
-                subcats_list.sort(key=lambda x: x[1], reverse=True)
-
+            subcats_list = self._build_subcats_for_category(combined, cat_name)
             result.append((cat_name, cat_total, subcats_list))
 
         return result
@@ -286,6 +275,26 @@ class ExpensesStatsController:
         return pd.concat(frames, ignore_index=True)
 
     # ---- Internals ----
+    def _build_subcats_for_category(
+        self, data: pd.DataFrame, cat_name: str
+    ) -> List[Tuple[str, float]]:
+        """Build subcategory breakdown for a given category from DataFrame."""
+        dcat = data
+        if "category" in data.columns:
+            cat_filter = "" if cat_name == "(Uncategorized)" else cat_name
+            dcat = data[data["category"].fillna("") == cat_filter]
+
+        if "sub_category" not in dcat.columns or dcat.empty:
+            return []
+
+        sub_series = dcat.groupby("sub_category")["amount"].sum().sort_values()
+        subcats_list = [
+            (str(sub) if sub else "(Uncategorized)", float(-val))
+            for sub, val in sub_series.items()
+        ]
+        subcats_list.sort(key=lambda x: x[1], reverse=True)
+        return subcats_list
+
     def _compute_category_nodes(self, period: pd.Period) -> List[_CategoryNode]:
         mr = self._by_period.get(period)
         if mr is None or mr.expenses is None or mr.expenses.empty:
@@ -336,7 +345,10 @@ class ExpensesStatsController:
             return cached
 
         year_total = 0.0
-        months_data: List[Tuple[pd.Period, float, List[Tuple[str, float, List[Tuple[str, float]]]]]] = []
+        # Type: List of (period, month_total, category_breakdown)
+        months_data: List[
+            Tuple[pd.Period, float, List[Tuple[str, float, List[Tuple[str, float]]]]]
+        ] = []
 
         # Get all periods for this year, sorted
         year_periods = sorted(
