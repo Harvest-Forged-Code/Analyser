@@ -30,6 +30,7 @@ def _get_bundle_dir() -> Path:
     For normal execution, this is the package directory.
     """
     if _is_frozen():
+        # pylint: disable=protected-access
         return Path(sys._MEIPASS)  # type: ignore[attr-defined]
     return Path(__file__).parent
 
