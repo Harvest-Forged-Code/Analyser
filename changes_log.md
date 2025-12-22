@@ -2,6 +2,43 @@
 
 This file tracks notable project changes made during development and refactoring.
 
+## 2025-12-21
+
+### Tag-based versioning and automated releases
+- Implemented semantic versioning (`Major.Minor.Patch`) with tag-based version management:
+  - Patch version auto-increments on every push to `main` branch via GitHub Actions.
+  - Minor and Major versions are updated manually by creating Git tags.
+  - Developer mode (`eng_ver = 0` in `pyproject.toml`) disables auto-increment for local development.
+- Added `src/budget_analyser/version.py` module with:
+  - `get_version()` function that reads version from Git tags, package metadata, or pyproject.toml.
+  - PyInstaller frozen environment detection (`_is_frozen()`) to read version from bundled VERSION file.
+  - Helper functions: `get_version_tuple()`, `get_full_version_string()`, `is_dev_mode()`.
+
+### Automated build and release workflow
+- Created `.github/workflows/release.yml` for automated builds on push to `main`:
+  - Calculates next version from Git tags and creates new tag.
+  - Generates changelog from commit messages since last tag.
+  - Builds Windows executable (.exe) using PyInstaller.
+  - Builds macOS Intel (.zip) on `macos-13` runner.
+  - Builds macOS Apple Silicon (.zip) on `macos-latest` runner.
+  - Creates GitHub Release with all artifacts and changelog.
+- VERSION file is created during build and bundled with PyInstaller to ensure correct version display in built apps.
+
+### App icon integration
+- Added app icons in `assets/` directory:
+  - `icon.png` - Original PNG source.
+  - `icon.ico` - Windows icon format.
+  - `icon.icns` - macOS icon format.
+- Icons are embedded in built executables via PyInstaller `--icon` flag.
+
+### Documentation updates
+- Updated README.md:
+  - Added Downloads section with links to latest releases for all platforms.
+  - Added Build and Release badge.
+  - Updated Python version requirement to 3.11+.
+  - Added Versioning section explaining semantic versioning and developer mode.
+  - Updated CI badge URLs to point to correct repository.
+
 ## 2025-12-12
 
 ### Architecture & layout migration (in progress)
