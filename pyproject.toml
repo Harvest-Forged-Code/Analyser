@@ -4,13 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "budget-analyser"
-version = "0.0.0"
-description = "Budget Analyser"
+version = "1.0.0"
+description = "Budget Analyser - Personal finance tracking and analysis tool"
 readme = "README.md"
 requires-python = ">=3.11"
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.0"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# Custom metadata for version management
+# EngVer:1 = auto-increment patch on CI, EngVer:0 = developer mode (no auto-increment)
+[tool.budget-analyser]
+eng_ver = 1
