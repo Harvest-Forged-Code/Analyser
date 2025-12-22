@@ -169,10 +169,10 @@ jobs:
           name: windows-build
           path: dist/Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_Windows.exe
 
-  build-macos:
+  build-macos-intel:
     needs: version-and-tag
     if: needs.version-and-tag.outputs.should_release == 'true'
-    runs-on: macos-latest
+    runs-on: macos-13  # Intel (x86_64) runner
     steps:
       - uses: actions/checkout@v4
         with:
@@ -195,23 +195,64 @@ jobs:
           echo "Updated pyproject.toml to version $VERSION"
           grep "version" pyproject.toml
 
-      - name: Build macOS app
+      - name: Build macOS Intel app
         run: |
           pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" src/budget_analyser/__main__.py
 
       - name: Create ZIP of app
         run: |
           cd dist
-          zip -r "Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS.zip" "Budget Analyser.app" || zip -r "Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS.zip" "Budget Analyser"
+          zip -r "Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_Intel.zip" "Budget Analyser.app" || zip -r "Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_Intel.zip" "Budget Analyser"
 
-      - name: Upload macOS artifact
+      - name: Upload macOS Intel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-build
-          path: dist/Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS.zip
+          name: macos-intel-build
+          path: dist/Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_Intel.zip
+
+  build-macos-arm:
+    needs: version-and-tag
+    if: needs.version-and-tag.outputs.should_release == 'true'
+    runs-on: macos-latest  # Apple Silicon (ARM64) runner
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Update version in pyproject.toml
+        run: |
+          VERSION="${{ needs.version-and-tag.outputs.version }}"
+          sed -i '' "s/version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+          echo "Updated pyproject.toml to version $VERSION"
+          grep "version" pyproject.toml
+
+      - name: Build macOS ARM app
+        run: |
+          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" src/budget_analyser/__main__.py
+
+      - name: Create ZIP of app
+        run: |
+          cd dist
+          zip -r "Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_AppleSilicon.zip" "Budget Analyser.app" || zip -r "Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_AppleSilicon.zip" "Budget Analyser"
+
+      - name: Upload macOS ARM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm-build
+          path: dist/Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_AppleSilicon.zip
 
   create-release:
-    needs: [version-and-tag, build-windows, build-macos]
+    needs: [version-and-tag, build-windows, build-macos-intel, build-macos-arm]
     if: needs.version-and-tag.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -223,10 +264,16 @@ jobs:
           name: windows-build
           path: ./artifacts
 
-      - name: Download macOS artifact
+      - name: Download macOS Intel artifact
         uses: actions/download-artifact@v4
         with:
-          name: macos-build
+          name: macos-intel-build
+          path: ./artifacts
+
+      - name: Download macOS ARM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-arm-build
           path: ./artifacts
 
       - name: List artifacts
@@ -244,7 +291,8 @@ jobs:
 
             ### Downloads
             - **Windows**: `Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_Windows.exe`
-            - **macOS**: `Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS.zip`
+            - **macOS (Intel)**: `Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_Intel.zip`
+            - **macOS (Apple Silicon)**: `Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_AppleSilicon.zip`
 
             ### Installation
             #### Windows
@@ -252,9 +300,14 @@ jobs:
             2. Run the executable (you may need to allow it through Windows Defender)
 
             #### macOS
-            1. Download and extract the `.zip` file
-            2. Move `Budget Analyser.app` to your Applications folder
-            3. Right-click and select "Open" on first launch (to bypass Gatekeeper)
+            1. Download the appropriate `.zip` file for your Mac:
+               - **Intel Macs** (pre-2020): Download the `_Intel.zip` version
+               - **Apple Silicon Macs** (M1/M2/M3): Download the `_AppleSilicon.zip` version
+            2. Extract the `.zip` file
+            3. Move `Budget Analyser.app` to your Applications folder
+            4. Right-click and select "Open" on first launch (to bypass Gatekeeper)
+            
+            > **Tip**: To check your Mac type, click  → About This Mac → look for "Chip" (Apple Silicon) or "Processor" (Intel)
           files: |
             ./artifacts/*
         env:
