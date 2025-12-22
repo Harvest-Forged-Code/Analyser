@@ -285,6 +285,12 @@ jobs:
           name: macos-arm-build
           path: ./artifacts
 
+      - name: Copy helper script to artifacts
+        run: |
+          cp scripts/open_macos_app.sh ./artifacts/
+          chmod +x ./artifacts/open_macos_app.sh
+          echo "Added Gatekeeper bypass helper script to artifacts"
+
       - name: List artifacts
         run: ls -la ./artifacts
 
@@ -302,6 +308,7 @@ jobs:
             - **Windows**: `Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_Windows.exe`
             - **macOS (Intel)**: `Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_Intel.zip`
             - **macOS (Apple Silicon)**: `Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS_AppleSilicon.zip`
+            - **macOS Helper Script**: `open_macos_app.sh` (Gatekeeper bypass utility)
 
             ### Installation
             #### Windows
@@ -316,10 +323,18 @@ jobs:
             3. Move `Budget Analyser.app` to your Applications folder
             4. **First launch (Gatekeeper bypass required):**
                - You may see: *"Apple could not verify 'Budget Analyser.app' is free of malware"*
-               - **Right-click** (or Control-click) on the app → Select **"Open"** → Click **"Open"** in the dialog
+               - **Option A**: **Right-click** (or Control-click) on the app → Select **"Open"** → Click **"Open"** in the dialog
+               - **Option B**: Download and run `open_macos_app.sh` helper script (see below)
                - This only needs to be done once
             
-            **Alternative (Terminal):**
+            **Using the Helper Script:**
+            ```bash
+            # Download open_macos_app.sh from this release, then:
+            chmod +x open_macos_app.sh
+            ./open_macos_app.sh "/Applications/Budget Analyser.app"
+            ```
+            
+            **Alternative (Manual Terminal):**
             ```
             xattr -d com.apple.quarantine "/Applications/Budget Analyser.app"
             ```
