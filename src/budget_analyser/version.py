@@ -6,7 +6,8 @@ Version is read from package metadata (pyproject.toml) at runtime.
 
 from __future__ import annotations
 
-import sys
+from importlib.metadata import version as _get_pkg_version
+from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 
 # Application metadata
@@ -25,13 +26,8 @@ def get_version() -> str:
     """
     try:
         # Try to get version from installed package metadata
-        if sys.version_info >= (3, 11):
-            from importlib.metadata import version
-            return version("budget-analyser")
-        else:
-            from importlib_metadata import version
-            return version("budget-analyser")
-    except Exception:
+        return _get_pkg_version("budget-analyser")
+    except PackageNotFoundError:
         # Fallback: parse pyproject.toml directly (development mode)
         return _read_version_from_pyproject()
 
@@ -62,7 +58,7 @@ def _read_version_from_pyproject() -> str:
                     if len(parts) == 2:
                         version_str = parts[1].strip().strip('"').strip("'")
                         return version_str
-    except Exception:
+    except OSError:
         pass
     return "0.0.0"
 
@@ -87,7 +83,7 @@ def get_eng_ver() -> int:
                     parts = line.split("=", 1)
                     if len(parts) == 2:
                         return int(parts[1].strip())
-    except Exception:
+    except (OSError, ValueError):
         pass
     return 1  # Default to production mode
 
