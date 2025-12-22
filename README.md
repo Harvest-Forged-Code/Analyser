@@ -1,8 +1,21 @@
 # Budget Analyser
 
-[![CI – unit tests](https://github.com/OWNER/REPO/actions/workflows/tests.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/tests.yml)
+[![CI – unit tests](https://github.com/Harvest-Forged-Code/Analyser/actions/workflows/tests.yml/badge.svg)](https://github.com/Harvest-Forged-Code/Analyser/actions/workflows/tests.yml)
+[![Build and Release](https://github.com/Harvest-Forged-Code/Analyser/actions/workflows/release.yml/badge.svg)](https://github.com/Harvest-Forged-Code/Analyser/actions/workflows/release.yml)
 
 Modern, cross‑platform budget analysis app built with PySide6 and pandas. It processes bank statements, categorizes transactions using JSON keyword mappings, and presents reports in a polished GUI with light/dark themes.
+
+## Downloads
+
+Pre-built executables are available for Windows and macOS:
+
+| Platform | Download |
+|----------|----------|
+| **Windows** | [Latest Release (.exe)](https://github.com/Harvest-Forged-Code/Analyser/releases/latest) |
+| **macOS (Intel)** | [Latest Release (.zip)](https://github.com/Harvest-Forged-Code/Analyser/releases/latest) |
+| **macOS (Apple Silicon)** | [Latest Release (.zip)](https://github.com/Harvest-Forged-Code/Analyser/releases/latest) |
+
+See [Releases](https://github.com/Harvest-Forged-Code/Analyser/releases) for all versions.
 
 ## Highlights
 - Fullscreen login with password validation (default 123456; configurable in Settings).
@@ -112,7 +125,7 @@ Bank-specific formatters handle different CSV column layouts:
 Column mappings are configured in `budget_analyser.ini`.
 
 ## Install
-Prerequisites: Python 3.10–3.12 recommended.
+Prerequisites: Python 3.11 or higher required.
 
 ```
 pip install -r requirements.txt
@@ -146,6 +159,32 @@ CI runs the full unit test suite on Linux/macOS/Windows across Python 3.10–3.1
 ## Troubleshooting
 - Set log level to DEBUG in Settings to capture detailed pipeline diagnostics.
 - If date parsing issues occur, the formatters coerce invalid dates to NaT; check the logs for column info and hints.
+
+## Versioning
+
+Budget Analyser uses **semantic versioning** (`Major.Minor.Patch`):
+
+- **Patch** version auto-increments on every push to `main` branch (via GitHub Actions)
+- **Minor** and **Major** versions are updated manually by creating Git tags
+
+### Version Management
+
+| Version Part | Update Method | Example |
+|--------------|---------------|---------|
+| Patch (x.x.**X**) | Automatic on push to main | 1.0.5 → 1.0.6 |
+| Minor (x.**X**.0) | Manual: `git tag -a v1.1.0 -m "..."` | 1.0.6 → 1.1.0 |
+| Major (**X**.0.0) | Manual: `git tag -a v2.0.0 -m "..."` | 1.1.0 → 2.0.0 |
+
+### Developer Mode
+
+Set `eng_ver = 0` in `pyproject.toml` to disable auto-increment during development:
+
+```toml
+[tool.budget-analyser]
+eng_ver = 0  # Developer mode - no auto-increment
+```
+
+Set back to `eng_ver = 1` for production releases.
 
 —
 

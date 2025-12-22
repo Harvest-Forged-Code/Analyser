@@ -1,12 +1,13 @@
 """Application version management.
 
 Provides version information and utilities for the Budget Analyser application.
-Version is read from Git tags at runtime, with fallback to package metadata
-or pyproject.toml for development/built environments.
+Version is read from Git tags at runtime, with fallback to package metadata,
+bundled VERSION file (for PyInstaller builds), or pyproject.toml.
 """
 
 from __future__ import annotations
 
+import sys
 import subprocess
 from importlib.metadata import version as _get_pkg_version
 from importlib.metadata import PackageNotFoundError
@@ -17,18 +18,58 @@ APP_NAME = "Budget Analyser"
 APP_IDENTIFIER = "com.budgetanalyser.app"
 
 
+def _is_frozen() -> bool:
+    """Check if running as a PyInstaller frozen executable."""
+    return getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
+
+
+def _get_bundle_dir() -> Path:
+    """Get the directory where bundled files are located.
+
+    For frozen apps, this is sys._MEIPASS (PyInstaller temp directory).
+    For normal execution, this is the package directory.
+    """
+    if _is_frozen():
+        # pylint: disable=protected-access
+        return Path(sys._MEIPASS)  # type: ignore[attr-defined]
+    return Path(__file__).parent
+
+
+def _read_version_from_bundle() -> str | None:
+    """Read version from bundled VERSION file (PyInstaller builds).
+
+    Returns:
+        Version string or None if VERSION file not found.
+    """
+    try:
+        bundle_dir = _get_bundle_dir()
+        version_file = bundle_dir / "VERSION"
+        if version_file.exists():
+            return version_file.read_text().strip()
+    except OSError:
+        pass
+    return None
+
+
 def get_version() -> str:
     """Get the current application version.
 
     Priority order:
-    1. Git tag (when running from git repo)
-    2. Package metadata (when installed as package)
-    3. pyproject.toml (development fallback)
+    1. Bundled VERSION file (for PyInstaller frozen builds)
+    2. Git tag (when running from git repo)
+    3. Package metadata (when installed as package)
+    4. pyproject.toml (development fallback)
 
     Returns:
         Version string in Major.Minor.Patch format (e.g., "1.0.0").
     """
-    # Try Git tag first (works in development with git repo)
+    # For frozen apps, read from bundled VERSION file first
+    if _is_frozen():
+        bundled_version = _read_version_from_bundle()
+        if bundled_version:
+            return bundled_version
+
+    # Try Git tag (works in development with git repo)
     git_version = _read_version_from_git()
     if git_version:
         return git_version

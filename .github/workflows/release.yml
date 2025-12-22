@@ -145,7 +145,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Update version in pyproject.toml
+      - name: Update version in pyproject.toml and create VERSION file
         run: |
           $version = "${{ needs.version-and-tag.outputs.version }}"
           $content = Get-Content pyproject.toml -Raw
@@ -153,11 +153,14 @@ jobs:
           Set-Content pyproject.toml $content
           Write-Host "Updated pyproject.toml to version $version"
           Get-Content pyproject.toml | Select-String "version"
+          # Create VERSION file for PyInstaller bundle
+          Set-Content -Path "VERSION" -Value $version
+          Write-Host "Created VERSION file with: $version"
         shell: pwsh
 
       - name: Build Windows executable
         run: |
-          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.ico --add-data "src/budget_analyser/data;budget_analyser/data" src/budget_analyser/__main__.py
+          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.ico --add-data "src/budget_analyser/data;budget_analyser/data" --add-data "VERSION;." src/budget_analyser/__main__.py
 
       - name: Rename artifact
         run: |
@@ -172,7 +175,7 @@ jobs:
   build-macos-intel:
     needs: version-and-tag
     if: needs.version-and-tag.outputs.should_release == 'true'
-    runs-on: macos-13  # Intel (x86_64) runner
+    runs-on: macos-15-intel  # Intel (x86_64) runner - updated from deprecated macos-13
     steps:
       - uses: actions/checkout@v4
         with:
@@ -188,16 +191,19 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Update version in pyproject.toml
+      - name: Update version in pyproject.toml and create VERSION file
         run: |
           VERSION="${{ needs.version-and-tag.outputs.version }}"
           sed -i '' "s/version = \".*\"/version = \"$VERSION\"/" pyproject.toml
           echo "Updated pyproject.toml to version $VERSION"
           grep "version" pyproject.toml
+          # Create VERSION file for PyInstaller bundle
+          echo "$VERSION" > VERSION
+          echo "Created VERSION file with: $VERSION"
 
       - name: Build macOS Intel app
         run: |
-          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" src/budget_analyser/__main__.py
+          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" --add-data "VERSION:." src/budget_analyser/__main__.py
 
       - name: Create ZIP of app
         run: |
@@ -229,16 +235,19 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Update version in pyproject.toml
+      - name: Update version in pyproject.toml and create VERSION file
         run: |
           VERSION="${{ needs.version-and-tag.outputs.version }}"
           sed -i '' "s/version = \".*\"/version = \"$VERSION\"/" pyproject.toml
           echo "Updated pyproject.toml to version $VERSION"
           grep "version" pyproject.toml
+          # Create VERSION file for PyInstaller bundle
+          echo "$VERSION" > VERSION
+          echo "Created VERSION file with: $VERSION"
 
       - name: Build macOS ARM app
         run: |
-          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" src/budget_analyser/__main__.py
+          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" --add-data "VERSION:." src/budget_analyser/__main__.py
 
       - name: Create ZIP of app
         run: |
