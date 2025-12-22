@@ -31,6 +31,18 @@ This file tracks notable project changes made during development and refactoring
   - `icon.icns` - macOS icon format.
 - Icons are embedded in built executables via PyInstaller `--icon` flag.
 
+### macOS Gatekeeper bypass documentation
+- Added detailed instructions for bypassing macOS Gatekeeper warning ("Apple could not verify..."):
+  - Updated README.md with new "macOS Installation (Gatekeeper Bypass)" section explaining:
+    - Why the warning appears (unsigned app, no Apple Developer certificate)
+    - Step-by-step instructions: Right-click → Open → Open
+    - Alternative Terminal method: `xattr -d com.apple.quarantine`
+  - Updated `.github/workflows/release.yml` release notes with:
+    - The exact warning message users will see
+    - Detailed bypass instructions
+    - Terminal alternative command
+    - Explanation linking to source code for verification
+
 ### Documentation updates
 - Updated README.md:
   - Added Downloads section with links to latest releases for all platforms.
