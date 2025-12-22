@@ -17,6 +17,29 @@ Pre-built executables are available for Windows and macOS:
 
 See [Releases](https://github.com/Harvest-Forged-Code/Analyser/releases) for all versions.
 
+### macOS Installation (Gatekeeper Bypass)
+
+When you first open the app on macOS, you may see a warning: **"Apple could not verify 'Budget Analyser.app' is free of malware"**. This is because the app is not signed with an Apple Developer certificate (code signing costs $99/year).
+
+**To open the app:**
+
+1. **Right-click** (or Control-click) on `Budget Analyser.app`
+2. Select **"Open"** from the context menu
+3. Click **"Open"** in the dialog that appears
+
+This only needs to be done once. After that, the app will open normally.
+
+**Alternative method (Terminal):**
+```bash
+# Remove the quarantine attribute
+xattr -d com.apple.quarantine "/Applications/Budget Analyser.app"
+```
+
+**Why does this happen?**
+- macOS Gatekeeper blocks apps from "unidentified developers" by default
+- Apps distributed outside the Mac App Store without code signing trigger this warning
+- The app is safe to use - you can verify by checking the source code in this repository
+
 ## Highlights
 - Fullscreen login with password validation (default 123456; configurable in Settings).
 - Modern Dashboard with emoji navigation and a header bar that reflects the active section.

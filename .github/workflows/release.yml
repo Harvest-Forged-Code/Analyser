@@ -314,9 +314,19 @@ jobs:
                - **Apple Silicon Macs** (M1/M2/M3): Download the `_AppleSilicon.zip` version
             2. Extract the `.zip` file
             3. Move `Budget Analyser.app` to your Applications folder
-            4. Right-click and select "Open" on first launch (to bypass Gatekeeper)
+            4. **First launch (Gatekeeper bypass required):**
+               - You may see: *"Apple could not verify 'Budget Analyser.app' is free of malware"*
+               - **Right-click** (or Control-click) on the app → Select **"Open"** → Click **"Open"** in the dialog
+               - This only needs to be done once
+            
+            **Alternative (Terminal):**
+            ```
+            xattr -d com.apple.quarantine "/Applications/Budget Analyser.app"
+            ```
             
             > **Tip**: To check your Mac type, click  → About This Mac → look for "Chip" (Apple Silicon) or "Processor" (Intel)
+            
+            > **Why the warning?** The app is not signed with an Apple Developer certificate. It's safe to use - verify by checking the [source code](https://github.com/Harvest-Forged-Code/Analyser).
           files: |
             ./artifacts/*
         env:
