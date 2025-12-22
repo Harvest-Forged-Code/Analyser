@@ -8,16 +8,16 @@ permissions:
   contents: write
 
 jobs:
-  version-bump:
+  version-and-tag:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.bump.outputs.version }}
-      should_release: ${{ steps.bump.outputs.should_release }}
+      version: ${{ steps.version.outputs.version }}
+      should_release: ${{ steps.version.outputs.should_release }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Need full history for tags and changelog
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,68 +27,113 @@ jobs:
       - name: Install toml parser
         run: pip install toml
 
-      - name: Bump Version
-        id: bump
+      - name: Calculate Version from Tags
+        id: version
         run: |
           python << 'EOF'
           import toml
-          import os
           import subprocess
+          import os
 
-          # Read pyproject.toml
+          # Read eng_ver from pyproject.toml
           with open("pyproject.toml", "r") as f:
               config = toml.load(f)
 
-          current_version = config["project"]["version"]
           eng_ver = config.get("tool", {}).get("budget-analyser", {}).get("eng_ver", 1)
-
-          print(f"Current version: {current_version}")
           print(f"EngVer flag: {eng_ver}")
 
-          if eng_ver == 1:
-              # Parse and increment patch version
-              major, minor, patch = map(int, current_version.split("."))
-              new_patch = patch + 1
-              new_version = f"{major}.{minor}.{new_patch}"
-
-              # Update pyproject.toml
-              config["project"]["version"] = new_version
-              with open("pyproject.toml", "w") as f:
-                  toml.dump(config, f)
-
-              print(f"New version: {new_version}")
-
-              # Set outputs
+          if eng_ver != 1:
+              print("EngVer is 0 (developer mode) - skipping release")
               with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-                  f.write(f"version={new_version}\n")
-                  f.write("should_release=true\n")
-          else:
-              print("EngVer is 0 (developer mode) - skipping version bump")
-              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-                  f.write(f"version={current_version}\n")
+                  f.write("version=0.0.0\n")
                   f.write("should_release=false\n")
+              exit(0)
+
+          # Get latest tag
+          try:
+              result = subprocess.run(
+                  ["git", "describe", "--tags", "--abbrev=0"],
+                  capture_output=True, text=True, check=True
+              )
+              latest_tag = result.stdout.strip()
+              print(f"Latest tag: {latest_tag}")
+          except subprocess.CalledProcessError:
+              latest_tag = "v1.0.0"
+              print(f"No tags found, starting from: {latest_tag}")
+
+          # Parse version (remove 'v' prefix)
+          version_str = latest_tag.lstrip("v")
+          parts = version_str.split(".")
+          major = int(parts[0]) if len(parts) > 0 else 1
+          minor = int(parts[1]) if len(parts) > 1 else 0
+          patch = int(parts[2]) if len(parts) > 2 else 0
+
+          # Increment patch version
+          new_patch = patch + 1
+          new_version = f"{major}.{minor}.{new_patch}"
+          print(f"New version: {new_version}")
+
+          # Set outputs
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"version={new_version}\n")
+              f.write("should_release=true\n")
+              f.write(f"prev_tag={latest_tag}\n")
           EOF
 
-      - name: Commit version bump
-        if: steps.bump.outputs.should_release == 'true'
+      - name: Generate Changelog
+        id: changelog
+        if: steps.version.outputs.should_release == 'true'
         run: |
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          echo "Generating changelog from $PREV_TAG to HEAD"
+          
+          if [ -n "$PREV_TAG" ]; then
+            # Get commits since last tag
+            COMMITS=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            
+            # Build changelog
+            CHANGELOG="## What's Changed in v$VERSION"$'\n\n'
+            
+            if [ -n "$COMMITS" ]; then
+              CHANGELOG+="$COMMITS"$'\n\n'
+            else
+              CHANGELOG+="- Minor updates and improvements"$'\n\n'
+            fi
+            
+            CHANGELOG+="**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...v$VERSION"
+          else
+            CHANGELOG="## Initial Release v$VERSION"$'\n\n'"First release of Budget Analyser!"
+          fi
+          
+          # Save changelog to file for multi-line output
+          echo "$CHANGELOG" > changelog.md
+          cat changelog.md
+          
+          # Set output using delimiter for multiline
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat changelog.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create and Push Tag
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml
-          git commit -m "Bump version to ${{ steps.bump.outputs.version }} [skip ci]"
-          git push
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
 
   build-windows:
-    needs: version-bump
-    if: needs.version-bump.outputs.should_release == 'true'
+    needs: version-and-tag
+    if: needs.version-and-tag.outputs.should_release == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
-
-      - name: Pull latest changes
-        run: git pull origin main
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -106,25 +151,22 @@ jobs:
 
       - name: Rename artifact
         run: |
-          mv "dist/Budget Analyser.exe" "dist/Budget_Analyser_${{ needs.version-bump.outputs.version }}_Windows.exe"
+          mv "dist/Budget Analyser.exe" "dist/Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_Windows.exe"
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: dist/Budget_Analyser_${{ needs.version-bump.outputs.version }}_Windows.exe
+          path: dist/Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_Windows.exe
 
   build-macos:
-    needs: version-bump
-    if: needs.version-bump.outputs.should_release == 'true'
+    needs: version-and-tag
+    if: needs.version-and-tag.outputs.should_release == 'true'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
-
-      - name: Pull latest changes
-        run: git pull origin main
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -143,26 +185,20 @@ jobs:
       - name: Create ZIP of app
         run: |
           cd dist
-          zip -r "Budget_Analyser_${{ needs.version-bump.outputs.version }}_macOS.zip" "Budget Analyser.app" || zip -r "Budget_Analyser_${{ needs.version-bump.outputs.version }}_macOS.zip" "Budget Analyser"
+          zip -r "Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS.zip" "Budget Analyser.app" || zip -r "Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS.zip" "Budget Analyser"
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: dist/Budget_Analyser_${{ needs.version-bump.outputs.version }}_macOS.zip
+          path: dist/Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS.zip
 
   create-release:
-    needs: [version-bump, build-windows, build-macos]
-    if: needs.version-bump.outputs.should_release == 'true'
+    needs: [version-and-tag, build-windows, build-macos]
+    if: needs.version-and-tag.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - name: Pull latest changes
-        run: git pull origin main
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
@@ -179,24 +215,19 @@ jobs:
       - name: List artifacts
         run: ls -la ./artifacts
 
-      - name: Create Git Tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "v${{ needs.version-bump.outputs.version }}" -m "Release v${{ needs.version-bump.outputs.version }}"
-          git push origin "v${{ needs.version-bump.outputs.version }}"
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ needs.version-bump.outputs.version }}
-          name: Budget Analyser v${{ needs.version-bump.outputs.version }}
+          tag_name: v${{ needs.version-and-tag.outputs.version }}
+          name: Budget Analyser v${{ needs.version-and-tag.outputs.version }}
           body: |
-            ## Budget Analyser v${{ needs.version-bump.outputs.version }}
+            ${{ needs.version-and-tag.outputs.changelog }}
+
+            ---
 
             ### Downloads
-            - **Windows**: `Budget_Analyser_${{ needs.version-bump.outputs.version }}_Windows.exe`
-            - **macOS**: `Budget_Analyser_${{ needs.version-bump.outputs.version }}_macOS.zip`
+            - **Windows**: `Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_Windows.exe`
+            - **macOS**: `Budget_Analyser_${{ needs.version-and-tag.outputs.version }}_macOS.zip`
 
             ### Installation
             #### Windows

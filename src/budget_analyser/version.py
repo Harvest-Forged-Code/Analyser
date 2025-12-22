@@ -1,11 +1,13 @@
 """Application version management.
 
 Provides version information and utilities for the Budget Analyser application.
-Version is read from package metadata (pyproject.toml) at runtime.
+Version is read from Git tags at runtime, with fallback to package metadata
+or pyproject.toml for development/built environments.
 """
 
 from __future__ import annotations
 
+import subprocess
 from importlib.metadata import version as _get_pkg_version
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
@@ -18,24 +20,55 @@ APP_IDENTIFIER = "com.budgetanalyser.app"
 def get_version() -> str:
     """Get the current application version.
 
-    Reads version from package metadata. Falls back to pyproject.toml
-    parsing if package is not installed (development mode).
+    Priority order:
+    1. Git tag (when running from git repo)
+    2. Package metadata (when installed as package)
+    3. pyproject.toml (development fallback)
 
     Returns:
         Version string in Major.Minor.Patch format (e.g., "1.0.0").
     """
+    # Try Git tag first (works in development with git repo)
+    git_version = _read_version_from_git()
+    if git_version:
+        return git_version
+
+    # Try package metadata (works when installed)
     try:
-        # Try to get version from installed package metadata
         return _get_pkg_version("budget-analyser")
     except PackageNotFoundError:
-        # Fallback: parse pyproject.toml directly (development mode)
-        return _read_version_from_pyproject()
+        pass
+
+    # Fallback: parse pyproject.toml directly
+    return _read_version_from_pyproject()
+
+
+def _read_version_from_git() -> str | None:
+    """Read version from the latest Git tag.
+
+    Returns:
+        Version string without 'v' prefix, or None if not in a git repo
+        or no tags exist.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+        tag = result.stdout.strip()
+        # Remove 'v' prefix if present
+        return tag.lstrip("v") if tag else None
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return None
 
 
 def _read_version_from_pyproject() -> str:
     """Read version directly from pyproject.toml file.
 
-    Used as fallback when package is not installed.
+    Used as fallback when package is not installed and not in git repo.
 
     Returns:
         Version string or "0.0.0" if not found.
