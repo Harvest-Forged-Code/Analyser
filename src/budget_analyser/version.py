@@ -6,16 +6,9 @@ Version is read from package metadata (pyproject.toml) at runtime.
 
 from __future__ import annotations
 
-import sys
+from importlib.metadata import version as _get_pkg_version
+from importlib.metadata import PackageNotFoundError
 from pathlib import Path
-
-# Import version function based on Python version (at module level per pylint C0415)
-if sys.version_info >= (3, 11):
-    from importlib.metadata import version as _get_pkg_version
-    from importlib.metadata import PackageNotFoundError
-else:
-    from importlib_metadata import version as _get_pkg_version  # type: ignore[import-not-found]
-    from importlib_metadata import PackageNotFoundError  # type: ignore[import-not-found]
 
 # Application metadata
 APP_NAME = "Budget Analyser"
