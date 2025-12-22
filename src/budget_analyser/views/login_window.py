@@ -14,6 +14,8 @@ import logging
 from PySide6 import QtCore, QtWidgets
 from typing import Callable
 
+from budget_analyser.version import get_version, APP_NAME
+
 
 class LoginWindow(QtWidgets.QWidget):
     login_successful = QtCore.Signal()
@@ -33,7 +35,7 @@ class LoginWindow(QtWidgets.QWidget):
         self._init_ui()
 
     def _init_ui(self) -> None:
-        self.setWindowTitle("Budget Analyser - Login")
+        self.setWindowTitle(f"{APP_NAME} v{get_version()} - Login")
         self.setObjectName("loginWindow")
 
         # Styling is provided by the application stylesheet (supports light/dark themes).
@@ -68,7 +70,7 @@ class LoginWindow(QtWidgets.QWidget):
         top_controls.addWidget(self.theme_btn, alignment=QtCore.Qt.AlignRight)
         card_layout.addLayout(top_controls)
 
-        title = QtWidgets.QLabel("Budget Analyser")
+        title = QtWidgets.QLabel(f"{APP_NAME} v{get_version()}")
         title.setObjectName("title")
         title.setAlignment(QtCore.Qt.AlignCenter)
         card_layout.addWidget(title)

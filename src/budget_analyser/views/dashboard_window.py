@@ -33,6 +33,7 @@ from budget_analyser.settings.preferences import AppPreferences
 from budget_analyser.controller import SettingsController
 from budget_analyser.controller import MapperController
 from budget_analyser.controller import UploadController
+from budget_analyser.version import get_version, APP_NAME
 
 
 class DashboardWindow(QtWidgets.QMainWindow):
@@ -70,7 +71,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         self._init_ui()
 
     def _init_ui(self) -> None:
-        self.setWindowTitle("Budget Analyser - Dashboard")
+        self.setWindowTitle(f"{APP_NAME} v{get_version()} - Dashboard")
         self.setObjectName("dashboardWindow")
 
         # App stylesheet is applied at QApplication level; no per-window stylesheet here.
@@ -98,7 +99,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         header_layout.setContentsMargins(12, 8, 12, 8)
         header_layout.setSpacing(8)
 
-        title_lbl = QtWidgets.QLabel("Budget Analyser")
+        title_lbl = QtWidgets.QLabel(f"{APP_NAME} v{get_version()}")
         title_lbl.setObjectName("headerTitleLabel")
         header_layout.addWidget(title_lbl)
 

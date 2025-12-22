@@ -1,0 +1,213 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      should_release: ${{ steps.bump.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install toml parser
+        run: pip install toml
+
+      - name: Bump Version
+        id: bump
+        run: |
+          python << 'EOF'
+          import toml
+          import os
+          import subprocess
+
+          # Read pyproject.toml
+          with open("pyproject.toml", "r") as f:
+              config = toml.load(f)
+
+          current_version = config["project"]["version"]
+          eng_ver = config.get("tool", {}).get("budget-analyser", {}).get("eng_ver", 1)
+
+          print(f"Current version: {current_version}")
+          print(f"EngVer flag: {eng_ver}")
+
+          if eng_ver == 1:
+              # Parse and increment patch version
+              major, minor, patch = map(int, current_version.split("."))
+              new_patch = patch + 1
+              new_version = f"{major}.{minor}.{new_patch}"
+
+              # Update pyproject.toml
+              config["project"]["version"] = new_version
+              with open("pyproject.toml", "w") as f:
+                  toml.dump(config, f)
+
+              print(f"New version: {new_version}")
+
+              # Set outputs
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write(f"version={new_version}\n")
+                  f.write("should_release=true\n")
+          else:
+              print("EngVer is 0 (developer mode) - skipping version bump")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write(f"version={current_version}\n")
+                  f.write("should_release=false\n")
+          EOF
+
+      - name: Commit version bump
+        if: steps.bump.outputs.should_release == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "Bump version to ${{ steps.bump.outputs.version }} [skip ci]"
+          git push
+
+  build-windows:
+    needs: version-bump
+    if: needs.version-bump.outputs.should_release == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pull latest changes
+        run: git pull origin main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Windows executable
+        run: |
+          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.ico --add-data "src/budget_analyser/data;budget_analyser/data" src/budget_analyser/__main__.py
+
+      - name: Rename artifact
+        run: |
+          mv "dist/Budget Analyser.exe" "dist/Budget_Analyser_${{ needs.version-bump.outputs.version }}_Windows.exe"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/Budget_Analyser_${{ needs.version-bump.outputs.version }}_Windows.exe
+
+  build-macos:
+    needs: version-bump
+    if: needs.version-bump.outputs.should_release == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pull latest changes
+        run: git pull origin main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build macOS app
+        run: |
+          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" src/budget_analyser/__main__.py
+
+      - name: Create ZIP of app
+        run: |
+          cd dist
+          zip -r "Budget_Analyser_${{ needs.version-bump.outputs.version }}_macOS.zip" "Budget Analyser.app" || zip -r "Budget_Analyser_${{ needs.version-bump.outputs.version }}_macOS.zip" "Budget Analyser"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: dist/Budget_Analyser_${{ needs.version-bump.outputs.version }}_macOS.zip
+
+  create-release:
+    needs: [version-bump, build-windows, build-macos]
+    if: needs.version-bump.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Pull latest changes
+        run: git pull origin main
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: ./artifacts
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: ./artifacts
+
+      - name: List artifacts
+        run: ls -la ./artifacts
+
+      - name: Create Git Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ needs.version-bump.outputs.version }}" -m "Release v${{ needs.version-bump.outputs.version }}"
+          git push origin "v${{ needs.version-bump.outputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.version-bump.outputs.version }}
+          name: Budget Analyser v${{ needs.version-bump.outputs.version }}
+          body: |
+            ## Budget Analyser v${{ needs.version-bump.outputs.version }}
+
+            ### Downloads
+            - **Windows**: `Budget_Analyser_${{ needs.version-bump.outputs.version }}_Windows.exe`
+            - **macOS**: `Budget_Analyser_${{ needs.version-bump.outputs.version }}_macOS.zip`
+
+            ### Installation
+            #### Windows
+            1. Download the `.exe` file
+            2. Run the executable (you may need to allow it through Windows Defender)
+
+            #### macOS
+            1. Download and extract the `.zip` file
+            2. Move `Budget Analyser.app` to your Applications folder
+            3. Right-click and select "Open" on first launch (to bypass Gatekeeper)
+          files: |
+            ./artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
