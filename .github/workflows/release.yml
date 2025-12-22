@@ -175,7 +175,7 @@ jobs:
   build-macos-intel:
     needs: version-and-tag
     if: needs.version-and-tag.outputs.should_release == 'true'
-    runs-on: macos-13  # Intel (x86_64) runner
+    runs-on: macos-15-intel  # Intel (x86_64) runner - updated from deprecated macos-13
     steps:
       - uses: actions/checkout@v4
         with:
