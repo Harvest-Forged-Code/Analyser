@@ -89,6 +89,7 @@ class Settings:
         ini_config_path: INI configuration file path.
         description_to_sub_category_path: JSON mapping file for description -> sub_category.
         sub_category_to_category_path: JSON mapping file for sub_category -> category.
+        cashflow_to_category_path: JSON mapping file for earnings/expenses -> categories.
         database_path: SQLite database file path for storing transactions.
         log_level: Logging verbosity for the application.
     """
@@ -97,6 +98,7 @@ class Settings:
     ini_config_path: Path
     description_to_sub_category_path: Path
     sub_category_to_category_path: Path
+    cashflow_to_category_path: Path
     database_path: Path
     log_level: str = "INFO"
 
@@ -117,6 +119,7 @@ def load_settings() -> Settings:
     - BUDGET_ANALYSER_INI_CONFIG_PATH
     - BUDGET_ANALYSER_DESCRIPTION_TO_SUB_CATEGORY_PATH
     - BUDGET_ANALYSER_SUB_CATEGORY_TO_CATEGORY_PATH
+    - BUDGET_ANALYSER_CASHFLOW_TO_CATEGORY_PATH
     - BUDGET_ANALYSER_DATABASE_PATH
     - BUDGET_ANALYSER_LOG_LEVEL
     """
@@ -156,6 +159,14 @@ def load_settings() -> Settings:
         )
     )
 
+    # Read cashflow mapping path from env.
+    cashflow_to_category_path = Path(
+        os.environ.get(
+            "BUDGET_ANALYSER_CASHFLOW_TO_CATEGORY_PATH",
+            str(pkg_root / "data" / "mappers" / "cashflow_to_category.json"),
+        )
+    )
+
     # Read database path from env.
     # Default: `src/budget_analyser/data/budget_analyser.db`.
     database_path = Path(
@@ -174,6 +185,7 @@ def load_settings() -> Settings:
         ini_config_path=ini_config_path,
         description_to_sub_category_path=description_to_sub_category_path,
         sub_category_to_category_path=sub_category_to_category_path,
+        cashflow_to_category_path=cashflow_to_category_path,
         database_path=database_path,
         log_level=log_level,
     )

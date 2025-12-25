@@ -1,0 +1,14 @@
+{
+  "Earnings": [
+    "Income",
+    "Unplanned_income"
+  ],
+  "Expenses": [
+    "Needs",
+    "Flexible",
+    "Luxuries",
+    "Remittance",
+    "Unplanned_Spending's",
+    "Refunded_money"
+  ]
+}

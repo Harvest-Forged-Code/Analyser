@@ -14,13 +14,29 @@ from budget_analyser.domain.errors import ValidationError
 from budget_analyser.domain.category_mappers import CategoryMappers
 
 
-def _map_by_keywords(content: str, keyword_map: Mapping[str, list[str]]) -> str:
-    """Return the mapped key if any keyword appears in the content."""
+def _map_by_keywords_substring(content: str, keyword_map: Mapping[str, list[str]]) -> str:
+    """Return the mapped key if any keyword appears as a substring in the content."""
     content_lower = content.lower()
     for mapped_value, keywords in keyword_map.items():
         for keyword in keywords:
-            if keyword.lower() in content_lower:
-                return mapped_value
+            try:
+                if str(keyword).lower() in content_lower:
+                    return mapped_value
+            except Exception:  # pylint: disable=broad-exception-caught
+                continue
+    return ""
+
+
+def _map_by_keywords_exact(content: str, keyword_map: Mapping[str, list[str]]) -> str:
+    """Return the mapped key if any keyword exactly matches the content (case-insensitive)."""
+    content_lower = content.lower()
+    for mapped_value, keywords in keyword_map.items():
+        for keyword in keywords:
+            try:
+                if content_lower == str(keyword).lower():
+                    return mapped_value
+            except Exception:  # pylint: disable=broad-exception-caught
+                continue
     return ""
 
 
@@ -40,13 +56,15 @@ class TransactionProcessor:  # pylint: disable=too-few-public-methods
             raise ValidationError("raw_transactions must contain 'amount' column")
 
         processed["sub_category"] = processed["description"].astype(str).map(
-            lambda description: _map_by_keywords(
+            lambda description: _map_by_keywords_substring(
                 description, self._mappers.description_to_sub_category
             )
         )
 
         processed["category"] = processed["sub_category"].astype(str).map(
-            lambda sub_cat: _map_by_keywords(sub_cat, self._mappers.sub_category_to_category)
+            lambda sub_cat: _map_by_keywords_exact(
+                sub_cat, self._mappers.sub_category_to_category
+            )
         )
 
         processed["c_or_d"] = processed["amount"].map(

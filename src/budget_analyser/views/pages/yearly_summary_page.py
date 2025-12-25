@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Tuple
+from typing import List
 
 from PySide6 import QtCore, QtWidgets
 
@@ -17,7 +17,6 @@ class YearlySummaryPage(QtWidgets.QWidget):
       - Two cards: Earnings (left) and Expenses (right)
         - Each card shows the yearly total and a tree widget:
           Category (top level) -> Sub-categories (children) with right-aligned amounts
-      - Monthly summary table (12 months: Month, Earnings, Expenses) with zeros for missing data
     """
 
     def __init__(self, reports: List[MonthlyReports], logger: logging.Logger):
@@ -110,23 +109,6 @@ class YearlySummaryPage(QtWidgets.QWidget):
         two_col.setStretch(1, 1)
         root.addLayout(two_col)
 
-        # Monthly summary table (12 months)
-        monthly_card = QtWidgets.QFrame()
-        monthly_card.setObjectName("card")
-        monthly_layout = QtWidgets.QVBoxLayout(monthly_card)
-        monthly_layout.setContentsMargins(14, 14, 14, 14)
-        monthly_layout.addWidget(QtWidgets.QLabel("Monthly Summary"))
-        self.month_table = QtWidgets.QTableWidget(12, 3)
-        self.month_table.setHorizontalHeaderLabels(["Month", "Earnings", "Expenses"])
-        self.month_table.verticalHeader().setVisible(False)
-        self.month_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.month_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.month_table.horizontalHeader().setStretchLastSection(True)
-        self.month_table.setAlternatingRowColors(True)
-        self.month_table.verticalHeader().setDefaultSectionSize(26)
-        monthly_layout.addWidget(self.month_table)
-        root.addWidget(monthly_card)
-
         # Populate years and wire signals
         years = self._controller.available_years()
         if years:
@@ -138,10 +120,6 @@ class YearlySummaryPage(QtWidgets.QWidget):
             self._refresh_year(years[-1])
         else:
             # No data message
-            self.earn_total.setText("$0.00")
-            self.exp_total.setText("$0.00")
-            self._populate_month_table([(m, 0.0, 0.0) for m in self._controller.month_names()])
-            # Ensure standard formatting for zero totals
             self.earn_total.setText("$0.00")
             self.exp_total.setText("$0.00")
             self._populate_category_trees([], [])
@@ -162,9 +140,6 @@ class YearlySummaryPage(QtWidgets.QWidget):
         # Fill category trees
         breakdown = self._controller.get_category_breakdown(year)
         self._populate_category_trees(breakdown.earnings, breakdown.expenses)
-
-        # Fill monthly table
-        self._populate_month_table(data.monthly_rows)  # list[Tuple[str, float, float]]
 
     # ------------------------ HELPERS ------------------------
     @staticmethod
@@ -197,18 +172,3 @@ class YearlySummaryPage(QtWidgets.QWidget):
 
         fill_tree(self.earn_tree, earn_nodes or [])
         fill_tree(self.exp_tree, exp_nodes or [])
-
-    def _populate_month_table(self, rows: List[Tuple[str, float, float]]):
-        self.month_table.setSortingEnabled(False)
-        self.month_table.clearContents()
-        self.month_table.setRowCount(12)
-        for r, (name, earn, exp) in enumerate(rows):
-            it0 = QtWidgets.QTableWidgetItem(name)
-            it1 = QtWidgets.QTableWidgetItem(self._fmt_currency(float(earn)))
-            it2 = QtWidgets.QTableWidgetItem(self._fmt_currency(float(exp)))
-            it1.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            it2.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            self.month_table.setItem(r, 0, it0)
-            self.month_table.setItem(r, 1, it1)
-            self.month_table.setItem(r, 2, it2)
-        self.month_table.resizeColumnsToContents()

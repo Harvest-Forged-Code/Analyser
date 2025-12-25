@@ -18,6 +18,8 @@ class MapperPage(QtWidgets.QWidget):
       - Save changes to JSON mappings
     """
 
+    refresh_requested = QtCore.Signal()
+
     def __init__(self, logger: logging.Logger, controller: MapperController):
         super().__init__()
         self._logger = logger
@@ -292,5 +294,6 @@ class MapperPage(QtWidgets.QWidget):
         try:
             self._controller.save()
             QtWidgets.QMessageBox.information(self, "Mapper", "Changes saved.")
+            self.refresh_requested.emit()
         except Exception as exc:  # pragma: no cover
             QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save: {exc}")

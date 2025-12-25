@@ -5,7 +5,6 @@ from typing import Dict, List, Tuple
 
 from budget_analyser.controller.controllers import MonthlyReports
 from .dtos import YearlyStats, YearlyCategoryBreakdown, CategoryNode
-from .utils import month_names as _month_names
 
 
 class YearlySummaryStatsController:
@@ -34,33 +33,27 @@ class YearlySummaryStatsController:
         self._year_cache[year] = stats
         return stats
 
-    @staticmethod
-    def month_names() -> List[str]:
-        return _month_names()
-
     # ---- Internal computations ----
     def _compute_year_data(self, year: int) -> YearlyStats:  # pylint: disable=too-many-locals
         # Filter reports for the year
         months = [mr for mr in self._reports if int(mr.month.year) == year]
 
-        # Monthly sums
-        earnings_by_month: Dict[int, float] = {i: 0.0 for i in range(1, 13)}
-        expenses_by_month: Dict[int, float] = {i: 0.0 for i in range(1, 13)}
+        total_earnings = 0.0
+        total_expenses = 0.0
 
         # Sub-category accumulators
         earn_subcats: Dict[str, float] = {}
         exp_subcats: Dict[str, float] = {}
 
         for mr in months:
-            month_index = int(mr.month.month)
 
             # Earnings totals (values are positive)
             e_sum = float(mr.earnings["amount"].sum()) if not mr.earnings.empty else 0.0
-            earnings_by_month[month_index] += e_sum
+            total_earnings += e_sum
 
             # Expenses totals (values are negative) -> store as positive for UI
             x_sum = float((-mr.expenses["amount"]).sum()) if not mr.expenses.empty else 0.0
-            expenses_by_month[month_index] += x_sum
+            total_expenses += x_sum
 
             # Sub-categories
             if "sub_category" in mr.earnings.columns and not mr.earnings.empty:
@@ -76,9 +69,6 @@ class YearlySummaryStatsController:
                     # Convert negative sums to positive values for display
                     exp_subcats[sub] = exp_subcats.get(sub, 0.0) + float(-val)
 
-        total_earnings = sum(earnings_by_month.values())
-        total_expenses = sum(expenses_by_month.values())
-
         # Sort sub-categories desc by amount
         earn_sub_list: List[Tuple[str, float]] = sorted(
             earn_subcats.items(), key=lambda x: x[1], reverse=True
@@ -87,19 +77,11 @@ class YearlySummaryStatsController:
             exp_subcats.items(), key=lambda x: x[1], reverse=True
         )
 
-        # Build monthly rows with month names
-        names = _month_names()
-        monthly_rows: List[Tuple[str, float, float]] = [
-            (names[i - 1], float(earnings_by_month[i]), float(expenses_by_month[i]))
-            for i in range(1, 13)
-        ]
-
         return YearlyStats(
             total_earnings=total_earnings,
             total_expenses=total_expenses,
             earn_subcats=earn_sub_list,
             exp_subcats=exp_sub_list,
-            monthly_rows=monthly_rows,
         )
 
     # ---- Category hierarchy API ----
