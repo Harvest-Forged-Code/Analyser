@@ -1,24 +1,21 @@
 {
   "Needs": [
     "Groceries",
-    "Rent",
+    "House-Rent",
     "Mortgage",
     "Utilities",
-    "Medical",
     "Gas",
-    "Maintenance",
     "Insurance",
-    "Grooming",
-    "Growth",
     "TAX_Payments"
   ],
   "Flexible": [
-    "OTP",
-    "Electronics",
     "Transportation",
-    "Subscriptions",
     "Cash_out",
-    "Farmers_Markets"
+    "Farmers_Markets",
+    "Grooming",
+    "Growth",
+    "Medical",
+    "Maintenance"
   ],
   "Luxuries": [
     "Travel",
@@ -30,7 +27,10 @@
     "Mistake",
     "Trips",
     "Donation",
-    "Rental_trip"
+    "Subscriptions",
+    "OTP",
+    "Electronics",
+    "Trip-Rental"
   ],
   "payments_made": [
     "payments_made"
@@ -45,10 +45,12 @@
     "Remittance"
   ],
   "Unplanned_income": [
-    "Others_income",
-    "Refunded_money"
+    "Others_income"
   ],
   "Unplanned_Spending's": [
     "Others_expenses"
+  ],
+  "Refunded_money": [
+    "Refunded_money"
   ]
 }

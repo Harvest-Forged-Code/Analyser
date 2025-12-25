@@ -2,6 +2,104 @@
 
 This file tracks notable project changes made during development and refactoring.
 
+## 2025-12-25
+
+### Cashflow Mapping
+- Added `cashflow_to_category.json` to centrally map earnings and expense categories for reporting.
+- Wired settings and JSON loaders to expose the new cashflow mapping path with environment overrides and startup diagnostics.
+- Updated `ReportService` to consume the cashflow mapping (including expense categories regardless of sign) and refreshed unit coverage for earnings/refund handling.
+
+### Cashflow Mapping UI & Navigation
+- Added an in-app Cashflow Mapping page with drag/drop lists to assign categories to Earnings or Expenses, plus quick move buttons, add-category controls, and save/reset actions backed by the JSON mapping store.
+- Introduced a cashflow mapping controller and store for editing the earnings/expenses grouping without touching files manually.
+- Wired the new page into the Data navigation group and menubar, and removed the redundant "MENU" label from the sidebar for a cleaner look.
+
+### Yearly Summary UI
+- Removed the monthly summary table from the Yearly Summary page and simplified the stats controller/DTOs accordingly, keeping only the yearly totals and category trees.
+
+### Earnings Page
+- Reworked Earnings page into a table view showing sub-categories with actuals, percent of total, expected amounts, differences, and diff percentages.
+- Added an expected-amounts dialog backed by earnings goals so users can set per-sub-category expectations (monthly or global) and see differences reflected immediately.
+
+### Budget Goals & Earnings Expectations
+- Centralized all expected amount management in the Budget Goals page with month-specific inputs for both expenses and earnings.
+- Added earnings expectations table/form and progress view alongside existing budget limits, with support for "ALL" defaults and month overrides.
+- Updated in-app summaries to use the selected month while respecting month-specific overrides for both earnings and expense budgets.
+
+### Budget Goals UI
+- Split the Budget Goals page into two tabs (Expenses and Earnings) with dedicated month selectors, tables/forms, and progress sections for each side.
+- Kept progress summaries and controls organized per tab to improve clarity between spending limits and expected income.
+
+### Mapping Save Refresh
+- Mapping pages (description mapper, cashflow mapper, sub-category mapper) now trigger an in-app report refresh after saving.
+- Dashboard shows a progress dialog while reloading mappings, regenerating reports, and updating all report-driven pages so changes take effect immediately.
+
+### Sub-category Mapping UI
+- Added an in-app Sub-category Mapping page to move sub-categories between categories, add new ones, and save changes to `sub_category_to_category.json`.
+- Introduced a dedicated controller for sub-category grouping built on the existing JSON mapping store.
+- Wired the new page into the Data navigation group and menubar alongside Mapper and Cashflow Mapping.
+
+## 2025-12-24
+
+### UI/UX Refresh
+- Introduced modernized light and dark palettes with consistent typography, rounded surfaces, and gradient backgrounds across the app.
+- Restyled the dashboard header with a version chip and refreshed branded sidebar navigation with wider, more legible buttons.
+- Polished the login experience with a branded badge, helper copy, and enlarged, theme-aware controls for a professional feel.
+
+### Navigation Reorganization
+- Grouped sidebar navigation into Reports, Goals, Automation, and Data clusters for faster scanning.
+- Moved Settings into the menubar alongside report/data shortcuts for quick page access without cluttering the sidebar.
+
+### Earnings & Expenses Categorization
+- Earnings now count only transactions categorized as `Income` or `Unplanned_income`, keeping other positive entries out of earnings totals.
+- Refunded money is treated as an expense reduction so refunds no longer inflate earnings and instead lower overall expenses.
+
+### High-Priority Financial Features Integration
+Completed integration of four major financial tracking features into the dashboard:
+
+#### Budget Goals & Tracking
+- Budget limits per category with monthly targets (e.g., Groceries: $500)
+- Progress bars showing spending vs budget: "Groceries: $350/$500 (70%)"
+- Color-coded status: Green (<80%), Yellow (80-100%), Red (>100%)
+- Alerts when approaching or exceeding budget limits
+- Full CRUD operations for budget goals
+
+#### Savings Rate Calculator
+- Savings Rate formula: (Earnings - Expenses) / Earnings × 100
+- Monthly and yearly savings rate display with color-coded indicators
+- Monthly breakdown table with earnings, expenses, savings, and rate
+- Emergency fund progress tracking (3-6 months of expenses target)
+- Financial health insights and savings tips
+
+#### Net Worth Tracking
+- Track bank accounts (checking, savings)
+- Track investment accounts
+- Track debts/liabilities (credit cards, loans)
+- Calculate and display net worth (Assets - Liabilities)
+- Quick balance update functionality
+
+#### Recurring Transaction Detection
+- Auto-detect recurring patterns from transaction history
+- Track subscriptions, rent, utilities with expected amounts
+- Support for weekly, monthly, quarterly, yearly frequencies
+- Anomaly alerts for unusual changes in recurring amounts
+- Predict next month's fixed expenses
+- Manual add and manage recurring transactions
+
+### Dashboard Navigation Updates
+- Added four new navigation items: Budget Goals, Savings, Net Worth, Recurring
+- Updated page indices and navigation structure
+- Integrated BudgetController for all new financial features
+- Created budget_goals.db for persistent storage of budget data
+
+### New Files
+- `src/budget_analyser/views/pages/recurring_page.py` - Recurring transactions UI (448 lines)
+
+### Modified Files
+- `src/budget_analyser/views/pages/__init__.py` - Export new pages
+- `src/budget_analyser/views/dashboard_window.py` - Integrate new pages and navigation
+- `src/budget_analyser/views/app_gui.py` - Create BudgetController and pass to dashboard
+
 ## 2025-12-21
 
 ### Tag-based versioning and automated releases

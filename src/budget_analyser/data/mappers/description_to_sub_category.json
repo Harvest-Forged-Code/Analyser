@@ -26,7 +26,7 @@
   "Remittance": [
     "RIAMONEYTRANSFER"
   ],
-  "Rent": [
+  "House-Rent": [
     "BPS*BILT REWARDS B1 NEW YORK NY",
     "BPS*BILT RENT NEW YORK NY",
     "RELIANT PARKING RELIANTPARKINCA",
@@ -217,7 +217,7 @@
     "MSPBNA           ACH TRNSFR                 PPD ID: 1391321258",
     "REMOTE ONLINE DEPOSIT #          1"
   ],
-  "Rental_trip": [
+  "Trip-Rental": [
     "SFO PARKING",
     "AIRBNB",
     "ALAMO RENT-A-CAR",

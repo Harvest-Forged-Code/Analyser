@@ -32,3 +32,56 @@ def test_report_service_normalizes_signs() -> None:
 
     # Ensure original df not mutated
     assert list(df["amount"]) == [100.0, -50.0, 200.0, -300.0]
+
+
+def test_report_service_limits_earnings_and_offsets_refunds() -> None:
+    rs = ReportService()
+    df = pd.DataFrame(
+        {
+            "transaction_date": pd.to_datetime([
+                "2025-02-01",
+                "2025-02-02",
+                "2025-02-03",
+                "2025-02-04",
+                "2025-02-05",
+                "2025-02-06",
+            ]),
+            "description": [
+                "Payroll",
+                "Transfer",
+                "Groceries",
+                "Refund",
+                "Gift",
+                "Payment Confirmation",
+            ],
+            "amount": [100.0, -50.0, -40.0, 30.0, 60.0, 25.0],
+            "from_account": ["acc"] * 6,
+            "category": [
+                "Income",
+                "Remittance",
+                "Groceries",
+                "Refunded_money",
+                "Unplanned_income",
+                "payment_confirmations",
+            ],
+            "sub_category": [
+                "salary",
+                "",
+                "Groceries",
+                "",
+                "Others_income",
+                "",
+            ],
+        }
+    )
+
+    earn = rs.earnings(statement=df)
+    exp = rs.expenses(statement=df)
+
+    # Only Income and Unplanned_income should be treated as earnings
+    assert set(earn["category"]) == {"Income", "Unplanned_income"}
+    assert list(earn["amount"]) == [100.0, 60.0]
+
+    # Expenses include negatives, mapped expense categories, and refund credits to offset totals
+    assert list(exp["amount"]) == [-50.0, -40.0, 30.0, -25.0]
+    assert (-exp["amount"]).sum() == 85.0

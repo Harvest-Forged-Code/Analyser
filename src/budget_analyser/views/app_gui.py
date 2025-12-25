@@ -28,7 +28,9 @@ from budget_analyser.infrastructure.column_mappings import IniColumnMappingProvi
 from budget_analyser.infrastructure.ini_config import IniAppConfig
 from budget_analyser.infrastructure.json_mappings import (
     JsonCategoryMappingProvider,
+    JsonCashflowMappingProvider,
     JsonCategoryMappingStore,
+    JsonCashflowMappingStore,
 )
 from budget_analyser.infrastructure.statement_repository import CsvStatementRepository
 from budget_analyser.infrastructure.database import (
@@ -42,7 +44,11 @@ from budget_analyser.views.dashboard_window import DashboardWindow
 from budget_analyser.views.login_window import LoginWindow
 from budget_analyser.views.styles import app_stylesheet, select_app_font
 from budget_analyser.controller import MapperController
+from budget_analyser.controller import CashflowMapperController
+from budget_analyser.controller import SubCategoryMapperController
 from budget_analyser.controller import UploadController
+from budget_analyser.controller.budget_controller import BudgetController
+from budget_analyser.infrastructure.budget_database import BudgetDatabase
 
 def _package_data_dir() -> Path:
     """Return the package data directory (src/budget_analyser/data)."""
@@ -96,11 +102,18 @@ def _build_controller(logger: logging.Logger) -> BackendController:
         sub_category_to_category_path=settings.sub_category_to_category_path,
         logger=logger,
     )
+    cashflow_mapping = JsonCashflowMappingProvider(
+        cashflow_to_category_path=settings.cashflow_to_category_path,
+        logger=logger,
+    )
+    report_service = ReportService(
+        cashflow_mapping=cashflow_mapping.cashflow_to_category(),
+    )
     return BackendController(
         statement_repository=statement_repo,
         column_mappings=column_mappings,
         category_mappings=category_mappings,
-        report_service=ReportService(),
+        report_service=report_service,
         logger=logger,
     )
 
@@ -122,11 +135,12 @@ def run_app() -> int:
     try:
         logger.info("Log file: %s", log_file)
         logger.info(
-            "Settings: statement_dir=%s | ini=%s | desc_map=%s | subcat_map=%s",
+            "Settings: statement_dir=%s | ini=%s | desc_map=%s | subcat_map=%s | cashflow_map=%s",
             settings.statement_dir,
             settings.ini_config_path,
             settings.description_to_sub_category_path,
             settings.sub_category_to_category_path,
+            settings.cashflow_to_category_path,
         )
         logger.info(
             "Platform: %s | Python: %s | CWD: %s",
@@ -174,6 +188,12 @@ def run_app() -> int:
 
     # Create database and ingestion service for processing uploaded CSVs
     transaction_db = TransactionDatabase(db_path=settings.database_path, logger=logger)
+
+    # Create budget database and controller for budget tracking features
+    budget_db_path = settings.database_path.parent / "budget_goals.db"
+    budget_db = BudgetDatabase(db_path=budget_db_path, logger=logger)
+    budget_controller = BudgetController(budget_db=budget_db, logger=logger)
+
     category_mapping_provider = JsonCategoryMappingProvider(
         description_to_sub_category_path=settings.description_to_sub_category_path,
         sub_category_to_category_path=settings.sub_category_to_category_path,
@@ -206,8 +226,28 @@ def run_app() -> int:
         )
         mapper_controller = MapperController(reports, logger, mapping_store)
 
+        sub_category_mapper_controller = SubCategoryMapperController(mapping_store, logger)
+
+        cashflow_store = JsonCashflowMappingStore(
+            cashflow_to_category_path=settings.cashflow_to_category_path,
+            logger=logger,
+        )
+        cashflow_mapper_controller = CashflowMapperController(cashflow_store, logger)
+
+        def _refresh_reports():
+            logger.info("Refreshing reports after mapping changes")
+            return controller.run()
+
         dash = DashboardWindow(
-            reports, logger, prefs, mapper_controller, upload_controller,
+            reports,
+            logger,
+            prefs,
+            mapper_controller,
+            sub_category_mapper_controller,
+            cashflow_mapper_controller,
+            upload_controller,
+            budget_controller,
+            refresh_reports_fn=_refresh_reports,
             csv_missing=csv_missing,
         )
 

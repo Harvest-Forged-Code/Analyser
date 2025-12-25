@@ -18,6 +18,8 @@ from .earnings_stats_controller import EarningsStatsController
 from .expenses_stats_controller import ExpensesStatsController
 from .payments_reconciliation_controller import PaymentsReconciliationController
 from .mapper_controller import MapperController
+from .cashflow_mapper_controller import CashflowMapperController
+from .sub_category_mapper_controller import SubCategoryMapperController
 from .upload_controller import UploadController
 
 __all__ = [
@@ -27,5 +29,7 @@ __all__ = [
     "ExpensesStatsController",
     "PaymentsReconciliationController",
     "MapperController",
+    "CashflowMapperController",
+    "SubCategoryMapperController",
     "UploadController",
 ]

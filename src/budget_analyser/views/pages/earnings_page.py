@@ -4,10 +4,11 @@ import logging
 from datetime import date
 from typing import List, Optional
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from budget_analyser.controller.controllers import MonthlyReports
 from budget_analyser.controller import EarningsStatsController
+from budget_analyser.controller.budget_controller import BudgetController
 
 import pandas as pd
 
@@ -19,24 +20,19 @@ VIEW_MODE_CUSTOM = "Custom Range"
 
 
 class EarningsPage(QtWidgets.QWidget):
-    """Earnings page with view mode selector (Monthly/Yearly/Custom Range),
-    tree (total -> sub-categories), and a transactions table bound to the current selection.
+    """Earnings page with table view (Monthly/Yearly/Custom) plus transactions table."""
 
-    UI-only: all data comes from EarningsStatsController.
-    """
-
-    ROLE_SUB_CATEGORY = QtCore.Qt.UserRole + 1
-    ROLE_MONTH = QtCore.Qt.UserRole + 2  # For yearly view month nodes
-
-    def __init__(self, reports: List[MonthlyReports], logger: logging.Logger):
+    def __init__(self, reports: List[MonthlyReports], logger: logging.Logger, budget_controller: BudgetController | None = None):
         super().__init__()
         self._reports = reports
         self._logger = logger
-        self._controller = EarningsStatsController(self._reports, self._logger)
+        self._budget_controller = budget_controller
+        self._controller = EarningsStatsController(self._reports, self._logger, budget_controller=self._budget_controller)
 
         self._current_period = None  # type: ignore[var-annotated]
         self._current_year: Optional[int] = None
         self._current_view_mode = VIEW_MODE_MONTHLY
+        self._current_sub_category: Optional[str] = None
         self._init_ui()
 
     # ---------------- UI ----------------
@@ -94,13 +90,46 @@ class EarningsPage(QtWidgets.QWidget):
 
         root.addLayout(header_row)
 
-        # Middle: Tree view (Total -> sub-categories)
-        self.tree = QtWidgets.QTreeWidget()
-        self.tree.setHeaderLabels(["Earnings", "Amount"])
-        self.tree.header().setStretchLastSection(False)
-        self.tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        self.tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
-        root.addWidget(self.tree)
+        # Middle: Summary table
+        summary_card = QtWidgets.QWidget()
+        summary_card.setObjectName("card")
+        summary_layout = QtWidgets.QVBoxLayout(summary_card)
+        summary_layout.setContentsMargins(12, 12, 12, 12)
+        summary_layout.setSpacing(8)
+
+        summary_header = QtWidgets.QHBoxLayout()
+        summary_title = QtWidgets.QLabel("Earnings Breakdown")
+        f = summary_title.font()
+        f.setBold(True)
+        summary_title.setFont(f)
+        summary_header.addWidget(summary_title)
+        summary_header.addStretch(1)
+        # Note: Expected amounts are now set in the Budget Goals page
+        summary_layout.addLayout(summary_header)
+
+        self.summary_table = QtWidgets.QTableWidget(0, 6)
+        self.summary_table.setHorizontalHeaderLabels([
+            "Sub-category",
+            "Actual",
+            "% Total",
+            "Expected",
+            "Diff",
+            "Diff %",
+        ])
+        self.summary_table.verticalHeader().setVisible(False)
+        self.summary_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.summary_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.summary_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.summary_table.horizontalHeader().setStretchLastSection(False)
+        self.summary_table.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        for col in range(1, 6):
+            self.summary_table.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
+        self.summary_table.setAlternatingRowColors(True)
+        self.summary_table.verticalHeader().setDefaultSectionSize(26)
+        self.summary_table.itemSelectionChanged.connect(self._on_summary_selection_changed)
+        summary_layout.addWidget(self.summary_table)
+
+        root.addWidget(summary_card)
 
         # Bottom: Transactions table
         self.table = QtWidgets.QTableWidget(0, 5)
@@ -125,12 +154,12 @@ class EarningsPage(QtWidgets.QWidget):
         self.month_combo.currentIndexChanged.connect(self._on_month_changed)
         self.year_combo.currentIndexChanged.connect(self._on_year_changed)
         self.apply_btn.clicked.connect(self._on_apply_custom_range)
-        self.tree.itemSelectionChanged.connect(self._on_tree_selection_changed)
 
         # Initial visibility and selection
         self._update_selector_visibility()
         if self.month_combo.count() > 0:
             self.month_combo.setCurrentIndex(self.month_combo.count() - 1)  # latest
+        self._rebuild_summary()
 
     # ------------- Population helpers -------------
     def _populate_months(self) -> None:
@@ -191,109 +220,84 @@ class EarningsPage(QtWidgets.QWidget):
         self.to_date.setVisible(is_custom)
         self.apply_btn.setVisible(is_custom)
 
-    def _rebuild_tree(self) -> None:
-        self.tree.clear()
+    def _rebuild_summary(self) -> None:
         mode = self._current_view_mode
+        rows = []
+        actual_total = 0.0
+        expected_total = 0.0
 
         if mode == VIEW_MODE_MONTHLY:
-            self._rebuild_tree_monthly()
+            if self._current_period is not None:
+                rows, actual_total, expected_total = self._controller.table_for_month(self._current_period)
         elif mode == VIEW_MODE_YEARLY:
-            self._rebuild_tree_yearly()
+            if self._current_year is not None:
+                rows, actual_total, expected_total = self._controller.table_for_year(self._current_year)
         elif mode == VIEW_MODE_CUSTOM:
-            self._rebuild_tree_custom()
+            start = self.from_date.date().toPython()
+            end = self.to_date.date().toPython()
+            rows, actual_total, expected_total = self._controller.table_for_range(start, end)
 
-    def _rebuild_tree_monthly(self) -> None:
-        """Build tree for monthly view: Earnings -> Sub-categories."""
-        if self._current_period is None:
-            return
-        total = self._controller.total_for_month(self._current_period)
-        root_item = QtWidgets.QTreeWidgetItem(["Earnings", self._fmt_currency(total)])
-        root_item.setData(0, self.ROLE_SUB_CATEGORY, None)
-        root_item.setData(0, self.ROLE_MONTH, None)
-        self._style_root_item(root_item)
+        self._populate_summary_table(rows, actual_total, expected_total)
+        self._select_default_row()
 
-        for sub, amt in self._controller.subcategory_totals(self._current_period):
-            child = QtWidgets.QTreeWidgetItem([sub or "(Uncategorized)", self._fmt_currency(amt)])
-            child.setData(0, self.ROLE_SUB_CATEGORY, sub)
-            child.setData(0, self.ROLE_MONTH, None)
-            child.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            root_item.addChild(child)
+    def _populate_summary_table(self, rows, actual_total: float, expected_total: float) -> None:
+        self.summary_table.setSortingEnabled(False)
+        self.summary_table.setRowCount(0)
+        self.summary_table.clearSelection()
 
-        root_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.tree.addTopLevelItem(root_item)
-        self.tree.expandItem(root_item)
-        self.tree.setCurrentItem(root_item)
+        def _add_row(values, bold: bool = False, color: Optional[QtGui.QColor] = None, raw_name: Optional[str] = None):
+            r = self.summary_table.rowCount()
+            self.summary_table.insertRow(r)
+            for c, text in enumerate(values):
+                item = QtWidgets.QTableWidgetItem(text)
+                if c == 0 and raw_name is not None:
+                    # Store raw sub-category name as item data for later retrieval
+                    item.setData(QtCore.Qt.UserRole, raw_name)
+                if c in (1, 2, 3, 4, 5):
+                    item.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                if bold:
+                    f = item.font()
+                    f.setBold(True)
+                    item.setFont(f)
+                if color is not None and c in (4, 5):
+                    item.setForeground(QtGui.QBrush(color))
+                self.summary_table.setItem(r, c, item)
+            return r
 
-    def _rebuild_tree_yearly(self) -> None:
-        """Build tree for yearly view: Year Total -> Month -> Sub-categories."""
-        if self._current_year is None:
-            return
-        year_total = self._controller.total_for_year(self._current_year)
-        root_item = QtWidgets.QTreeWidgetItem([f"Earnings {self._current_year}", self._fmt_currency(year_total)])
-        root_item.setData(0, self.ROLE_SUB_CATEGORY, None)
-        root_item.setData(0, self.ROLE_MONTH, None)
-        self._style_root_item(root_item)
+        # Data rows with radio indicator (○ = unselected)
+        for row in rows:
+            diff_color = QtGui.QColor("#16A34A") if row.diff >= 0 else QtGui.QColor("#DC2626")
+            raw_name = row.sub_category or "(Uncategorized)"
+            _add_row([
+                f"○ {raw_name}",
+                self._fmt_currency(row.actual),
+                self._fmt_percent(row.percent_of_total),
+                self._fmt_currency(row.expected),
+                self._fmt_currency(row.diff),
+                self._fmt_percent(row.diff_percent),
+            ], bold=False, color=diff_color, raw_name=raw_name)
 
-        # Add month nodes
-        for period, month_total, subcats in self._controller.year_breakdown(self._current_year):
-            month_label = self._controller.month_label(period)
-            month_item = QtWidgets.QTreeWidgetItem([month_label, self._fmt_currency(month_total)])
-            month_item.setData(0, self.ROLE_SUB_CATEGORY, None)
-            month_item.setData(0, self.ROLE_MONTH, period)
-            month_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            # Bold month items
-            font = month_item.font(0)
-            font.setBold(True)
-            month_item.setFont(0, font)
+        # Total row (no radio indicator)
+        total_diff = actual_total - expected_total
+        total_color = QtGui.QColor("#16A34A") if total_diff >= 0 else QtGui.QColor("#DC2626")
+        total_row = _add_row([
+            "TOTAL",
+            self._fmt_currency(actual_total),
+            self._fmt_percent(100.0 if rows else 0.0),
+            self._fmt_currency(expected_total),
+            self._fmt_currency(total_diff),
+            self._fmt_percent((total_diff / expected_total * 100) if expected_total > 0 else None),
+        ], bold=True, color=total_color, raw_name=None)
 
-            # Add sub-category children
-            for sub, amt in subcats:
-                child = QtWidgets.QTreeWidgetItem([sub or "(Uncategorized)", self._fmt_currency(amt)])
-                child.setData(0, self.ROLE_SUB_CATEGORY, sub)
-                child.setData(0, self.ROLE_MONTH, period)
-                child.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-                month_item.addChild(child)
-
-            root_item.addChild(month_item)
-
-        root_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.tree.addTopLevelItem(root_item)
-        self.tree.expandItem(root_item)
-        self.tree.setCurrentItem(root_item)
-
-    def _rebuild_tree_custom(self) -> None:
-        """Build tree for custom range view: Total -> Sub-categories."""
-        start = self.from_date.date().toPython()
-        end = self.to_date.date().toPython()
-        total = self._controller.total_for_range(start, end)
-        root_item = QtWidgets.QTreeWidgetItem(["Earnings", self._fmt_currency(total)])
-        root_item.setData(0, self.ROLE_SUB_CATEGORY, None)
-        root_item.setData(0, self.ROLE_MONTH, None)
-        self._style_root_item(root_item)
-
-        for sub, amt in self._controller.subcategory_totals_for_range(start, end):
-            child = QtWidgets.QTreeWidgetItem([sub or "(Uncategorized)", self._fmt_currency(amt)])
-            child.setData(0, self.ROLE_SUB_CATEGORY, sub)
-            child.setData(0, self.ROLE_MONTH, None)
-            child.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-            root_item.addChild(child)
-
-        root_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.tree.addTopLevelItem(root_item)
-        self.tree.expandItem(root_item)
-        self.tree.setCurrentItem(root_item)
-
-    def _style_root_item(self, item: QtWidgets.QTreeWidgetItem) -> None:
-        """Apply bold styling to root tree item."""
-        font = item.font(0)
-        font.setBold(True)
-        item.setFont(0, font)
-        item.setFont(1, font)
+        self.summary_table.setSortingEnabled(True)
+        self.summary_table.resizeColumnsToContents()
+        # Prevent selecting the total row by default
+        if total_row >= 0:
+            self.summary_table.setRowHidden(total_row, False)
 
     def _refresh_table(self) -> None:
         mode = self._current_view_mode
-        sub = self._current_sub_category()
-        month = self._current_month_from_tree()
+        sub = self._current_sub_category
 
         # Get transactions based on view mode
         if mode == VIEW_MODE_MONTHLY:
@@ -306,7 +310,7 @@ class EarningsPage(QtWidgets.QWidget):
                 self.table.setRowCount(0)
                 return
             df = self._controller.transactions_for_year(
-                self._current_year, month=month, sub_category=sub
+                self._current_year, month=None, sub_category=sub
             )
         elif mode == VIEW_MODE_CUSTOM:
             start = self.from_date.date().toPython()
@@ -366,16 +370,16 @@ class EarningsPage(QtWidgets.QWidget):
             if self._current_period is None and self.month_combo.count() > 0:
                 self.month_combo.setCurrentIndex(self.month_combo.count() - 1)
             else:
-                self._rebuild_tree()
+                self._rebuild_summary()
                 self._refresh_table()
         elif mode == VIEW_MODE_YEARLY:
             year_data = self.year_combo.currentData()
             if year_data is not None:
                 self._current_year = year_data
-            self._rebuild_tree()
+            self._rebuild_summary()
             self._refresh_table()
         elif mode == VIEW_MODE_CUSTOM:
-            self._rebuild_tree()
+            self._rebuild_summary()
             self._refresh_table()
 
     def _on_month_changed(self, index: int) -> None:
@@ -384,7 +388,7 @@ class EarningsPage(QtWidgets.QWidget):
         period = self.month_combo.currentData()
         self._current_period = period
         self._logger.info("EarningsPage: Month changed -> %s", period)
-        self._rebuild_tree()
+        self._rebuild_summary()
         self._refresh_table()
 
     def _on_year_changed(self, index: int) -> None:
@@ -393,7 +397,7 @@ class EarningsPage(QtWidgets.QWidget):
         year = self.year_combo.currentData()
         self._current_year = year
         self._logger.info("EarningsPage: Year changed -> %s", year)
-        self._rebuild_tree()
+        self._rebuild_summary()
         self._refresh_table()
 
     def _on_apply_custom_range(self) -> None:
@@ -402,31 +406,54 @@ class EarningsPage(QtWidgets.QWidget):
         start = self.from_date.date().toPython()
         end = self.to_date.date().toPython()
         self._logger.info("EarningsPage: Custom range applied -> %s to %s", start, end)
-        self._rebuild_tree()
+        self._rebuild_summary()
         self._refresh_table()
 
-    def _on_tree_selection_changed(self) -> None:
+    def _on_summary_selection_changed(self) -> None:
+        selected_row = self.summary_table.currentRow()
+        
+        # Update radio indicators for all rows
+        for row in range(self.summary_table.rowCount()):
+            name_item = self.summary_table.item(row, 0)
+            if name_item is None:
+                continue
+            raw_name = name_item.data(QtCore.Qt.UserRole)
+            if raw_name is None:
+                # This is the TOTAL row, skip it
+                continue
+            # Update indicator: ● for selected, ○ for others
+            indicator = "●" if row == selected_row else "○"
+            name_item.setText(f"{indicator} {raw_name}")
+        
+        # Set current sub-category from item data
+        if selected_row < 0:
+            self._current_sub_category = None
+        else:
+            name_item = self.summary_table.item(selected_row, 0)
+            if name_item:
+                raw_name = name_item.data(QtCore.Qt.UserRole)
+                # If raw_name is None, it's the TOTAL row
+                self._current_sub_category = raw_name
+            else:
+                self._current_sub_category = None
+        
         self._refresh_table()
 
     # ------------- Helpers -------------
-    def _current_sub_category(self) -> Optional[str]:
-        item = self.tree.currentItem()
-        if item is None:
-            return None
-        return item.data(0, self.ROLE_SUB_CATEGORY)
-
-    def _current_month_from_tree(self) -> Optional[pd.Period]:
-        """Get the month period from the currently selected tree item (for yearly view)."""
-        item = self.tree.currentItem()
-        if item is None:
-            return None
-        return item.data(0, self.ROLE_MONTH)
-
     @staticmethod
     def _fmt_currency(value: float) -> str:
         try:
             return f"${value:,.2f}"
         except Exception:  # pragma: no cover - defensive
+            return str(value)
+
+    @staticmethod
+    def _fmt_percent(value: Optional[float]) -> str:
+        if value is None:
+            return "—"
+        try:
+            return f"{value:.1f}%"
+        except Exception:
             return str(value)
 
     @staticmethod
@@ -436,3 +463,20 @@ class EarningsPage(QtWidgets.QWidget):
             return str(getattr(value, "date", lambda: value)()) if hasattr(value, "date") else str(value)[:10]
         except Exception:  # pragma: no cover
             return str(value)[:10]
+
+    def _select_default_row(self) -> None:
+        # Select first data row (if any) - use item data to identify non-TOTAL rows
+        if self.summary_table.rowCount() == 0:
+            self._current_sub_category = None
+            return
+        for row in range(self.summary_table.rowCount()):
+            name_item = self.summary_table.item(row, 0)
+            if name_item:
+                raw_name = name_item.data(QtCore.Qt.UserRole)
+                if raw_name is not None:
+                    # This is a data row (not TOTAL), select it
+                    self.summary_table.selectRow(row)
+                    # Selection change handler will update indicators and _current_sub_category
+                    return
+        self._current_sub_category = None
+

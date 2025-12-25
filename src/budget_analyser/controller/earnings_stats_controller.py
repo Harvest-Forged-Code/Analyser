@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
 from budget_analyser.controller.controllers import MonthlyReports
+from budget_analyser.controller.budget_controller import BudgetController
 from .utils import month_names as _month_names
 
 
@@ -21,6 +22,16 @@ class _MonthSummary:
 class _YearSummary:
     total: float
     months: List[Tuple[pd.Period, float, List[Tuple[str, float]]]]  # (period, total, subcats)
+
+
+@dataclass(frozen=True)
+class EarningsRow:
+    sub_category: str
+    actual: float
+    percent_of_total: float
+    expected: float
+    diff: float
+    diff_percent: Optional[float]
 
 
 class EarningsStatsController:
@@ -41,9 +52,10 @@ class EarningsStatsController:
       - transactions_for_range(start_date, end_date, sub_category=None)
     """
 
-    def __init__(self, reports: List[MonthlyReports], logger: logging.Logger):
+    def __init__(self, reports: List[MonthlyReports], logger: logging.Logger, budget_controller: BudgetController | None = None):
         self._reports = reports
         self._logger = logger
+        self._budget_controller = budget_controller
         # Map Period("YYYY-MM") -> MonthlyReports for fast lookup
         self._by_period: Dict[pd.Period, MonthlyReports] = {
             mr.month: mr for mr in self._reports
@@ -106,6 +118,33 @@ class EarningsStatsController:
     def total_for_year(self, year: int) -> float:
         """Return total earnings for the given year."""
         return self._get_year_summary(year).total
+
+    # ---- Aggregated table data ----
+    def table_for_month(self, period: pd.Period) -> Tuple[List[EarningsRow], float, float]:
+        summary = self._get_month_summary(period)
+        actual_map = {sub: amt for sub, amt in summary.subcats}
+        expected_map = self._expected_for_month(period)
+        rows, actual_total, expected_total = self._build_rows(actual_map, expected_map)
+        return rows, actual_total, expected_total
+
+    def table_for_year(self, year: int) -> Tuple[List[EarningsRow], float, float]:
+        year_summary = self._get_year_summary(year)
+        actual_map: Dict[str, float] = {}
+        for _, _, subcats in year_summary.months:
+            for sub, amt in subcats:
+                actual_map[sub] = actual_map.get(sub, 0.0) + float(amt)
+
+        periods = [period for period, _, _ in year_summary.months]
+        expected_map = self._expected_for_periods(periods)
+        rows, actual_total, expected_total = self._build_rows(actual_map, expected_map)
+        return rows, actual_total, expected_total
+
+    def table_for_range(self, start_date: date, end_date: date) -> Tuple[List[EarningsRow], float, float]:
+        actual_map = {sub: amt for sub, amt in self.subcategory_totals_for_range(start_date, end_date)}
+        periods = list(pd.period_range(start=start_date, end=end_date, freq="M"))
+        expected_map = self._expected_for_periods(periods)
+        rows, actual_total, expected_total = self._build_rows(actual_map, expected_map)
+        return rows, actual_total, expected_total
 
     def year_breakdown(
         self, year: int
@@ -219,6 +258,52 @@ class EarningsStatsController:
                 "from_account", "sub_category",
             ])
         return pd.concat(frames, ignore_index=True)
+
+    # ---- Expected helpers ----
+    def _expected_for_month(self, period: pd.Period) -> Dict[str, float]:
+        if self._budget_controller is None:
+            return {}
+        try:
+            return dict(self._budget_controller.get_earnings_goal_map(period.strftime("%Y-%m")))
+        except Exception:  # pylint: disable=broad-exception-caught
+            return {}
+
+    def _expected_for_periods(self, periods: Iterable[pd.Period]) -> Dict[str, float]:
+        if self._budget_controller is None:
+            return {}
+        expected: Dict[str, float] = {}
+        for period in periods:
+            monthly_expected = self._expected_for_month(period)
+            for sub, amt in monthly_expected.items():
+                expected[sub] = expected.get(sub, 0.0) + float(amt)
+        return expected
+
+    def _build_rows(
+        self,
+        actual_map: Dict[str, float],
+        expected_map: Dict[str, float],
+    ) -> Tuple[List[EarningsRow], float, float]:
+        actual_total = sum(actual_map.values())
+        expected_total = sum(expected_map.values()) if expected_map else 0.0
+
+        rows: List[EarningsRow] = []
+        for sub, actual in sorted(actual_map.items(), key=lambda kv: kv[1], reverse=True):
+            expected = float(expected_map.get(sub, 0.0))
+            diff = actual - expected
+            diff_pct = (diff / expected * 100) if expected > 0 else None
+            pct_total = (actual / actual_total * 100) if actual_total > 0 else 0.0
+            rows.append(
+                EarningsRow(
+                    sub_category=sub,
+                    actual=float(actual),
+                    percent_of_total=float(pct_total),
+                    expected=expected,
+                    diff=float(diff),
+                    diff_percent=float(diff_pct) if diff_pct is not None else None,
+                )
+            )
+
+        return rows, float(actual_total), float(expected_total)
 
     # ---- Internals ----
     def _get_month_summary(self, period: pd.Period) -> _MonthSummary:

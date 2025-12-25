@@ -45,7 +45,8 @@ class LoginWindow(QtWidgets.QWidget):
 
         # Root layout with vertical centering
         root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(32, 32, 32, 32)
+        root.setContentsMargins(48, 40, 48, 40)
+        root.setSpacing(0)
         root.addStretch(2)
 
         # Center row to horizontally center the card
@@ -57,8 +58,8 @@ class LoginWindow(QtWidgets.QWidget):
         card.setObjectName("card")
         card.setMinimumWidth(420)
         card_layout = QtWidgets.QVBoxLayout(card)
-        card_layout.setContentsMargins(28, 28, 28, 28)
-        card_layout.setSpacing(14)
+        card_layout.setContentsMargins(30, 30, 30, 30)
+        card_layout.setSpacing(16)
 
         # Top controls row (theme toggle on the right)
         top_controls = QtWidgets.QHBoxLayout()
@@ -67,8 +68,14 @@ class LoginWindow(QtWidgets.QWidget):
         self.theme_btn.setObjectName("themeToggle")
         self.set_theme_indicator(self._current_theme)
         self.theme_btn.clicked.connect(self.theme_toggle_requested.emit)
+        self.theme_btn.setCursor(QtCore.Qt.PointingHandCursor)
         top_controls.addWidget(self.theme_btn, alignment=QtCore.Qt.AlignRight)
         card_layout.addLayout(top_controls)
+
+        badge = QtWidgets.QLabel("Budget Analyser")
+        badge.setObjectName("badge")
+        badge.setAlignment(QtCore.Qt.AlignCenter)
+        card_layout.addWidget(badge)
 
         title = QtWidgets.QLabel(f"{APP_NAME} v{get_version()}")
         title.setObjectName("title")
@@ -80,18 +87,30 @@ class LoginWindow(QtWidgets.QWidget):
         subtitle.setAlignment(QtCore.Qt.AlignCenter)
         card_layout.addWidget(subtitle)
 
+        helper = QtWidgets.QLabel(
+            "Enter your workspace passcode to access your financial insights."
+        )
+        helper.setObjectName("helperText")
+        helper.setAlignment(QtCore.Qt.AlignCenter)
+        helper.setWordWrap(True)
+        card_layout.addWidget(helper)
+
         # Spacer between heading and input
-        card_layout.addSpacing(8)
+        card_layout.addSpacing(10)
 
         self.password_edit = QtWidgets.QLineEdit()
         self.password_edit.setEchoMode(QtWidgets.QLineEdit.Password)
         self.password_edit.setPlaceholderText("Enter your password")
+        self.password_edit.setClearButtonEnabled(True)
+        self.password_edit.setMinimumHeight(44)
         self.password_edit.returnPressed.connect(self._on_login_clicked)
         card_layout.addWidget(self.password_edit)
 
         self.login_button = QtWidgets.QPushButton("Login")
         self.login_button.clicked.connect(self._on_login_clicked)
         self.login_button.setDefault(True)
+        self.login_button.setMinimumHeight(44)
+        self.login_button.setCursor(QtCore.Qt.PointingHandCursor)
 
         # Button row centered
         btn_row = QtWidgets.QHBoxLayout()
@@ -124,57 +143,95 @@ class LoginWindow(QtWidgets.QWidget):
             - Scoped with QWidget#loginWindow to avoid affecting other windows.
         """
         t = (theme or self._current_theme or "dark").lower()
+        accent = "#6366F1"
         if t == "light":
-            title_color = "#1F2328"
-            subtitle_color = "#57606A"
+            title_color = "#111827"
+            subtitle_color = "#475569"
+            helper_color = "#475569"
             line_bg = "#FFFFFF"
-            line_border = "#D0D7DE"
-            line_text = "#1F2328"
+            line_border = "#E2E8F0"
+            line_text = "#0F172A"
+            background = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #F8FAFC, stop:1 #E2E8F0)"
+            card_bg = "#FFFFFF"
+            card_border = "#E2E8F0"
+            badge_bg = "#EEF2FF"
+            badge_text = "#4338CA"
         else:
-            title_color = "#F0F6FC"
-            subtitle_color = "#9DA7B1"
-            line_bg = "rgba(255, 255, 255, 0.06)"
-            line_border = "rgba(240, 246, 252, 0.12)"
-            line_text = "#E6EDF3"
+            title_color = "#F8FAFC"
+            subtitle_color = "#A5B4C3"
+            helper_color = "#A5B4C3"
+            line_bg = "rgba(255, 255, 255, 0.07)"
+            line_border = "rgba(255, 255, 255, 0.16)"
+            line_text = "#E5E7EB"
+            background = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0B1220, stop:1 #0F172A)"
+            card_bg = "rgba(16, 24, 40, 0.96)"
+            card_border = "rgba(255, 255, 255, 0.08)"
+            badge_bg = "rgba(99, 102, 241, 0.18)"
+            badge_text = "#E5E7EB"
 
         return f"""
+            QWidget#loginWindow {{
+                background: {background};
+                color: {line_text};
+            }}
+
+            QWidget#loginWindow QWidget#card {{
+                background: {card_bg};
+                border: 1px solid {card_border};
+                border-radius: 18px;
+            }}
+
+            QWidget#loginWindow QLabel#badge {{
+                color: {badge_text};
+                background: {badge_bg};
+                padding: 6px 12px;
+                border-radius: 12px;
+                font-weight: 700;
+                letter-spacing: 0.6px;
+            }}
+
             /* Typography */
             QWidget#loginWindow QLabel#title {{
-                font-size: 36px;               /* enlarged from 28px */
-                font-weight: 600;
-                letter-spacing: 0.3px;
+                font-size: 34px;
+                font-weight: 700;
+                letter-spacing: 0.4px;
                 color: {title_color};
             }}
             QWidget#loginWindow QLabel#subtitle {{
                 color: {subtitle_color};
                 font-size: 13px;
+                font-weight: 600;
+            }}
+            QWidget#loginWindow QLabel#helperText {{
+                color: {helper_color};
+                font-size: 12px;
             }}
 
             /* Inputs */
             QWidget#loginWindow QLineEdit {{
                 background-color: {line_bg};
                 border: 1px solid {line_border};
-                border-radius: 10px;
-                padding: 10px 12px;
+                border-radius: 12px;
+                padding: 12px 14px;
                 color: {line_text};
-                selection-background-color: #2D81FF;
+                selection-background-color: {accent};
             }}
             QWidget#loginWindow QLineEdit:focus {{
-                border: 1px solid #2D81FF;
+                border: 1px solid {accent};
             }}
 
             /* Buttons */
             QWidget#loginWindow QPushButton {{
-                background-color: #2D81FF;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #6366F1, stop:1 #4F46E5);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 10px;
-                padding: 10px 16px;
-                font-weight: 600;
+                border-radius: 12px;
+                padding: 12px 16px;
+                font-weight: 700;
                 min-width: 120px;
             }}
-            QWidget#loginWindow QPushButton:hover {{ background-color: #3B8BFF; }}
-            QWidget#loginWindow QPushButton:pressed {{ background-color: #1F66E5; }}
+            QWidget#loginWindow QPushButton:hover {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #6D6FF3, stop:1 #4B44E0); }}
+            QWidget#loginWindow QPushButton:pressed {{ background-color: #4338CA; }}
             QWidget#loginWindow QPushButton:disabled {{
                 background-color: #2f3545;
                 color: #98A1B2;
@@ -183,16 +240,16 @@ class LoginWindow(QtWidgets.QWidget):
             /* Make the theme toggle button transparent (override generic QPushButton rule) */
             QWidget#loginWindow QPushButton#themeToggle {{
                 background: transparent;
-                color: inherit;
+                color: {line_text};
                 border: none;
                 padding: 6px; /* compact */
                 min-width: 0px;
             }}
             QWidget#loginWindow QPushButton#themeToggle:hover {{
-                background: rgba(0,0,0,0.06);
+                background: rgba(99, 102, 241, 0.10);
             }}
             QWidget#loginWindow QPushButton#themeToggle:pressed {{
-                background: rgba(0,0,0,0.12);
+                background: rgba(99, 102, 241, 0.16);
             }}
         """
 
