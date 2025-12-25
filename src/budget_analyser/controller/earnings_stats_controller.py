@@ -52,7 +52,12 @@ class EarningsStatsController:
       - transactions_for_range(start_date, end_date, sub_category=None)
     """
 
-    def __init__(self, reports: List[MonthlyReports], logger: logging.Logger, budget_controller: BudgetController | None = None):
+    def __init__(
+        self,
+        reports: List[MonthlyReports],
+        logger: logging.Logger,
+        budget_controller: BudgetController | None = None,
+    ):
         self._reports = reports
         self._logger = logger
         self._budget_controller = budget_controller
@@ -122,7 +127,7 @@ class EarningsStatsController:
     # ---- Aggregated table data ----
     def table_for_month(self, period: pd.Period) -> Tuple[List[EarningsRow], float, float]:
         summary = self._get_month_summary(period)
-        actual_map = {sub: amt for sub, amt in summary.subcats}
+        actual_map = dict(summary.subcats)
         expected_map = self._expected_for_month(period)
         rows, actual_total, expected_total = self._build_rows(actual_map, expected_map)
         return rows, actual_total, expected_total
@@ -139,8 +144,10 @@ class EarningsStatsController:
         rows, actual_total, expected_total = self._build_rows(actual_map, expected_map)
         return rows, actual_total, expected_total
 
-    def table_for_range(self, start_date: date, end_date: date) -> Tuple[List[EarningsRow], float, float]:
-        actual_map = {sub: amt for sub, amt in self.subcategory_totals_for_range(start_date, end_date)}
+    def table_for_range(
+        self, start_date: date, end_date: date
+    ) -> Tuple[List[EarningsRow], float, float]:
+        actual_map = dict(self.subcategory_totals_for_range(start_date, end_date))
         periods = list(pd.period_range(start=start_date, end=end_date, freq="M"))
         expected_map = self._expected_for_periods(periods)
         rows, actual_total, expected_total = self._build_rows(actual_map, expected_map)

@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Dict, Iterable, List
 
+from budget_analyser.domain.errors import DataSourceError
+
 from budget_analyser.infrastructure.json_mappings import JsonCategoryMappingStore
 
 
@@ -96,18 +98,15 @@ class SubCategoryMapperController:
     # ---- Persistence ----
     def save(self) -> None:
         self._store.save_sub_to_cat(self._mapping)
-        try:
-            self._logger.info(
-                "Sub-category mapping saved: categories=%d",
-                len(self._mapping),
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
+        self._logger.info(
+            "Sub-category mapping saved: categories=%d",
+            len(self._mapping),
+        )
 
     def reload(self) -> None:
         try:
             mapping = self._store.load_sub_to_cat()
-        except Exception:
+        except DataSourceError:
             mapping = {}
         self.set_mapping(mapping)
         # Ensure empty dict instead of None

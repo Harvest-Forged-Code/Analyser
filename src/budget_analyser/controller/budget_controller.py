@@ -24,7 +24,7 @@ from budget_analyser.infrastructure.budget_database import (
 @dataclass
 class BudgetProgress:
     """Progress tracking for a budget category."""
-    
+
     category: str
     budget_limit: float
     spent: float
@@ -36,7 +36,7 @@ class BudgetProgress:
 @dataclass
 class SavingsMetrics:
     """Savings rate and related metrics."""
-    
+
     total_earnings: float
     total_expenses: float
     net_savings: float
@@ -48,7 +48,7 @@ class SavingsMetrics:
 @dataclass
 class NetWorthSummary:
     """Net worth summary with breakdown."""
-    
+
     total_assets: float
     total_liabilities: float
     net_worth: float
@@ -57,7 +57,7 @@ class NetWorthSummary:
     accounts: List[Account]
 
 
-class BudgetController:
+class BudgetController:  # pylint: disable=too-many-public-methods
     """Controller for budget management and financial metrics."""
 
     def __init__(
@@ -95,12 +95,18 @@ class BudgetController:
 
     # ==================== Earnings Goals ====================
 
-    def set_earnings_goal(self, sub_category: str, expected_amount: float,
-                          year_month: str = "ALL") -> EarningsGoal:
+    def set_earnings_goal(
+        self,
+        sub_category: str,
+        expected_amount: float,
+        year_month: str = "ALL",
+    ) -> EarningsGoal:
         """Set an expected earnings amount for a sub-category."""
         return self._budget_db.set_earnings_goal(sub_category, expected_amount, year_month)
 
-    def get_earnings_goal(self, sub_category: str, year_month: str = "ALL") -> Optional[EarningsGoal]:
+    def get_earnings_goal(
+        self, sub_category: str, year_month: str = "ALL"
+    ) -> Optional[EarningsGoal]:
         """Get earnings goal for a sub-category."""
         return self._budget_db.get_earnings_goal(sub_category, year_month)
 
@@ -114,29 +120,30 @@ class BudgetController:
 
     def get_earnings_goal_map(self, year_month: str = "ALL") -> Dict[str, float]:
         """Get a mapping of sub-category to expected amount for easy lookup.
-        
+
         Args:
             year_month: Specific month "YYYY-MM" or "ALL" for defaults.
-            
+
         Returns:
             Dict mapping sub_category name to expected_amount.
         """
         goals = self._budget_db.get_all_earnings_goals()
         result: Dict[str, float] = {}
-        
+
         # First, add all "ALL" goals
         for goal in goals:
             if goal.year_month == "ALL":
                 result[goal.sub_category] = goal.expected_amount
-        
+
         # Then override with month-specific goals if year_month is specified
         if year_month != "ALL":
             for goal in goals:
                 if goal.year_month == year_month:
                     result[goal.sub_category] = goal.expected_amount
-        
+
         return result
 
+    # pylint: disable=too-many-locals
     def calculate_budget_progress(
         self,
         expenses_df: pd.DataFrame,
@@ -180,12 +187,14 @@ class BudgetController:
         progress_list: List[BudgetProgress] = []
         for budget in budgets:
             # Skip month-specific budgets that don't match
-            if budget.year_month != "ALL" and budget.year_month != year_month:
+            if budget.year_month not in {"ALL", year_month}:
                 continue
 
             spent = spending_by_category.get(budget.category, 0.0)
             remaining = budget.monthly_limit - spent
-            percentage = (spent / budget.monthly_limit * 100) if budget.monthly_limit > 0 else 0
+            percentage = (
+                spent / budget.monthly_limit * 100
+            ) if budget.monthly_limit > 0 else 0
 
             if percentage >= 100:
                 status = "over"
@@ -308,7 +317,10 @@ class BudgetController:
             month_earnings = 0.0
             if not earnings_df.empty and "transaction_date" in earnings_df.columns:
                 df = earnings_df.copy()
-                df["ym"] = pd.to_datetime(df["transaction_date"], errors="coerce").dt.strftime("%Y-%m")
+                df["ym"] = (
+                    pd.to_datetime(df["transaction_date"], errors="coerce")
+                    .dt.strftime("%Y-%m")
+                )
                 month_data = df[df["ym"] == year_month]
                 month_earnings = float(month_data["amount"].sum()) if not month_data.empty else 0.0
 
@@ -316,9 +328,14 @@ class BudgetController:
             month_expenses = 0.0
             if not expenses_df.empty and "transaction_date" in expenses_df.columns:
                 df = expenses_df.copy()
-                df["ym"] = pd.to_datetime(df["transaction_date"], errors="coerce").dt.strftime("%Y-%m")
+                df["ym"] = (
+                    pd.to_datetime(df["transaction_date"], errors="coerce")
+                    .dt.strftime("%Y-%m")
+                )
                 month_data = df[df["ym"] == year_month]
-                month_expenses = abs(float(month_data["amount"].sum())) if not month_data.empty else 0.0
+                month_expenses = (
+                    abs(float(month_data["amount"].sum())) if not month_data.empty else 0.0
+                )
 
             savings = month_earnings - month_expenses
             savings_rate = (savings / month_earnings * 100) if month_earnings > 0 else 0.0
@@ -386,20 +403,22 @@ class BudgetController:
 
     # ==================== Recurring Transactions ====================
 
-    def add_recurring_transaction(
+    def add_recurring_transaction(  # pylint: disable=too-many-positional-arguments
         self,
         description: str,
         expected_amount: float,
         frequency: str = "monthly",
         category: str = "",
-        sub_category: str = ""
+        sub_category: str = "",
     ) -> RecurringTransaction:
         """Add a recurring transaction."""
         return self._budget_db.add_recurring_transaction(
             description, expected_amount, frequency, category, sub_category
         )
 
-    def get_all_recurring_transactions(self, active_only: bool = True) -> List[RecurringTransaction]:
+    def get_all_recurring_transactions(
+        self, active_only: bool = True
+    ) -> List[RecurringTransaction]:
         """Get all recurring transactions."""
         return self._budget_db.get_all_recurring_transactions(active_only)
 
@@ -422,12 +441,13 @@ class BudgetController:
     def get_recurring_summary(
         self,
         transactions_df: pd.DataFrame
-    ) -> Dict[str, float]:
+    ) -> Dict[str, float]:  # pylint: disable=unused-argument
         """Get summary of recurring expenses.
 
         Returns:
             Dictionary with monthly_total, yearly_projection, and count.
         """
+        _ = transactions_df
         recurring = self._budget_db.get_all_recurring_transactions(active_only=True)
 
         monthly_total = 0.0

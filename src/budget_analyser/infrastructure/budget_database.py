@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import List, Optional
 
@@ -18,7 +19,7 @@ import pandas as pd
 @dataclass
 class BudgetGoal:
     """A budget goal for a specific expense category."""
-    
+
     id: Optional[int]
     category: str
     monthly_limit: float
@@ -28,17 +29,17 @@ class BudgetGoal:
 @dataclass
 class EarningsGoal:
     """An expected earnings goal for a specific sub-category."""
-    
+
     id: Optional[int]
     sub_category: str
     expected_amount: float
     year_month: str  # Format: "YYYY-MM" or "ALL" for all months
-    
-    
+
+
 @dataclass
 class Account:
     """A financial account for net worth tracking."""
-    
+
     id: Optional[int]
     name: str
     account_type: str  # "checking", "savings", "credit_card", "investment", "loan", "other"
@@ -48,9 +49,9 @@ class Account:
 
 
 @dataclass
-class RecurringTransaction:
+class RecurringTransaction:  # pylint: disable=too-many-instance-attributes
     """A detected or user-defined recurring transaction."""
-    
+
     id: Optional[int]
     description: str
     expected_amount: float
@@ -61,8 +62,10 @@ class RecurringTransaction:
     is_active: bool = True
 
 
-class BudgetDatabase:
-    """SQLite-backed storage for budget goals, earnings goals, accounts, and recurring transactions."""
+class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
+    """SQLite-backed storage for budget goals, earnings goals, accounts,
+    and recurring transactions.
+    """
 
     BUDGETS_TABLE = "budget_goals"
     EARNINGS_GOALS_TABLE = "earnings_goals"
@@ -102,7 +105,7 @@ class BudgetDatabase:
                     UNIQUE(category, year_month)
                 )
             """)
-            
+
             # Earnings goals table (for expected income)
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {self.EARNINGS_GOALS_TABLE} (
@@ -115,7 +118,7 @@ class BudgetDatabase:
                     UNIQUE(sub_category, year_month)
                 )
             """)
-            
+
             # Accounts table for net worth tracking
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {self.ACCOUNTS_TABLE} (
@@ -128,7 +131,7 @@ class BudgetDatabase:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
             # Recurring transactions table
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {self.RECURRING_TABLE} (
@@ -144,21 +147,21 @@ class BudgetDatabase:
                     UNIQUE(description, expected_amount)
                 )
             """)
-            
+
             conn.commit()
         self._logger.info("Budget tables initialized at %s", self._db_path)
 
     # ==================== Budget Goals Methods ====================
-    
-    def set_budget_goal(self, category: str, monthly_limit: float, 
+
+    def set_budget_goal(self, category: str, monthly_limit: float,
                         year_month: str = "ALL") -> BudgetGoal:
         """Set or update a budget goal for a category.
-        
+
         Args:
             category: The expense category name.
             monthly_limit: The monthly spending limit.
             year_month: Specific month "YYYY-MM" or "ALL" for default.
-            
+
         Returns:
             The created or updated BudgetGoal.
         """
@@ -173,8 +176,8 @@ class BudgetDatabase:
             """, (category, monthly_limit, year_month))
             row = cursor.fetchone()
             conn.commit()
-            
-        self._logger.info("Set budget goal: %s = $%.2f (%s)", 
+
+        self._logger.info("Set budget goal: %s = $%.2f (%s)",
                          category, monthly_limit, year_month)
         return BudgetGoal(
             id=row["id"],
@@ -185,7 +188,7 @@ class BudgetDatabase:
 
     def get_budget_goal(self, category: str, year_month: str = "ALL") -> Optional[BudgetGoal]:
         """Get budget goal for a category.
-        
+
         First checks for month-specific goal, then falls back to "ALL".
         """
         with self._get_connection() as conn:
@@ -196,7 +199,7 @@ class BudgetDatabase:
                 WHERE category = ? AND year_month = ?
             """, (category, year_month))
             row = cursor.fetchone()
-            
+
             # Fall back to ALL if no specific month
             if row is None and year_month != "ALL":
                 cursor = conn.execute(f"""
@@ -205,10 +208,10 @@ class BudgetDatabase:
                     WHERE category = ? AND year_month = 'ALL'
                 """, (category,))
                 row = cursor.fetchone()
-                
+
         if row is None:
             return None
-            
+
         return BudgetGoal(
             id=row["id"],
             category=row["category"],
@@ -225,7 +228,7 @@ class BudgetDatabase:
                 ORDER BY category, year_month
             """)
             rows = cursor.fetchall()
-            
+
         return [
             BudgetGoal(
                 id=row["id"],
@@ -245,49 +248,64 @@ class BudgetDatabase:
             """, (category, year_month))
             conn.commit()
             deleted = cursor.rowcount > 0
-            
+
         if deleted:
             self._logger.info("Deleted budget goal: %s (%s)", category, year_month)
         return deleted
 
     # ==================== Earnings Goals Methods ====================
-    
-    def set_earnings_goal(self, sub_category: str, expected_amount: float,
-                          year_month: str = "ALL") -> EarningsGoal:
+
+    def set_earnings_goal(
+        self,
+        sub_category: str,
+        expected_amount: float,
+        year_month: str = "ALL",
+    ) -> EarningsGoal:
         """Set or update an earnings goal for a sub-category.
-        
+
         Args:
             sub_category: The earnings sub-category name (e.g., "salary").
             expected_amount: The expected monthly earnings amount.
             year_month: Specific month "YYYY-MM" or "ALL" for default.
-            
+
         Returns:
             The created or updated EarningsGoal.
         """
         with self._get_connection() as conn:
-            cursor = conn.execute(f"""
-                INSERT INTO {self.EARNINGS_GOALS_TABLE} (sub_category, expected_amount, year_month, updated_at)
+            cursor = conn.execute(
+                f"""
+                INSERT INTO {self.EARNINGS_GOALS_TABLE} (
+                    sub_category, expected_amount, year_month, updated_at
+                )
                 VALUES (?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(sub_category, year_month) DO UPDATE SET
                     expected_amount = excluded.expected_amount,
                     updated_at = CURRENT_TIMESTAMP
                 RETURNING id
-            """, (sub_category, expected_amount, year_month))
+                """,
+                (sub_category, expected_amount, year_month),
+            )
             row = cursor.fetchone()
             conn.commit()
-            
-        self._logger.info("Set earnings goal: %s = $%.2f (%s)", 
-                         sub_category, expected_amount, year_month)
+
+        self._logger.info(
+            "Set earnings goal: %s = $%.2f (%s)",
+            sub_category,
+            expected_amount,
+            year_month,
+        )
         return EarningsGoal(
             id=row["id"],
             sub_category=sub_category,
             expected_amount=expected_amount,
-            year_month=year_month
+            year_month=year_month,
         )
 
-    def get_earnings_goal(self, sub_category: str, year_month: str = "ALL") -> Optional[EarningsGoal]:
+    def get_earnings_goal(
+        self, sub_category: str, year_month: str = "ALL"
+    ) -> Optional[EarningsGoal]:
         """Get earnings goal for a sub-category.
-        
+
         First checks for month-specific goal, then falls back to "ALL".
         """
         with self._get_connection() as conn:
@@ -298,7 +316,7 @@ class BudgetDatabase:
                 WHERE sub_category = ? AND year_month = ?
             """, (sub_category, year_month))
             row = cursor.fetchone()
-            
+
             # Fall back to ALL if no specific month
             if row is None and year_month != "ALL":
                 cursor = conn.execute(f"""
@@ -307,10 +325,10 @@ class BudgetDatabase:
                     WHERE sub_category = ? AND year_month = 'ALL'
                 """, (sub_category,))
                 row = cursor.fetchone()
-                
+
         if row is None:
             return None
-            
+
         return EarningsGoal(
             id=row["id"],
             sub_category=row["sub_category"],
@@ -327,7 +345,7 @@ class BudgetDatabase:
                 ORDER BY sub_category, year_month
             """)
             rows = cursor.fetchall()
-            
+
         return [
             EarningsGoal(
                 id=row["id"],
@@ -347,19 +365,23 @@ class BudgetDatabase:
             """, (sub_category, year_month))
             conn.commit()
             deleted = cursor.rowcount > 0
-            
+
         if deleted:
             self._logger.info("Deleted earnings goal: %s (%s)", sub_category, year_month)
         return deleted
 
     # ==================== Accounts Methods ====================
-    
-    def add_account(self, name: str, account_type: str, balance: float = 0,
-                    notes: str = "") -> Account:
+
+    def add_account(
+        self,
+        name: str,
+        account_type: str,
+        balance: float = 0,
+        notes: str = "",
+    ) -> Account:
         """Add a new financial account."""
-        from datetime import date
         today = date.today().isoformat()
-        
+
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 INSERT INTO {self.ACCOUNTS_TABLE} (name, account_type, balance, last_updated, notes)
@@ -368,7 +390,7 @@ class BudgetDatabase:
             """, (name, account_type, balance, today, notes))
             row = cursor.fetchone()
             conn.commit()
-            
+
         self._logger.info("Added account: %s (%s) = $%.2f", name, account_type, balance)
         return Account(
             id=row["id"],
@@ -381,9 +403,8 @@ class BudgetDatabase:
 
     def update_account_balance(self, account_id: int, balance: float) -> bool:
         """Update an account's balance."""
-        from datetime import date
         today = date.today().isoformat()
-        
+
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 UPDATE {self.ACCOUNTS_TABLE}
@@ -392,7 +413,7 @@ class BudgetDatabase:
             """, (balance, today, account_id))
             conn.commit()
             updated = cursor.rowcount > 0
-            
+
         if updated:
             self._logger.info("Updated account %d balance to $%.2f", account_id, balance)
         return updated
@@ -406,7 +427,7 @@ class BudgetDatabase:
                 ORDER BY account_type, name
             """)
             rows = cursor.fetchall()
-            
+
         return [
             Account(
                 id=row["id"],
@@ -428,47 +449,52 @@ class BudgetDatabase:
             """, (account_id,))
             conn.commit()
             deleted = cursor.rowcount > 0
-            
+
         if deleted:
             self._logger.info("Deleted account %d", account_id)
         return deleted
 
     def get_net_worth(self) -> dict:
         """Calculate net worth from all accounts.
-        
+
         Returns:
             Dictionary with assets, liabilities, and net_worth.
         """
         accounts = self.get_all_accounts()
-        
+
         assets = 0.0
         liabilities = 0.0
-        
+
         asset_types = {"checking", "savings", "investment", "other"}
         liability_types = {"credit_card", "loan"}
-        
+
         for account in accounts:
             if account.account_type in asset_types:
                 assets += account.balance
             elif account.account_type in liability_types:
                 liabilities += abs(account.balance)
-                
+
         return {
             "assets": assets,
             "liabilities": liabilities,
             "net_worth": assets - liabilities,
-            "accounts": accounts
+            "accounts": accounts,
         }
 
     # ==================== Recurring Transactions Methods ====================
-    
-    def add_recurring_transaction(self, description: str, expected_amount: float,
-                                   frequency: str = "monthly", category: str = "",
-                                   sub_category: str = "") -> RecurringTransaction:
+
+    def add_recurring_transaction(  # pylint: disable=too-many-positional-arguments
+        self,
+        description: str,
+        expected_amount: float,
+        frequency: str = "monthly",
+        category: str = "",
+        sub_category: str = "",
+    ) -> RecurringTransaction:
         """Add a recurring transaction."""
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
-                INSERT INTO {self.RECURRING_TABLE} 
+                INSERT INTO {self.RECURRING_TABLE}
                 (description, expected_amount, frequency, category, sub_category)
                 VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(description, expected_amount) DO UPDATE SET
@@ -479,9 +505,13 @@ class BudgetDatabase:
             """, (description, expected_amount, frequency, category, sub_category))
             row = cursor.fetchone()
             conn.commit()
-            
-        self._logger.info("Added recurring transaction: %s ($%.2f %s)", 
-                         description, expected_amount, frequency)
+
+        self._logger.info(
+            "Added recurring transaction: %s ($%.2f %s)",
+            description,
+            expected_amount,
+            frequency,
+        )
         return RecurringTransaction(
             id=row["id"],
             description=description,
@@ -492,21 +522,23 @@ class BudgetDatabase:
             last_occurrence=""
         )
 
-    def get_all_recurring_transactions(self, active_only: bool = True) -> List[RecurringTransaction]:
+    def get_all_recurring_transactions(
+        self, active_only: bool = True
+    ) -> List[RecurringTransaction]:
         """Get all recurring transactions."""
         query = f"""
-            SELECT id, description, expected_amount, frequency, category, 
+            SELECT id, description, expected_amount, frequency, category,
                    sub_category, last_occurrence, is_active
             FROM {self.RECURRING_TABLE}
         """
         if active_only:
             query += " WHERE is_active = 1"
         query += " ORDER BY description"
-        
+
         with self._get_connection() as conn:
             cursor = conn.execute(query)
             rows = cursor.fetchall()
-            
+
         return [
             RecurringTransaction(
                 id=row["id"],
@@ -521,8 +553,9 @@ class BudgetDatabase:
             for row in rows
         ]
 
-    def update_recurring_last_occurrence(self, recurring_id: int, 
-                                          last_occurrence: str) -> bool:
+    def update_recurring_last_occurrence(
+        self, recurring_id: int, last_occurrence: str
+    ) -> bool:
         """Update the last occurrence date of a recurring transaction."""
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
@@ -553,7 +586,7 @@ class BudgetDatabase:
             """, (recurring_id,))
             conn.commit()
             deleted = cursor.rowcount > 0
-            
+
         if deleted:
             self._logger.info("Deleted recurring transaction %d", recurring_id)
         return deleted
@@ -561,34 +594,34 @@ class BudgetDatabase:
     def detect_recurring_transactions(self, transactions_df: pd.DataFrame,
                                        min_occurrences: int = 2) -> List[dict]:
         """Detect potential recurring transactions from transaction history.
-        
+
         Args:
             transactions_df: DataFrame with transaction data.
             min_occurrences: Minimum times a transaction must appear.
-            
+
         Returns:
             List of detected recurring transaction patterns.
         """
         if transactions_df.empty:
             return []
-            
+
         # Group by description and amount (rounded to handle small variations)
         df = transactions_df.copy()
         df["amount_rounded"] = df["amount"].round(2)
-        
+
         # Find transactions that appear multiple times
         grouped = df.groupby(["description", "amount_rounded"]).agg({
             "transaction_date": ["count", "min", "max"],
             "category": "first",
             "sub_category": "first"
         }).reset_index()
-        
-        grouped.columns = ["description", "amount", "count", "first_date", 
+
+        grouped.columns = ["description", "amount", "count", "first_date",
                           "last_date", "category", "sub_category"]
-        
+
         # Filter to those appearing at least min_occurrences times
         recurring = grouped[grouped["count"] >= min_occurrences]
-        
+
         detected = []
         for _, row in recurring.iterrows():
             # Estimate frequency based on date range and count
@@ -608,7 +641,7 @@ class BudgetDatabase:
                     frequency = "monthly"
             else:
                 frequency = "monthly"
-                
+
             detected.append({
                 "description": row["description"],
                 "amount": float(row["amount"]),
@@ -618,10 +651,10 @@ class BudgetDatabase:
                 "sub_category": row["sub_category"] or "",
                 "last_date": str(row["last_date"])[:10] if pd.notna(row["last_date"]) else ""
             })
-            
+
         # Sort by occurrence count descending
         detected.sort(key=lambda x: x["occurrences"], reverse=True)
-        
+
         self._logger.info("Detected %d potential recurring transactions", len(detected))
         return detected
 

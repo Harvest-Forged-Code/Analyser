@@ -46,7 +46,7 @@ class YearlySummaryStatsController:
         exp_subcats: Dict[str, float] = {}
 
         for mr in months:
-            
+
             # Earnings totals (values are positive)
             e_sum = float(mr.earnings["amount"].sum()) if not mr.earnings.empty else 0.0
             total_earnings += e_sum

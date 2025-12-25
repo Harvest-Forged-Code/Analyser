@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable, List, Dict
+from typing import Dict, Iterable, List
 
+from budget_analyser.domain.errors import DataSourceError
 from budget_analyser.infrastructure.json_mappings import JsonCashflowMappingStore
 
 
@@ -90,17 +91,16 @@ class CashflowMapperController:
     # ---- Persistence ----
     def save(self) -> None:
         self._store.save_cashflow(self._mapping)
-        try:
-            self._logger.info("Cashflow mapping saved: earnings=%d expenses=%d",
-                              len(self._mapping.get("Earnings", [])),
-                              len(self._mapping.get("Expenses", [])))
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
+        self._logger.info(
+            "Cashflow mapping saved: earnings=%d expenses=%d",
+            len(self._mapping.get("Earnings", [])),
+            len(self._mapping.get("Expenses", [])),
+        )
 
     def reload(self) -> None:
         try:
             mapping = self._store.load_cashflow()
-        except Exception:
+        except DataSourceError:
             mapping = {}
 
         earnings = mapping.get("Earnings") or mapping.get("earnings") or []
