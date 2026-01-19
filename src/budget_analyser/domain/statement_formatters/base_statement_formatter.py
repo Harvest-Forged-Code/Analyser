@@ -91,9 +91,12 @@ class BaseStatementFormatter(ABC):  # pylint: disable=too-few-public-methods
                 f"Hint: {hint}"
             )
 
-        debit = self._statement["Debit"].fillna(0)
-        credit = self._statement["Credit"].fillna(0)
-        self._statement["amount"] = debit.where(debit != 0, credit)
+        debit = pd.to_numeric(self._statement["Debit"], errors="coerce").fillna(0)
+        credit = pd.to_numeric(self._statement["Credit"], errors="coerce").fillna(0)
+        # Convention: debits are negative (expenditures), credits are positive (earnings)
+        # If both are non-zero, take the net (credit - debit)
+        # If both are zero, amount is 0
+        self._statement["amount"] = credit - debit
 
     def _rename_columns(self) -> None:
         if not self._column_mapping:

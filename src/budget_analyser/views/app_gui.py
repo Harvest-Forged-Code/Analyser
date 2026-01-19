@@ -253,13 +253,33 @@ def run_app() -> int:
 
         # Connect reload signal to handle CSV upload completion
         def _on_reload_requested():
+            import time
             logger.info("Reload requested after CSV upload")
-            # Check if database has data (transactions are stored during upload)
-            if db_repository.has_data():
+
+            # Retry mechanism to handle race condition with database commit
+            max_retries = 3
+            retry_delay = 0.2  # seconds
+            has_data = False
+
+            for attempt in range(max_retries):
+                has_data = db_repository.has_data()
+                if has_data:
+                    break
+                if attempt < max_retries - 1:
+                    logger.debug(
+                        "Database has no data yet, retrying in %.1fs (attempt %d/%d)",
+                        retry_delay, attempt + 1, max_retries
+                    )
+                    time.sleep(retry_delay)
+
+            if has_data:
                 try:
                     transactions = db_repository.get_processed_transactions()
                     new_reports = controller.run_from_database(transactions)
-                    logger.info("Reports regenerated from database with %d months", len(new_reports))
+                    logger.info(
+                        "Reports regenerated from database with %d months",
+                        len(new_reports)
+                    )
                     # Enable all pages and show success message
                     dash.enable_all_pages()
                     QtWidgets.QMessageBox.information(

@@ -7,6 +7,7 @@ from PySide6 import QtCore, QtWidgets
 
 from budget_analyser.controller.controllers import MonthlyReports
 from budget_analyser.controller import PaymentsReconciliationController
+from budget_analyser.views.pages._page_base import ModernPageMixin
 
 
 class PaymentsPage(QtWidgets.QWidget):
@@ -26,38 +27,66 @@ class PaymentsPage(QtWidgets.QWidget):
         self._init_ui()
 
     def _init_ui(self) -> None:
-        root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(10)
+        # Scroll area for content
+        scroll, container = ModernPageMixin.create_scroll_area()
 
-        # Header: Title + Month combobox
-        header_row = QtWidgets.QHBoxLayout()
-        title = QtWidgets.QLabel("Payments Reconciliation")
-        tf = title.font()
-        tf.setPointSize(16)
-        tf.setBold(True)
-        title.setFont(tf)
-        header_row.addWidget(title)
-        header_row.addStretch(1)
-        header_row.addWidget(QtWidgets.QLabel("Month:"))
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll)
+
+        root = QtWidgets.QVBoxLayout(container)
+        root.setContentsMargins(32, 32, 32, 32)
+        root.setSpacing(24)
+
+        # Header with month selector
+        header_container = QtWidgets.QWidget()
+        header_layout = QtWidgets.QHBoxLayout(header_container)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(16)
+
+        # Page header
+        page_header = ModernPageMixin.create_page_header(
+            title="Payments Reconciliation",
+            subtitle="Compare payments made vs payment confirmations",
+            icon="🔁"
+        )
+        header_layout.addWidget(page_header, 1)
+
+        # Month selector
+        month_container = QtWidgets.QWidget()
+        month_layout = QtWidgets.QVBoxLayout(month_container)
+        month_layout.setContentsMargins(0, 0, 0, 0)
+        month_layout.setSpacing(8)
+
+        month_label = ModernPageMixin.create_control_label("Month")
+        month_layout.addWidget(month_label)
+
         self.month_combo = QtWidgets.QComboBox()
-        header_row.addWidget(self.month_combo)
-        root.addLayout(header_row)
+        ModernPageMixin.style_combo_box(self.month_combo, min_height=44)
+        self.month_combo.setMinimumWidth(180)
+        month_layout.addWidget(self.month_combo)
 
-        # Tables row: left = Payments Made, right = Payment Confirmations
+        header_layout.addWidget(month_container)
+        root.addWidget(header_container)
+
+        # Two-column cards layout
         tables_row = QtWidgets.QHBoxLayout()
+        tables_row.setSpacing(16)
 
-        # Left panel
-        left_panel = QtWidgets.QVBoxLayout()
-        left_header = QtWidgets.QHBoxLayout()
-        left_header.addWidget(QtWidgets.QLabel("Payments Made"))
-        left_header.addStretch(1)
+        # Left card - Payments Made
+        left_card, left_layout = ModernPageMixin.create_card("PAYMENTS MADE")
+
+        # Totals row
+        left_totals = QtWidgets.QHBoxLayout()
         self.left_count = QtWidgets.QLabel("0 items")
+        self.left_count.setStyleSheet("font-size: 12px; color: #9CA3AF; font-weight: 600;")
+        left_totals.addWidget(self.left_count)
+        left_totals.addStretch(1)
         self.left_total = QtWidgets.QLabel("$0.00")
-        left_header.addWidget(self.left_count)
-        left_header.addSpacing(8)
-        left_header.addWidget(self.left_total)
-        left_panel.addLayout(left_header)
+        self.left_total.setStyleSheet("font-size: 18px; font-weight: 700; color: #EF4444;")
+        left_totals.addWidget(self.left_total)
+        left_layout.addLayout(left_totals)
+
         self.table_left = QtWidgets.QTableWidget(0, 5)
         self.table_left.setHorizontalHeaderLabels([
             "Date",
@@ -67,19 +96,22 @@ class PaymentsPage(QtWidgets.QWidget):
             "Category/Sub",
         ])
         self._prep_table(self.table_left)
-        left_panel.addWidget(self.table_left)
+        left_layout.addWidget(self.table_left, 1)
 
-        # Right panel
-        right_panel = QtWidgets.QVBoxLayout()
-        right_header = QtWidgets.QHBoxLayout()
-        right_header.addWidget(QtWidgets.QLabel("Payment Confirmations"))
-        right_header.addStretch(1)
+        # Right card - Payment Confirmations
+        right_card, right_layout = ModernPageMixin.create_card("PAYMENT CONFIRMATIONS")
+
+        # Totals row
+        right_totals = QtWidgets.QHBoxLayout()
         self.right_count = QtWidgets.QLabel("0 items")
+        self.right_count.setStyleSheet("font-size: 12px; color: #9CA3AF; font-weight: 600;")
+        right_totals.addWidget(self.right_count)
+        right_totals.addStretch(1)
         self.right_total = QtWidgets.QLabel("$0.00")
-        right_header.addWidget(self.right_count)
-        right_header.addSpacing(8)
-        right_header.addWidget(self.right_total)
-        right_panel.addLayout(right_header)
+        self.right_total.setStyleSheet("font-size: 18px; font-weight: 700; color: #10B981;")
+        right_totals.addWidget(self.right_total)
+        right_layout.addLayout(right_totals)
+
         self.table_right = QtWidgets.QTableWidget(0, 5)
         self.table_right.setHorizontalHeaderLabels([
             "Date",
@@ -89,33 +121,17 @@ class PaymentsPage(QtWidgets.QWidget):
             "Category/Sub",
         ])
         self._prep_table(self.table_right)
-        right_panel.addWidget(self.table_right)
+        right_layout.addWidget(self.table_right, 1)
 
-        # Add to row with equal stretch
-        left_container = QtWidgets.QWidget()
-        left_container.setObjectName("card")
-        left_container.setLayout(QtWidgets.QVBoxLayout())
-        left_container.layout().setContentsMargins(12, 12, 12, 12)
-        left_container.layout().addLayout(left_panel)
+        tables_row.addWidget(left_card, 1)
+        tables_row.addWidget(right_card, 1)
+        root.addLayout(tables_row, 1)
 
-        right_container = QtWidgets.QWidget()
-        right_container.setObjectName("card")
-        right_container.setLayout(QtWidgets.QVBoxLayout())
-        right_container.layout().setContentsMargins(12, 12, 12, 12)
-        right_container.layout().addLayout(right_panel)
-
-        tables_row.addWidget(left_container, 1)
-        tables_row.addWidget(right_container, 1)
-        root.addLayout(tables_row)
-
-        # Summary bar
-        summary_card = QtWidgets.QWidget()
-        summary_card.setObjectName("card")
-        summary_layout = QtWidgets.QHBoxLayout(summary_card)
-        summary_layout.setContentsMargins(12, 10, 12, 10)
+        # Summary card
+        summary_card, summary_layout = ModernPageMixin.create_card("RECONCILIATION SUMMARY")
         self.sum_label = QtWidgets.QLabel("Totals: Payments $0.00 | Confirmations $0.00 | Diff $0.00")
+        self.sum_label.setStyleSheet("font-size: 14px; font-weight: 600; color: #E2E4F0;")
         summary_layout.addWidget(self.sum_label)
-        summary_layout.addStretch(1)
         root.addWidget(summary_card)
 
         # Populate months and wire
@@ -131,7 +147,7 @@ class PaymentsPage(QtWidgets.QWidget):
         tbl.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         tbl.horizontalHeader().setStretchLastSection(True)
         tbl.setAlternatingRowColors(True)
-        tbl.verticalHeader().setDefaultSectionSize(26)
+        tbl.verticalHeader().setDefaultSectionSize(34)
 
     def _populate_months(self) -> None:
         self.month_combo.clear()

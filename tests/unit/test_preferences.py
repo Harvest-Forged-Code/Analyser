@@ -2,20 +2,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from budget_analyser.settings.preferences import AppPreferences, DEFAULT_LOG_LEVEL, DEFAULT_THEME
+from budget_analyser.settings.preferences import (
+    AppPreferences,
+    DEFAULT_LOG_LEVEL,
+    DEFAULT_PASSWORD,
+    DEFAULT_THEME,
+)
 
 
 def test_password_default_and_update(tmp_path: Path) -> None:
     ini = tmp_path / "budget_analyser.ini"
-    # No [app] section yet; should default to 123456
+    # No [app] section yet; should default to DEFAULT_PASSWORD
     prefs = AppPreferences(ini)
-    assert prefs.verify_password("123456") is True
+    assert prefs.verify_password(DEFAULT_PASSWORD) is True
     assert prefs.verify_password("wrong") is False
 
     # Update to a new password and verify
     prefs.set_password("newpass1")
     assert prefs.verify_password("newpass1") is True
-    assert prefs.verify_password("123456") is False
+    assert prefs.verify_password(DEFAULT_PASSWORD) is False
 
 
 def test_log_level_round_trip(tmp_path: Path) -> None:

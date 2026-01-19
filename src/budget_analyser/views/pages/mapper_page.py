@@ -6,6 +6,7 @@ from typing import List
 from PySide6 import QtWidgets, QtCore
 
 from budget_analyser.controller import MapperController
+from budget_analyser.views.pages._page_base import ModernPageMixin
 
 
 class MapperPage(QtWidgets.QWidget):
@@ -29,40 +30,51 @@ class MapperPage(QtWidgets.QWidget):
 
     # ---------- UI ----------
     def _init_ui(self) -> None:
-        root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(10)
+        # Scroll area for content
+        scroll, container = ModernPageMixin.create_scroll_area()
 
-        header = QtWidgets.QLabel("Mapper")
-        f = header.font()
-        f.setPointSize(16)
-        f.setBold(True)
-        header.setFont(f)
-        root.addWidget(header)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll)
 
+        root = QtWidgets.QVBoxLayout(container)
+        root.setContentsMargins(32, 32, 32, 32)
+        root.setSpacing(24)
+
+        # Page header
+        page_header = ModernPageMixin.create_page_header(
+            title="Transaction Mapper",
+            subtitle="Map unmapped transactions to categories and sub-categories",
+            icon="🧭"
+        )
+        root.addWidget(page_header)
+
+        # Two-column layout
         body = QtWidgets.QHBoxLayout()
-        body.setSpacing(12)
-        root.addLayout(body)
+        body.setSpacing(16)
 
-        # Left: Unmapped (as rows: Date, Description, Amount) with search
-        left_card = QtWidgets.QWidget()
-        left_card.setObjectName("card")
-        left_layout = QtWidgets.QVBoxLayout(left_card)
-        left_layout.setContentsMargins(12, 12, 12, 12)
-        left_layout.setSpacing(8)
+        # Left card: Unmapped Transactions
+        left_card, left_layout = ModernPageMixin.create_card("UNMAPPED TRANSACTIONS")
 
-        left_header = QtWidgets.QHBoxLayout()
-        left_header.addWidget(QtWidgets.QLabel("Unmapped Transactions"))
-        left_header.addStretch(1)
+        # Count label
+        count_row = QtWidgets.QHBoxLayout()
+        count_row.addStretch(1)
         self._count_lbl = QtWidgets.QLabel("0 items")
-        left_header.addWidget(self._count_lbl)
-        left_layout.addLayout(left_header)
+        self._count_lbl.setStyleSheet("font-size: 12px; color: #9CA3AF; font-weight: 600;")
+        count_row.addWidget(self._count_lbl)
+        left_layout.addLayout(count_row)
+
+        # Filter
+        filter_label = ModernPageMixin.create_control_label("Filter")
+        left_layout.addWidget(filter_label)
 
         self._filter_edit = QtWidgets.QLineEdit()
         self._filter_edit.setPlaceholderText("Filter by description...")
+        self._filter_edit.setMinimumHeight(34)
         self._filter_edit.textChanged.connect(self._apply_filter)
         left_layout.addWidget(self._filter_edit)
 
+        # Table
         self._table = QtWidgets.QTableWidget(0, 3)
         self._table.setHorizontalHeaderLabels(["Date", "Description", "Amount"])
         self._table.verticalHeader().setVisible(False)
@@ -71,54 +83,86 @@ class MapperPage(QtWidgets.QWidget):
         self._table.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self._table.horizontalHeader().setStretchLastSection(True)
         self._table.setAlternatingRowColors(True)
-        self._table.verticalHeader().setDefaultSectionSize(26)
+        self._table.verticalHeader().setDefaultSectionSize(34)
         left_layout.addWidget(self._table, 1)
 
         body.addWidget(left_card, 1)
 
-        # Right: Actions
-        right_card = QtWidgets.QWidget()
-        right_card.setObjectName("card")
-        right_layout = QtWidgets.QVBoxLayout(right_card)
-        right_layout.setContentsMargins(12, 12, 12, 12)
-        right_layout.setSpacing(10)
+        # Right card: Actions
+        right_card, right_layout = ModernPageMixin.create_card("MAPPING ACTIONS")
 
-        # Existing sub-category assignment
-        group_exist = QtWidgets.QGroupBox("Add to existing sub-category")
-        form1 = QtWidgets.QFormLayout(group_exist)
+        # Existing sub-category section
+        existing_section = QtWidgets.QWidget()
+        existing_layout = QtWidgets.QVBoxLayout(existing_section)
+        existing_layout.setContentsMargins(0, 0, 0, 0)
+        existing_layout.setSpacing(16)
+
+        section_label1 = QtWidgets.QLabel("ADD TO EXISTING SUB-CATEGORY")
+        section_label1.setStyleSheet("font-size: 11px; font-weight: 700; color: #8B5CF6; letter-spacing: 0.8px;")
+        existing_layout.addWidget(section_label1)
+
+        sub_label = ModernPageMixin.create_control_label("Sub-category")
+        existing_layout.addWidget(sub_label)
+
         self._sub_combo = QtWidgets.QComboBox()
-        form1.addRow("Sub-category", self._sub_combo)
-        self._btn_add_existing = QtWidgets.QPushButton("Add selected →")
-        self._btn_add_existing.clicked.connect(self._on_add_existing)
-        form1.addRow("", self._btn_add_existing)
-        right_layout.addWidget(group_exist)
+        ModernPageMixin.style_combo_box(self._sub_combo)
+        existing_layout.addWidget(self._sub_combo)
 
-        # Create new sub-category and assign
-        group_new = QtWidgets.QGroupBox("Create sub-category and assign")
-        form2 = QtWidgets.QFormLayout(group_new)
+        self._btn_add_existing = ModernPageMixin.create_action_button("Add Selected →", primary=True)
+        self._btn_add_existing.clicked.connect(self._on_add_existing)
+        existing_layout.addWidget(self._btn_add_existing)
+
+        right_layout.addWidget(existing_section)
+
+        # Separator
+        separator = QtWidgets.QFrame()
+        separator.setFrameShape(QtWidgets.QFrame.HLine)
+        separator.setStyleSheet("background: rgba(80, 80, 90, 0.3); max-height: 1px;")
+        right_layout.addWidget(separator)
+
+        # Create new sub-category section
+        new_section = QtWidgets.QWidget()
+        new_layout = QtWidgets.QVBoxLayout(new_section)
+        new_layout.setContentsMargins(0, 0, 0, 0)
+        new_layout.setSpacing(16)
+
+        section_label2 = QtWidgets.QLabel("CREATE NEW SUB-CATEGORY")
+        section_label2.setStyleSheet("font-size: 11px; font-weight: 700; color: #8B5CF6; letter-spacing: 0.8px;")
+        new_layout.addWidget(section_label2)
+
+        new_sub_label = ModernPageMixin.create_control_label("Sub-category Name")
+        new_layout.addWidget(new_sub_label)
+
         self._new_sub = QtWidgets.QLineEdit()
         self._new_sub.setPlaceholderText("e.g., coffee_shops")
+        self._new_sub.setMinimumHeight(34)
+        new_layout.addWidget(self._new_sub)
+
+        cat_label = ModernPageMixin.create_control_label("Category")
+        new_layout.addWidget(cat_label)
+
         self._cat_combo = QtWidgets.QComboBox()
-        self._cat_combo.setEditable(True)  # allow typing a new top-level category
+        self._cat_combo.setEditable(True)
         self._cat_combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
-        self._btn_create_assign = QtWidgets.QPushButton("Create & Assign →")
+        ModernPageMixin.style_combo_box(self._cat_combo)
+        new_layout.addWidget(self._cat_combo)
+
+        self._btn_create_assign = ModernPageMixin.create_action_button("Create & Assign →", primary=True)
         self._btn_create_assign.clicked.connect(self._on_create_assign)
-        form2.addRow("Sub-category", self._new_sub)
-        form2.addRow("Category", self._cat_combo)
-        form2.addRow("", self._btn_create_assign)
-        right_layout.addWidget(group_new)
+        new_layout.addWidget(self._btn_create_assign)
+
+        right_layout.addWidget(new_section)
 
         right_layout.addStretch(1)
 
-        # Save changes
-        actions_row = QtWidgets.QHBoxLayout()
-        actions_row.addStretch(1)
-        self._btn_save = QtWidgets.QPushButton("Save Changes")
+        # Save button
+        self._btn_save = ModernPageMixin.create_action_button("Save Changes", primary=True)
+        self._btn_save.setMinimumHeight(48)
         self._btn_save.clicked.connect(self._on_save)
-        actions_row.addWidget(self._btn_save)
-        right_layout.addLayout(actions_row)
+        right_layout.addWidget(self._btn_save)
 
         body.addWidget(right_card, 1)
+        root.addLayout(body, 1)
 
     # ---------- Data ----------
     def _load_data(self) -> None:

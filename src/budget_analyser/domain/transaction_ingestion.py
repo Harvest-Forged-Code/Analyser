@@ -77,9 +77,9 @@ class TransactionIngestionService:
             IngestionResult with success status and statistics.
         """
         try:
-            # Step 1: Load CSV
+            # Step 1: Load CSV with explicit encoding (utf-8-sig handles BOM from Excel)
             self._logger.info("Loading CSV: %s for account: %s", csv_path, account_name)
-            raw_df = pd.read_csv(csv_path)
+            raw_df = pd.read_csv(csv_path, encoding="utf-8-sig")
 
             if raw_df.empty:
                 return IngestionResult(

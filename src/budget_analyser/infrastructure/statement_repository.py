@@ -69,8 +69,8 @@ class CsvStatementRepository(StatementRepository):
                         account,
                         str(path.resolve()),
                     )
-                    # Load CSV; allow pandas to infer types.
-                    df = pd.read_csv(path)
+                    # Load CSV with explicit encoding (utf-8-sig handles BOM from Excel).
+                    df = pd.read_csv(path, encoding="utf-8-sig")
                     statements[account] = df
                     self._log(
                         logging.INFO,

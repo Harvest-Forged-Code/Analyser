@@ -6,6 +6,7 @@ from typing import List
 from PySide6 import QtCore, QtWidgets
 
 from budget_analyser.controller import CashflowMapperController
+from budget_analyser.views.pages._page_base import ModernPageMixin
 
 
 class CashflowMapperPage(QtWidgets.QWidget):
@@ -21,85 +22,97 @@ class CashflowMapperPage(QtWidgets.QWidget):
         self._load_data()
 
     def _init_ui(self) -> None:
-        root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(12)
+        # Scroll area for content
+        scroll, container = ModernPageMixin.create_scroll_area()
 
-        title = QtWidgets.QLabel("Cashflow Mapping")
-        tf = title.font()
-        tf.setPointSize(16)
-        tf.setBold(True)
-        title.setFont(tf)
-        root.addWidget(title)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll)
 
-        helper = QtWidgets.QLabel(
-            "Drag categories between Earnings and Expenses or use the move buttons."
-            " Add new categories to the desired group, then save to update the mapping JSON."
+        root = QtWidgets.QVBoxLayout(container)
+        root.setContentsMargins(32, 32, 32, 32)
+        root.setSpacing(24)
+
+        # Page header
+        page_header = ModernPageMixin.create_page_header(
+            title="Cashflow Mapping",
+            subtitle="Drag categories between Earnings and Expenses or use the move buttons",
+            icon="💹"
         )
-        helper.setWordWrap(True)
-        root.addWidget(helper)
+        root.addWidget(page_header)
 
+        # Three-column layout
         body = QtWidgets.QHBoxLayout()
-        body.setSpacing(10)
-        root.addLayout(body)
+        body.setSpacing(16)
 
-        self._earnings_list = self._build_list("Earnings")
-        self._expenses_list = self._build_list("Expenses")
-
+        # Earnings card
+        self._earnings_list = self._build_list("EARNINGS")
         body.addWidget(self._earnings_list[0], 1)
 
         # Middle controls
         mid = QtWidgets.QVBoxLayout()
-        mid.setSpacing(8)
-        self._btn_to_expenses = QtWidgets.QPushButton("→ To Expenses")
-        self._btn_to_expenses.clicked.connect(self._move_to_expenses)
-        self._btn_to_earnings = QtWidgets.QPushButton("← To Earnings")
-        self._btn_to_earnings.clicked.connect(self._move_to_earnings)
+        mid.setSpacing(12)
         mid.addStretch(1)
+
+        self._btn_to_expenses = ModernPageMixin.create_action_button("→ To Expenses", primary=False)
+        self._btn_to_expenses.clicked.connect(self._move_to_expenses)
         mid.addWidget(self._btn_to_expenses)
+
+        self._btn_to_earnings = ModernPageMixin.create_action_button("← To Earnings", primary=False)
+        self._btn_to_earnings.clicked.connect(self._move_to_earnings)
         mid.addWidget(self._btn_to_earnings)
+
         mid.addStretch(1)
         body.addLayout(mid)
 
+        # Expenses card
+        self._expenses_list = self._build_list("EXPENSES")
         body.addWidget(self._expenses_list[0], 1)
 
-        # Add category row
-        add_box = QtWidgets.QGroupBox("Add category")
-        add_layout = QtWidgets.QFormLayout(add_box)
+        root.addLayout(body, 1)
+
+        # Add category card
+        add_card, add_layout = ModernPageMixin.create_card("ADD NEW CATEGORY")
+
+        name_label = ModernPageMixin.create_control_label("Category Name")
+        add_layout.addWidget(name_label)
+
         self._new_category = QtWidgets.QLineEdit()
         self._new_category.setPlaceholderText("e.g., Reimbursements")
+        self._new_category.setMinimumHeight(34)
+        add_layout.addWidget(self._new_category)
+
+        group_label = ModernPageMixin.create_control_label("Assign To")
+        add_layout.addWidget(group_label)
+
         self._flow_combo = QtWidgets.QComboBox()
         self._flow_combo.addItems(["Earnings", "Expenses"])
-        self._btn_add = QtWidgets.QPushButton("Add")
-        self._btn_add.clicked.connect(self._on_add)
-        add_layout.addRow("Name", self._new_category)
-        add_layout.addRow("Group", self._flow_combo)
-        add_layout.addRow("", self._btn_add)
-        root.addWidget(add_box)
+        ModernPageMixin.style_combo_box(self._flow_combo)
+        add_layout.addWidget(self._flow_combo)
 
-        # Save/reset actions
+        self._btn_add = ModernPageMixin.create_action_button("Add Category", primary=True)
+        self._btn_add.clicked.connect(self._on_add)
+        add_layout.addWidget(self._btn_add)
+
+        root.addWidget(add_card)
+
+        # Action buttons
         actions = QtWidgets.QHBoxLayout()
         actions.addStretch(1)
-        self._btn_reset = QtWidgets.QPushButton("Reset")
+
+        self._btn_reset = ModernPageMixin.create_action_button("Reset", primary=False)
         self._btn_reset.clicked.connect(self._load_data)
-        self._btn_save = QtWidgets.QPushButton("Save Changes")
-        self._btn_save.clicked.connect(self._on_save)
         actions.addWidget(self._btn_reset)
+
+        self._btn_save = ModernPageMixin.create_action_button("Save Changes", primary=True)
+        self._btn_save.setMinimumHeight(48)
+        self._btn_save.clicked.connect(self._on_save)
         actions.addWidget(self._btn_save)
+
         root.addLayout(actions)
 
     def _build_list(self, title: str) -> tuple[QtWidgets.QWidget, QtWidgets.QListWidget]:
-        card = QtWidgets.QWidget()
-        card.setObjectName("card")
-        layout = QtWidgets.QVBoxLayout(card)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
-
-        lbl = QtWidgets.QLabel(title)
-        lf = lbl.font()
-        lf.setBold(True)
-        lbl.setFont(lf)
-        layout.addWidget(lbl)
+        card, layout = ModernPageMixin.create_card(title)
 
         lst = QtWidgets.QListWidget()
         lst.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
@@ -112,9 +125,9 @@ class CashflowMapperPage(QtWidgets.QWidget):
         lst.setSpacing(2)
         layout.addWidget(lst, 1)
 
-        hint = QtWidgets.QLabel("Drag items or use the arrows to move between groups.")
+        hint = QtWidgets.QLabel("Drag items or use arrows")
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #94A3B8;")
+        hint.setStyleSheet("font-size: 11px; color: #9CA3AF; font-style: italic;")
         layout.addWidget(hint)
 
         return card, lst

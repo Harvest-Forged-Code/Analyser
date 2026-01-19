@@ -73,7 +73,8 @@ class ReportService:
             try:
                 if str(k).lower() == key:
                     return list(v)
-            except Exception:  # pylint: disable=broad-exception-caught
+            except (TypeError, AttributeError, ValueError):
+                # Skip keys that can't be converted to string or have invalid values
                 continue
         return None
 

@@ -23,7 +23,7 @@ KEY_LOG_LEVEL = "log_level"
 KEY_PASSWORD_HASH = "password_hash"
 KEY_THEME = "theme"  # light | dark
 
-DEFAULT_PASSWORD = "123456"
+DEFAULT_PASSWORD = "BudgetAnalyser2024!"  # Stronger default - users should change this
 DEFAULT_LOG_LEVEL = "DEBUG"
 DEFAULT_THEME = "dark"
 
@@ -31,10 +31,10 @@ DEFAULT_THEME = "dark"
 def _hash_password_sha256(plain: str, *, salt: bytes | None = None) -> str:
     """Return salted SHA-256 hash in the form: sha256$<salt_hex>$<hash_hex>.
 
-    If salt is not provided, a random 16-byte salt is generated.
+    If salt is not provided, a random 32-byte salt is generated for better security.
     """
     if salt is None:
-        salt = os.urandom(16)
+        salt = os.urandom(32)  # Increased from 16 to 32 bytes for better security
     h = hashlib.sha256()
     h.update(salt)
     h.update(plain.encode("utf-8"))

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -9,6 +9,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from budget_analyser.controller.controllers import MonthlyReports
 from budget_analyser.controller import EarningsStatsController
 from budget_analyser.controller.budget_controller import BudgetController
+from budget_analyser.views.pages._page_base import ModernPageMixin
 
 import pandas as pd
 
@@ -22,12 +23,19 @@ VIEW_MODE_CUSTOM = "Custom Range"
 class EarningsPage(QtWidgets.QWidget):
     """Earnings page with table view (Monthly/Yearly/Custom) plus transactions table."""
 
-    def __init__(self, reports: List[MonthlyReports], logger: logging.Logger, budget_controller: BudgetController | None = None):
+    def __init__(
+        self,
+        reports: List[MonthlyReports],
+        logger: logging.Logger,
+        budget_controller: BudgetController | None = None
+    ):
         super().__init__()
         self._reports = reports
         self._logger = logger
         self._budget_controller = budget_controller
-        self._controller = EarningsStatsController(self._reports, self._logger, budget_controller=self._budget_controller)
+        self._controller = EarningsStatsController(
+            self._reports, self._logger, budget_controller=self._budget_controller
+        )
 
         self._current_period = None  # type: ignore[var-annotated]
         self._current_year: Optional[int] = None
@@ -35,86 +43,115 @@ class EarningsPage(QtWidgets.QWidget):
         self._current_sub_category: Optional[str] = None
         self._init_ui()
 
-    # ---------------- UI ----------------
     def _init_ui(self) -> None:
-        root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(10)
+        # Scroll area
+        scroll, container = ModernPageMixin.create_scroll_area()
 
-        # Header: Title + View Mode + Date Selectors
-        header_row = QtWidgets.QHBoxLayout()
-        title = QtWidgets.QLabel("Earnings")
-        tf = title.font()
-        tf.setPointSize(16)
-        tf.setBold(True)
-        title.setFont(tf)
-        header_row.addWidget(title)
-        header_row.addStretch(1)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll)
 
-        # View Mode selector
-        header_row.addWidget(QtWidgets.QLabel("View:"))
+        root = QtWidgets.QVBoxLayout(container)
+        root.setContentsMargins(32, 32, 32, 32)
+        root.setSpacing(24)
+
+        # Header
+        header = ModernPageMixin.create_page_header(
+            title="Earnings",
+            subtitle="Track income by sub-category with budget comparison",
+            icon="💰"
+        )
+        root.addWidget(header)
+
+        # Filters card
+        filters_card, filters_layout = ModernPageMixin.create_card("FILTERS")
+
+        # View Mode
+        view_label = ModernPageMixin.create_control_label("View Mode")
+        filters_layout.addWidget(view_label)
+
         self.view_mode_combo = QtWidgets.QComboBox()
         self.view_mode_combo.addItems([VIEW_MODE_MONTHLY, VIEW_MODE_YEARLY, VIEW_MODE_CUSTOM])
-        header_row.addWidget(self.view_mode_combo)
+        ModernPageMixin.style_combo_box(self.view_mode_combo)
+        filters_layout.addWidget(self.view_mode_combo)
 
-        # Month selector (for Monthly mode)
-        self.month_label = QtWidgets.QLabel("Month:")
-        header_row.addWidget(self.month_label)
+        # Date selection container (dynamic visibility)
+        self._date_selection = QtWidgets.QWidget()
+        date_layout = QtWidgets.QVBoxLayout(self._date_selection)
+        date_layout.setContentsMargins(0, 16, 0, 0)
+        date_layout.setSpacing(12)
+
+        # Monthly selectors
+        self._monthly_container = QtWidgets.QWidget()
+        monthly_layout = QtWidgets.QVBoxLayout(self._monthly_container)
+        monthly_layout.setContentsMargins(0, 0, 0, 0)
+        monthly_layout.setSpacing(8)
+
+        self.month_label = ModernPageMixin.create_control_label("Select Month")
+        monthly_layout.addWidget(self.month_label)
+
         self.month_combo = QtWidgets.QComboBox()
-        header_row.addWidget(self.month_combo)
+        ModernPageMixin.style_combo_box(self.month_combo)
+        monthly_layout.addWidget(self.month_combo)
 
-        # Year selector (for Yearly mode)
-        self.year_label = QtWidgets.QLabel("Year:")
-        header_row.addWidget(self.year_label)
+        date_layout.addWidget(self._monthly_container)
+
+        # Yearly selectors
+        self._yearly_container = QtWidgets.QWidget()
+        yearly_layout = QtWidgets.QVBoxLayout(self._yearly_container)
+        yearly_layout.setContentsMargins(0, 0, 0, 0)
+        yearly_layout.setSpacing(8)
+
+        self.year_label = ModernPageMixin.create_control_label("Select Year")
+        yearly_layout.addWidget(self.year_label)
+
         self.year_combo = QtWidgets.QComboBox()
-        header_row.addWidget(self.year_combo)
+        ModernPageMixin.style_combo_box(self.year_combo)
+        yearly_layout.addWidget(self.year_combo)
 
-        # Date range selectors (for Custom Range mode)
-        self.from_label = QtWidgets.QLabel("From:")
-        header_row.addWidget(self.from_label)
+        date_layout.addWidget(self._yearly_container)
+
+        # Custom range selectors
+        self._custom_container = QtWidgets.QWidget()
+        custom_layout = QtWidgets.QVBoxLayout(self._custom_container)
+        custom_layout.setContentsMargins(0, 0, 0, 0)
+        custom_layout.setSpacing(8)
+
+        date_range_label = ModernPageMixin.create_control_label("Date Range")
+        custom_layout.addWidget(date_range_label)
+
+        date_range_row = QtWidgets.QWidget()
+        date_range_layout = QtWidgets.QHBoxLayout(date_range_row)
+        date_range_layout.setContentsMargins(0, 0, 0, 0)
+        date_range_layout.setSpacing(12)
+
         self.from_date = QtWidgets.QDateEdit()
-        self.from_date.setCalendarPopup(True)
-        self.from_date.setDisplayFormat("MM/dd/yyyy")
-        header_row.addWidget(self.from_date)
+        ModernPageMixin.style_date_edit(self.from_date)
+        date_range_layout.addWidget(self.from_date, 1)
 
-        self.to_label = QtWidgets.QLabel("To:")
-        header_row.addWidget(self.to_label)
+        to_label = QtWidgets.QLabel("to")
+        to_label.setStyleSheet("color: #8B5CF6; font-weight: 600;")
+        date_range_layout.addWidget(to_label)
+
         self.to_date = QtWidgets.QDateEdit()
-        self.to_date.setCalendarPopup(True)
-        self.to_date.setDisplayFormat("MM/dd/yyyy")
-        header_row.addWidget(self.to_date)
+        ModernPageMixin.style_date_edit(self.to_date)
+        date_range_layout.addWidget(self.to_date, 1)
 
-        # Apply button for custom range
-        self.apply_btn = QtWidgets.QPushButton("Apply")
-        header_row.addWidget(self.apply_btn)
+        self.apply_btn = ModernPageMixin.create_action_button("Apply", primary=False)
+        date_range_layout.addWidget(self.apply_btn)
 
-        root.addLayout(header_row)
+        custom_layout.addWidget(date_range_row)
+        date_layout.addWidget(self._custom_container)
 
-        # Middle: Summary table
-        summary_card = QtWidgets.QWidget()
-        summary_card.setObjectName("card")
-        summary_layout = QtWidgets.QVBoxLayout(summary_card)
-        summary_layout.setContentsMargins(12, 12, 12, 12)
-        summary_layout.setSpacing(8)
+        filters_layout.addWidget(self._date_selection)
+        root.addWidget(filters_card)
 
-        summary_header = QtWidgets.QHBoxLayout()
-        summary_title = QtWidgets.QLabel("Earnings Breakdown")
-        f = summary_title.font()
-        f.setBold(True)
-        summary_title.setFont(f)
-        summary_header.addWidget(summary_title)
-        summary_header.addStretch(1)
-        # Note: Expected amounts are now set in the Budget Goals page
-        summary_layout.addLayout(summary_header)
+        # Summary card
+        summary_card, summary_layout = ModernPageMixin.create_card("EARNINGS BREAKDOWN")
 
         self.summary_table = QtWidgets.QTableWidget(0, 6)
         self.summary_table.setHorizontalHeaderLabels([
-            "Sub-category",
-            "Actual",
-            "% Total",
-            "Expected",
-            "Diff",
-            "Diff %",
+            "Sub-category", "Actual", "% Total", "Expected", "Diff", "Diff %"
         ])
         self.summary_table.verticalHeader().setVisible(False)
         self.summary_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -123,26 +160,32 @@ class EarningsPage(QtWidgets.QWidget):
         self.summary_table.horizontalHeader().setStretchLastSection(False)
         self.summary_table.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         for col in range(1, 6):
-            self.summary_table.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
+            self.summary_table.horizontalHeader().setSectionResizeMode(
+                col, QtWidgets.QHeaderView.ResizeToContents
+            )
         self.summary_table.setAlternatingRowColors(True)
-        self.summary_table.verticalHeader().setDefaultSectionSize(26)
+        self.summary_table.verticalHeader().setDefaultSectionSize(34)
         self.summary_table.itemSelectionChanged.connect(self._on_summary_selection_changed)
         summary_layout.addWidget(self.summary_table)
 
         root.addWidget(summary_card)
 
-        # Bottom: Transactions table
+        # Transactions card
+        transactions_card, transactions_layout = ModernPageMixin.create_card("TRANSACTIONS")
+
         self.table = QtWidgets.QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(
-            ["Date", "Description", "Amount", "From Account", "Sub-category"]
-        )
+        self.table.setHorizontalHeaderLabels([
+            "Date", "Description", "Amount", "From Account", "Sub-category"
+        ])
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setAlternatingRowColors(True)
-        self.table.verticalHeader().setDefaultSectionSize(26)
-        root.addWidget(self.table)
+        self.table.verticalHeader().setDefaultSectionSize(32)
+        transactions_layout.addWidget(self.table)
+
+        root.addWidget(transactions_card, 1)
 
         # Populate months and years
         self._populate_months()
@@ -161,7 +204,6 @@ class EarningsPage(QtWidgets.QWidget):
             self.month_combo.setCurrentIndex(self.month_combo.count() - 1)  # latest
         self._rebuild_summary()
 
-    # ------------- Population helpers -------------
     def _populate_months(self) -> None:
         self.month_combo.clear()
         months = self._controller.available_months()
@@ -173,7 +215,6 @@ class EarningsPage(QtWidgets.QWidget):
         years = self._controller.available_years()
         for y in years:
             self.year_combo.addItem(str(y), userData=y)
-        # Select latest year by default
         if self.year_combo.count() > 0:
             self.year_combo.setCurrentIndex(self.year_combo.count() - 1)
 
@@ -181,19 +222,16 @@ class EarningsPage(QtWidgets.QWidget):
         """Set default date range based on available data."""
         months = self._controller.available_months()
         if months:
-            # Default: first day of earliest month to last day of latest month
             earliest = months[0]
             latest = months[-1]
             from_date = date(earliest.year, earliest.month, 1)
-            # Last day of latest month
             if latest.month == 12:
                 to_date = date(latest.year, 12, 31)
             else:
-                to_date = date(latest.year, latest.month + 1, 1) - __import__('datetime').timedelta(days=1)
+                to_date = date(latest.year, latest.month + 1, 1) - timedelta(days=1)
             self.from_date.setDate(QtCore.QDate(from_date.year, from_date.month, from_date.day))
             self.to_date.setDate(QtCore.QDate(to_date.year, to_date.month, to_date.day))
         else:
-            # Default to current year
             today = date.today()
             self.from_date.setDate(QtCore.QDate(today.year, 1, 1))
             self.to_date.setDate(QtCore.QDate(today.year, today.month, today.day))
@@ -201,24 +239,9 @@ class EarningsPage(QtWidgets.QWidget):
     def _update_selector_visibility(self) -> None:
         """Show/hide date selectors based on current view mode."""
         mode = self.view_mode_combo.currentText()
-        is_monthly = mode == VIEW_MODE_MONTHLY
-        is_yearly = mode == VIEW_MODE_YEARLY
-        is_custom = mode == VIEW_MODE_CUSTOM
-
-        # Monthly selectors
-        self.month_label.setVisible(is_monthly)
-        self.month_combo.setVisible(is_monthly)
-
-        # Yearly selectors
-        self.year_label.setVisible(is_yearly)
-        self.year_combo.setVisible(is_yearly)
-
-        # Custom range selectors
-        self.from_label.setVisible(is_custom)
-        self.from_date.setVisible(is_custom)
-        self.to_label.setVisible(is_custom)
-        self.to_date.setVisible(is_custom)
-        self.apply_btn.setVisible(is_custom)
+        self._monthly_container.setVisible(mode == VIEW_MODE_MONTHLY)
+        self._yearly_container.setVisible(mode == VIEW_MODE_YEARLY)
+        self._custom_container.setVisible(mode == VIEW_MODE_CUSTOM)
 
     def _rebuild_summary(self) -> None:
         mode = self._current_view_mode
@@ -228,10 +251,14 @@ class EarningsPage(QtWidgets.QWidget):
 
         if mode == VIEW_MODE_MONTHLY:
             if self._current_period is not None:
-                rows, actual_total, expected_total = self._controller.table_for_month(self._current_period)
+                rows, actual_total, expected_total = self._controller.table_for_month(
+                    self._current_period
+                )
         elif mode == VIEW_MODE_YEARLY:
             if self._current_year is not None:
-                rows, actual_total, expected_total = self._controller.table_for_year(self._current_year)
+                rows, actual_total, expected_total = self._controller.table_for_year(
+                    self._current_year
+                )
         elif mode == VIEW_MODE_CUSTOM:
             start = self.from_date.date().toPython()
             end = self.to_date.date().toPython()
@@ -240,18 +267,21 @@ class EarningsPage(QtWidgets.QWidget):
         self._populate_summary_table(rows, actual_total, expected_total)
         self._select_default_row()
 
-    def _populate_summary_table(self, rows, actual_total: float, expected_total: float) -> None:
+    def _populate_summary_table(
+        self, rows, actual_total: float, expected_total: float
+    ) -> None:
         self.summary_table.setSortingEnabled(False)
         self.summary_table.setRowCount(0)
         self.summary_table.clearSelection()
 
-        def _add_row(values, bold: bool = False, color: Optional[QtGui.QColor] = None, raw_name: Optional[str] = None):
+        def _add_row(
+            values, bold: bool = False, color: Optional[QtGui.QColor] = None, raw_name: Optional[str] = None
+        ):
             r = self.summary_table.rowCount()
             self.summary_table.insertRow(r)
             for c, text in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(text)
                 if c == 0 and raw_name is not None:
-                    # Store raw sub-category name as item data for later retrieval
                     item.setData(QtCore.Qt.UserRole, raw_name)
                 if c in (1, 2, 3, 4, 5):
                     item.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -264,9 +294,9 @@ class EarningsPage(QtWidgets.QWidget):
                 self.summary_table.setItem(r, c, item)
             return r
 
-        # Data rows with radio indicator (○ = unselected)
+        # Data rows with radio indicator
         for row in rows:
-            diff_color = QtGui.QColor("#16A34A") if row.diff >= 0 else QtGui.QColor("#DC2626")
+            diff_color = QtGui.QColor("#10B981") if row.diff >= 0 else QtGui.QColor("#EF4444")
             raw_name = row.sub_category or "(Uncategorized)"
             _add_row([
                 f"○ {raw_name}",
@@ -277,10 +307,10 @@ class EarningsPage(QtWidgets.QWidget):
                 self._fmt_percent(row.diff_percent),
             ], bold=False, color=diff_color, raw_name=raw_name)
 
-        # Total row (no radio indicator)
+        # Total row
         total_diff = actual_total - expected_total
-        total_color = QtGui.QColor("#16A34A") if total_diff >= 0 else QtGui.QColor("#DC2626")
-        total_row = _add_row([
+        total_color = QtGui.QColor("#10B981") if total_diff >= 0 else QtGui.QColor("#EF4444")
+        _add_row([
             "TOTAL",
             self._fmt_currency(actual_total),
             self._fmt_percent(100.0 if rows else 0.0),
@@ -291,15 +321,11 @@ class EarningsPage(QtWidgets.QWidget):
 
         self.summary_table.setSortingEnabled(True)
         self.summary_table.resizeColumnsToContents()
-        # Prevent selecting the total row by default
-        if total_row >= 0:
-            self.summary_table.setRowHidden(total_row, False)
 
     def _refresh_table(self) -> None:
         mode = self._current_view_mode
         sub = self._current_sub_category
 
-        # Get transactions based on view mode
         if mode == VIEW_MODE_MONTHLY:
             if self._current_period is None:
                 self.table.setRowCount(0)
@@ -320,11 +346,10 @@ class EarningsPage(QtWidgets.QWidget):
             self.table.setRowCount(0)
             return
 
-        # Sort by date desc if available
         if not df.empty and "transaction_date" in df.columns:
             try:
                 df = df.sort_values(by="transaction_date", ascending=False)
-            except Exception:  # pragma: no cover - defensive
+            except Exception:  # pragma: no cover
                 pass
 
         self._populate_table(df)
@@ -359,13 +384,11 @@ class EarningsPage(QtWidgets.QWidget):
         self.table.resizeColumnsToContents()
         self.table.setSortingEnabled(True)
 
-    # ------------- Events -------------
     def _on_view_mode_changed(self, mode: str) -> None:
         self._current_view_mode = mode
         self._logger.info("EarningsPage: View mode changed -> %s", mode)
         self._update_selector_visibility()
 
-        # Trigger appropriate data load based on new mode
         if mode == VIEW_MODE_MONTHLY:
             if self._current_period is None and self.month_combo.count() > 0:
                 self.month_combo.setCurrentIndex(self.month_combo.count() - 1)
@@ -411,40 +434,36 @@ class EarningsPage(QtWidgets.QWidget):
 
     def _on_summary_selection_changed(self) -> None:
         selected_row = self.summary_table.currentRow()
-        
-        # Update radio indicators for all rows
+
+        # Update radio indicators
         for row in range(self.summary_table.rowCount()):
             name_item = self.summary_table.item(row, 0)
             if name_item is None:
                 continue
             raw_name = name_item.data(QtCore.Qt.UserRole)
             if raw_name is None:
-                # This is the TOTAL row, skip it
                 continue
-            # Update indicator: ● for selected, ○ for others
             indicator = "●" if row == selected_row else "○"
             name_item.setText(f"{indicator} {raw_name}")
-        
-        # Set current sub-category from item data
+
+        # Set current sub-category
         if selected_row < 0:
             self._current_sub_category = None
         else:
             name_item = self.summary_table.item(selected_row, 0)
             if name_item:
                 raw_name = name_item.data(QtCore.Qt.UserRole)
-                # If raw_name is None, it's the TOTAL row
                 self._current_sub_category = raw_name
             else:
                 self._current_sub_category = None
-        
+
         self._refresh_table()
 
-    # ------------- Helpers -------------
     @staticmethod
     def _fmt_currency(value: float) -> str:
         try:
             return f"${value:,.2f}"
-        except Exception:  # pragma: no cover - defensive
+        except Exception:  # pragma: no cover
             return str(value)
 
     @staticmethod
@@ -459,13 +478,11 @@ class EarningsPage(QtWidgets.QWidget):
     @staticmethod
     def _fmt_date(value) -> str:
         try:
-            # value can be pandas Timestamp/Period/str
             return str(getattr(value, "date", lambda: value)()) if hasattr(value, "date") else str(value)[:10]
         except Exception:  # pragma: no cover
             return str(value)[:10]
 
     def _select_default_row(self) -> None:
-        # Select first data row (if any) - use item data to identify non-TOTAL rows
         if self.summary_table.rowCount() == 0:
             self._current_sub_category = None
             return
@@ -474,9 +491,6 @@ class EarningsPage(QtWidgets.QWidget):
             if name_item:
                 raw_name = name_item.data(QtCore.Qt.UserRole)
                 if raw_name is not None:
-                    # This is a data row (not TOTAL), select it
                     self.summary_table.selectRow(row)
-                    # Selection change handler will update indicators and _current_sub_category
                     return
         self._current_sub_category = None
-

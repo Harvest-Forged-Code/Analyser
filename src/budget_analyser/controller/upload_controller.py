@@ -161,7 +161,8 @@ class UploadController:
     def _read_csv_columns(self, file_path: Path) -> Tuple[bool, str, List[str]]:
         """Read CSV and return columns or error."""
         try:
-            df = pd.read_csv(file_path, nrows=5)
+            # Use utf-8-sig encoding to handle BOM from Excel-exported CSVs
+            df = pd.read_csv(file_path, nrows=5, encoding="utf-8-sig")
             if df.empty:
                 return False, "CSV file is empty", []
             return True, "", list(df.columns)

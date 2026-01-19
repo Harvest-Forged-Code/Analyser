@@ -46,6 +46,42 @@ from budget_analyser.controller.budget_controller import BudgetController
 from budget_analyser.version import get_version, APP_NAME
 
 
+class ReportRefreshWorker(QtCore.QThread):
+    """Background worker thread for refreshing reports."""
+
+    progress = QtCore.Signal(str, int)  # (message, step)
+    finished_with_result = QtCore.Signal(object)  # reports list or None
+    error_occurred = QtCore.Signal(str)  # error message
+
+    def __init__(
+        self,
+        mapper_controller: MapperController,
+        cashflow_mapper_controller: CashflowMapperController,
+        sub_category_mapper_controller: SubCategoryMapperController,
+        refresh_fn: Callable[[], List["MonthlyReports"]],
+    ):
+        super().__init__()
+        self._mapper_controller = mapper_controller
+        self._cashflow_mapper_controller = cashflow_mapper_controller
+        self._sub_category_mapper_controller = sub_category_mapper_controller
+        self._refresh_fn = refresh_fn
+
+    def run(self) -> None:
+        try:
+            self.progress.emit("Reloading latest mappings...", 1)
+            self._mapper_controller.reload()
+            self._cashflow_mapper_controller.reload()
+            self._sub_category_mapper_controller.reload()
+
+            self.progress.emit("Rebuilding reports...", 2)
+            reports = self._refresh_fn()
+
+            self.progress.emit("Finalizing...", 3)
+            self.finished_with_result.emit(reports)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            self.error_occurred.emit(str(exc))
+
+
 class DashboardWindow(QtWidgets.QMainWindow):
     """Main dashboard window with navigation sidebar and content pages."""
 
@@ -163,8 +199,17 @@ class DashboardWindow(QtWidgets.QMainWindow):
         self._subtitle.setObjectName("headerSubtitleLabel")
         header_layout.addWidget(self._subtitle)
 
-        # Theme toggle button on the right
+        # Right side controls
         header_layout.addStretch(1)
+
+        # Sidebar toggle button
+        self._toggle_sidebar_btn = QtWidgets.QPushButton("☰")
+        self._toggle_sidebar_btn.setObjectName("toggleSidebar")
+        self._toggle_sidebar_btn.setToolTip("Toggle sidebar visibility")
+        self._toggle_sidebar_btn.clicked.connect(self._toggle_sidebar)
+        header_layout.addWidget(self._toggle_sidebar_btn)
+
+        # Theme toggle button
         self._theme_btn = QtWidgets.QPushButton()
         self._theme_btn.setObjectName("themeToggle")
         self._update_theme_button()
@@ -184,20 +229,20 @@ class DashboardWindow(QtWidgets.QMainWindow):
         row.setSpacing(12)
 
         # Sidebar with navigation buttons
-        sidebar = QtWidgets.QWidget()
-        sidebar.setObjectName("sidebar")
-        sidebar_layout = QtWidgets.QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(14, 14, 14, 14)
-        sidebar_layout.setSpacing(10)
+        self._sidebar = QtWidgets.QWidget()
+        self._sidebar.setObjectName("sidebar")
+        sidebar_layout = QtWidgets.QVBoxLayout(self._sidebar)
+        sidebar_layout.setContentsMargins(16, 16, 16, 16)
+        sidebar_layout.setSpacing(12)
 
-        brand = QtWidgets.QLabel(APP_NAME)
-        brand.setObjectName("navBrand")
-        brand.setAlignment(QtCore.Qt.AlignCenter)
-        bf = brand.font()
-        bf.setPointSize(14)
-        bf.setBold(True)
-        brand.setFont(bf)
-        sidebar_layout.addWidget(brand)
+        # Search bar for filtering pages
+        self._search_bar = QtWidgets.QLineEdit()
+        self._search_bar.setObjectName("sidebarSearchBar")
+        self._search_bar.setPlaceholderText("🔍 Search pages...")
+        self._search_bar.textChanged.connect(self._filter_pages)
+        sidebar_layout.addWidget(self._search_bar)
+
+        sidebar_layout.addSpacing(8)
 
         self._btn_group = QtWidgets.QButtonGroup(self)
         self._btn_group.setExclusive(True)
@@ -260,6 +305,12 @@ class DashboardWindow(QtWidgets.QMainWindow):
                     (self._section_names[self.PAGE_SUB_CATEGORY_MAPPER], self.PAGE_SUB_CATEGORY_MAPPER),
                 ],
             ),
+            (
+                "Configuration",
+                [
+                    (self._section_names[self.PAGE_SETTINGS], self.PAGE_SETTINGS),
+                ],
+            ),
         ]
 
         for group_title, items in grouped_sections:
@@ -274,15 +325,16 @@ class DashboardWindow(QtWidgets.QMainWindow):
                 sidebar_layout.addWidget(btn)
                 self._buttons.append(btn)
 
-            sidebar_layout.addSpacing(6)
+            sidebar_layout.addSpacing(8)
 
         sidebar_layout.addStretch(1)
-        sidebar.setFixedWidth(220)
+        self._sidebar.setFixedWidth(260)
+        self._sidebar_expanded = True
 
         # Shadow for sidebar
-        s_shadow = QtWidgets.QGraphicsDropShadowEffect(blurRadius=24, xOffset=0, yOffset=10)
-        s_shadow.setColor(QtGui.QColor(0, 0, 0, 160))
-        sidebar.setGraphicsEffect(s_shadow)
+        s_shadow = QtWidgets.QGraphicsDropShadowEffect(blurRadius=28, xOffset=0, yOffset=12)
+        s_shadow.setColor(QtGui.QColor(0, 0, 0, 180))
+        self._sidebar.setGraphicsEffect(s_shadow)
 
         # Content container with stacked pages
         content = QtWidgets.QWidget()
@@ -336,7 +388,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         content.setGraphicsEffect(c_shadow)
 
         # Compose row
-        row.addWidget(sidebar)
+        row.addWidget(self._sidebar)
         row.addWidget(content, 1)
         vroot.addLayout(row)
 
@@ -349,6 +401,35 @@ class DashboardWindow(QtWidgets.QMainWindow):
         else:
             # Default selection: Yearly Summary
             self._navigate_to(self.PAGE_YEARLY_SUMMARY)
+
+    def _toggle_sidebar(self) -> None:
+        """Toggle sidebar visibility with smooth animation."""
+        if self._sidebar_expanded:
+            # Collapse sidebar
+            self._sidebar.setVisible(False)
+            self._sidebar_expanded = False
+            self._toggle_sidebar_btn.setText("☰")
+        else:
+            # Expand sidebar
+            self._sidebar.setVisible(True)
+            self._sidebar_expanded = True
+            self._toggle_sidebar_btn.setText("✕")
+
+    def _filter_pages(self, search_text: str) -> None:
+        """Filter navigation pages based on search text."""
+        search_lower = search_text.lower().strip()
+
+        for btn in self._buttons:
+            idx = self._btn_group.id(btn)
+            page_name = self._section_names.get(idx, "")
+
+            # Remove emoji from page name for search
+            clean_name = "".join(c for c in page_name if not c.isdigit() and ord(c) < 0x1F600)
+
+            if not search_lower or search_lower in clean_name.lower():
+                btn.setVisible(True)
+            else:
+                btn.setVisible(False)
 
     def _apply_restricted_mode(self) -> None:
         """Apply restricted mode: disable all pages except Upload and Settings."""
@@ -415,50 +496,71 @@ class DashboardWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.information(
                 self,
                 "Refresh unavailable",
-                "Reports refresh is not configured for this session. Please restart the app to see the latest mappings.",
+                "Reports refresh is not configured for this session. "
+                "Please restart the app to see the latest mappings.",
             )
             return
 
-        dlg = QtWidgets.QProgressDialog("Refreshing reports...", None, 0, 3, self)
-        dlg.setWindowTitle("Refreshing Reports")
-        dlg.setWindowModality(QtCore.Qt.ApplicationModal)
-        dlg.setCancelButton(None)
-        dlg.setMinimumDuration(0)
-        dlg.show()
+        # Create progress dialog
+        self._refresh_dlg = QtWidgets.QProgressDialog(
+            "Refreshing reports...", None, 0, 3, self
+        )
+        self._refresh_dlg.setWindowTitle("Refreshing Reports")
+        self._refresh_dlg.setWindowModality(QtCore.Qt.ApplicationModal)
+        self._refresh_dlg.setCancelButton(None)
+        self._refresh_dlg.setMinimumDuration(0)
+        self._refresh_dlg.show()
 
-        try:
-            dlg.setLabelText("Reloading latest mappings...")
-            dlg.setValue(1)
-            QtWidgets.QApplication.processEvents()
-            self._mapper_controller.reload()
-            self._cashflow_mapper_controller.reload()
-            self._sub_category_mapper_controller.reload()
+        # Create and start worker thread
+        self._refresh_worker = ReportRefreshWorker(
+            self._mapper_controller,
+            self._cashflow_mapper_controller,
+            self._sub_category_mapper_controller,
+            self._refresh_reports_fn,
+        )
+        self._refresh_worker.progress.connect(self._on_refresh_progress)
+        self._refresh_worker.finished_with_result.connect(self._on_refresh_finished)
+        self._refresh_worker.error_occurred.connect(self._on_refresh_error)
+        self._refresh_worker.start()
 
-            dlg.setLabelText("Rebuilding reports...")
-            dlg.setValue(2)
-            QtWidgets.QApplication.processEvents()
-            reports = self._refresh_reports_fn()
+    def _on_refresh_progress(self, message: str, step: int) -> None:
+        """Handle progress updates from the worker thread."""
+        if hasattr(self, "_refresh_dlg") and self._refresh_dlg is not None:
+            self._refresh_dlg.setLabelText(message)
+            self._refresh_dlg.setValue(step)
 
-            dlg.setLabelText("Updating pages...")
-            dlg.setValue(3)
-            QtWidgets.QApplication.processEvents()
-            self._rebuild_pages(reports)
+    def _on_refresh_finished(self, reports: List[MonthlyReports]) -> None:
+        """Handle successful completion of report refresh."""
+        if hasattr(self, "_refresh_dlg") and self._refresh_dlg is not None:
+            self._refresh_dlg.close()
+            self._refresh_dlg = None
 
-            QtWidgets.QMessageBox.information(
-                self,
-                "Reports refreshed",
-                "Reports were regenerated using the latest mappings.",
-            )
-        except Exception as exc:  # pragma: no cover
-            dlg.close()
-            QtWidgets.QMessageBox.critical(
-                self,
-                "Refresh failed",
-                f"Failed to refresh reports:\n{exc}",
-            )
-            return
+        self._rebuild_pages(reports)
+        QtWidgets.QMessageBox.information(
+            self,
+            "Reports refreshed",
+            "Reports were regenerated using the latest mappings.",
+        )
 
-        dlg.close()
+        # Clean up worker
+        if hasattr(self, "_refresh_worker"):
+            self._refresh_worker = None
+
+    def _on_refresh_error(self, error_msg: str) -> None:
+        """Handle errors from the worker thread."""
+        if hasattr(self, "_refresh_dlg") and self._refresh_dlg is not None:
+            self._refresh_dlg.close()
+            self._refresh_dlg = None
+
+        QtWidgets.QMessageBox.critical(
+            self,
+            "Refresh failed",
+            f"Failed to refresh reports:\n{error_msg}",
+        )
+
+        # Clean up worker
+        if hasattr(self, "_refresh_worker"):
+            self._refresh_worker = None
 
     def _rebuild_pages(self, reports: List[MonthlyReports]) -> None:
         self._reports = reports or []
@@ -510,7 +612,15 @@ class DashboardWindow(QtWidgets.QMainWindow):
     def _replace_page(self, index: int, widget: QtWidgets.QWidget) -> None:
         old_widget = self._stack.widget(index)
         if old_widget is not None:
+            # Clear reference from _pages list before deletion to avoid memory leak
+            if len(self._pages) > index:
+                self._pages[index] = None  # type: ignore[assignment]
             self._stack.removeWidget(old_widget)
+            # Disconnect any signals from the old widget to prevent dangling connections
+            try:
+                old_widget.disconnect()
+            except (TypeError, RuntimeError):
+                pass  # No connections or already disconnected
             old_widget.deleteLater()
         self._stack.insertWidget(index, widget)
         if len(self._pages) > index:

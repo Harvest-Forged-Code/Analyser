@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional, Tuple
 
 from PySide6 import QtCore, QtWidgets
 
 from budget_analyser.controller.controllers import MonthlyReports
 from budget_analyser.controller import ExpensesStatsController
+from budget_analyser.views.pages._page_base import ModernPageMixin
 
 import pandas as pd
 
@@ -44,68 +45,134 @@ class ExpensesPage(QtWidgets.QWidget):
 
     # ---------------- UI ----------------
     def _init_ui(self) -> None:
-        root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(10)
+        # Scroll area for content
+        scroll, container = ModernPageMixin.create_scroll_area()
 
-        # Header: Title + View Mode + Date Selectors
-        header_row = QtWidgets.QHBoxLayout()
-        title = QtWidgets.QLabel("Expenses")
-        tf = title.font()
-        tf.setPointSize(16)
-        tf.setBold(True)
-        title.setFont(tf)
-        header_row.addWidget(title)
-        header_row.addStretch(1)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll)
 
-        # View Mode selector
-        header_row.addWidget(QtWidgets.QLabel("View:"))
+        root = QtWidgets.QVBoxLayout(container)
+        root.setContentsMargins(32, 32, 32, 32)
+        root.setSpacing(24)
+
+        # Header with page title
+        page_header = ModernPageMixin.create_page_header(
+            title="Expenses",
+            subtitle="Track and analyze your expense categories and transactions",
+            icon="🧾"
+        )
+        root.addWidget(page_header)
+
+        # Filters card
+        filters_card, filters_layout = ModernPageMixin.create_card("FILTERS")
+
+        # View Mode selector row
+        view_row_container, view_row = ModernPageMixin.create_controls_row()
+
+        view_label = ModernPageMixin.create_control_label("View Mode")
+        view_row.addWidget(view_label)
+
         self.view_mode_combo = QtWidgets.QComboBox()
         self.view_mode_combo.addItems([VIEW_MODE_MONTHLY, VIEW_MODE_YEARLY, VIEW_MODE_CUSTOM])
-        header_row.addWidget(self.view_mode_combo)
+        ModernPageMixin.style_combo_box(self.view_mode_combo, min_height=44)
+        self.view_mode_combo.setMinimumWidth(160)
+        view_row.addWidget(self.view_mode_combo)
+        view_row.addStretch(1)
 
-        # Month selector (for Monthly mode)
-        self.month_label = QtWidgets.QLabel("Month:")
-        header_row.addWidget(self.month_label)
+        filters_layout.addWidget(view_row_container)
+
+        # Monthly selector container
+        self._monthly_container = QtWidgets.QWidget()
+        monthly_layout = QtWidgets.QVBoxLayout(self._monthly_container)
+        monthly_layout.setContentsMargins(0, 0, 0, 0)
+        monthly_layout.setSpacing(8)
+
+        self.month_label = ModernPageMixin.create_control_label("Month")
+        monthly_layout.addWidget(self.month_label)
+
         self.month_combo = QtWidgets.QComboBox()
-        header_row.addWidget(self.month_combo)
+        ModernPageMixin.style_combo_box(self.month_combo, min_height=44)
+        monthly_layout.addWidget(self.month_combo)
 
-        # Year selector (for Yearly mode)
-        self.year_label = QtWidgets.QLabel("Year:")
-        header_row.addWidget(self.year_label)
+        filters_layout.addWidget(self._monthly_container)
+
+        # Yearly selector container
+        self._yearly_container = QtWidgets.QWidget()
+        yearly_layout = QtWidgets.QVBoxLayout(self._yearly_container)
+        yearly_layout.setContentsMargins(0, 0, 0, 0)
+        yearly_layout.setSpacing(8)
+
+        self.year_label = ModernPageMixin.create_control_label("Year")
+        yearly_layout.addWidget(self.year_label)
+
         self.year_combo = QtWidgets.QComboBox()
-        header_row.addWidget(self.year_combo)
+        ModernPageMixin.style_combo_box(self.year_combo, min_height=44)
+        self.year_combo.setMinimumWidth(120)
+        yearly_layout.addWidget(self.year_combo)
 
-        # Date range selectors (for Custom Range mode)
-        self.from_label = QtWidgets.QLabel("From:")
-        header_row.addWidget(self.from_label)
+        filters_layout.addWidget(self._yearly_container)
+
+        # Custom range selector container
+        self._custom_container = QtWidgets.QWidget()
+        custom_layout = QtWidgets.QVBoxLayout(self._custom_container)
+        custom_layout.setContentsMargins(0, 0, 0, 0)
+        custom_layout.setSpacing(16)
+
+        # From date
+        from_container = QtWidgets.QWidget()
+        from_layout = QtWidgets.QVBoxLayout(from_container)
+        from_layout.setContentsMargins(0, 0, 0, 0)
+        from_layout.setSpacing(8)
+
+        self.from_label = ModernPageMixin.create_control_label("From Date")
+        from_layout.addWidget(self.from_label)
+
         self.from_date = QtWidgets.QDateEdit()
-        self.from_date.setCalendarPopup(True)
-        self.from_date.setDisplayFormat("MM/dd/yyyy")
-        header_row.addWidget(self.from_date)
+        ModernPageMixin.style_date_edit(self.from_date, min_height=44)
+        from_layout.addWidget(self.from_date)
 
-        self.to_label = QtWidgets.QLabel("To:")
-        header_row.addWidget(self.to_label)
+        custom_layout.addWidget(from_container)
+
+        # To date
+        to_container = QtWidgets.QWidget()
+        to_layout = QtWidgets.QVBoxLayout(to_container)
+        to_layout.setContentsMargins(0, 0, 0, 0)
+        to_layout.setSpacing(8)
+
+        self.to_label = ModernPageMixin.create_control_label("To Date")
+        to_layout.addWidget(self.to_label)
+
         self.to_date = QtWidgets.QDateEdit()
-        self.to_date.setCalendarPopup(True)
-        self.to_date.setDisplayFormat("MM/dd/yyyy")
-        header_row.addWidget(self.to_date)
+        ModernPageMixin.style_date_edit(self.to_date, min_height=44)
+        to_layout.addWidget(self.to_date)
 
-        # Apply button for custom range
-        self.apply_btn = QtWidgets.QPushButton("Apply")
-        header_row.addWidget(self.apply_btn)
+        custom_layout.addWidget(to_container)
 
-        root.addLayout(header_row)
+        # Apply button
+        self.apply_btn = ModernPageMixin.create_action_button("Apply", primary=True)
+        self.apply_btn.setMinimumHeight(48)
+        custom_layout.addWidget(self.apply_btn)
 
-        # Middle: Tree view (Expenses -> Categories -> Sub-categories)
+        filters_layout.addWidget(self._custom_container)
+
+        root.addWidget(filters_card)
+
+        # Tree card
+        tree_card, tree_layout = ModernPageMixin.create_card("EXPENSE BREAKDOWN")
         self.tree = QtWidgets.QTreeWidget()
         self.tree.setHeaderLabels(["Expenses", "Amount"])
         self.tree.header().setStretchLastSection(False)
         self.tree.header().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         self.tree.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
-        root.addWidget(self.tree)
+        self.tree.setIndentation(24)
+        self.tree.setUniformRowHeights(True)
+        self.tree.setAlternatingRowColors(True)
+        tree_layout.addWidget(self.tree, 1)
+        root.addWidget(tree_card, 1)
 
-        # Bottom: Transactions table
+        # Transactions table card
+        table_card, table_layout = ModernPageMixin.create_card("TRANSACTIONS")
         self.table = QtWidgets.QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(
             ["Date", "Description", "Amount", "From Account", "Category", "Sub-category"]
@@ -115,8 +182,9 @@ class ExpensesPage(QtWidgets.QWidget):
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setAlternatingRowColors(True)
-        self.table.verticalHeader().setDefaultSectionSize(26)
-        root.addWidget(self.table)
+        self.table.verticalHeader().setDefaultSectionSize(34)
+        table_layout.addWidget(self.table, 1)
+        root.addWidget(table_card, 1)
 
         # Populate months and years
         self._populate_months()
@@ -163,7 +231,7 @@ class ExpensesPage(QtWidgets.QWidget):
             if latest.month == 12:
                 to_date = date(latest.year, 12, 31)
             else:
-                to_date = date(latest.year, latest.month + 1, 1) - __import__('datetime').timedelta(days=1)
+                to_date = date(latest.year, latest.month + 1, 1) - timedelta(days=1)
             self.from_date.setDate(QtCore.QDate(from_date.year, from_date.month, from_date.day))
             self.to_date.setDate(QtCore.QDate(to_date.year, to_date.month, to_date.day))
         else:
@@ -179,20 +247,10 @@ class ExpensesPage(QtWidgets.QWidget):
         is_yearly = mode == VIEW_MODE_YEARLY
         is_custom = mode == VIEW_MODE_CUSTOM
 
-        # Monthly selectors
-        self.month_label.setVisible(is_monthly)
-        self.month_combo.setVisible(is_monthly)
-
-        # Yearly selectors
-        self.year_label.setVisible(is_yearly)
-        self.year_combo.setVisible(is_yearly)
-
-        # Custom range selectors
-        self.from_label.setVisible(is_custom)
-        self.from_date.setVisible(is_custom)
-        self.to_label.setVisible(is_custom)
-        self.to_date.setVisible(is_custom)
-        self.apply_btn.setVisible(is_custom)
+        # Show/hide entire containers
+        self._monthly_container.setVisible(is_monthly)
+        self._yearly_container.setVisible(is_yearly)
+        self._custom_container.setVisible(is_custom)
 
     def _rebuild_tree(self) -> None:
         self.tree.clear()
@@ -217,18 +275,35 @@ class ExpensesPage(QtWidgets.QWidget):
 
         # Add categories and sub-categories
         for cat, cat_total, subs in self._controller.category_breakdown(self._current_period):
-            cat_item = QtWidgets.QTreeWidgetItem([cat or "(Uncategorized)", self._fmt_currency(cat_total)])
+            cat_name = cat.title() if cat else "Uncategorized"
+            cat_item = QtWidgets.QTreeWidgetItem([cat_name, self._fmt_currency(cat_total)])
             cat_item.setData(0, self.ROLE_NODE_KIND, "category")
             cat_item.setData(0, self.ROLE_CATEGORY, cat or "")
             cat_item.setData(0, self.ROLE_MONTH, None)
             cat_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+            # Style category item - bold, larger font
+            cat_font = cat_item.font(0)
+            cat_font.setBold(True)
+            cat_font.setPointSize(14)
+            cat_item.setFont(0, cat_font)
+            cat_item.setFont(1, cat_font)
+
             for sub, amt in subs:
-                sub_item = QtWidgets.QTreeWidgetItem([sub or "(Uncategorized)", self._fmt_currency(amt)])
+                sub_name = sub.title() if sub else "Uncategorized"
+                sub_item = QtWidgets.QTreeWidgetItem([sub_name, self._fmt_currency(amt)])
                 sub_item.setData(0, self.ROLE_NODE_KIND, "sub")
                 sub_item.setData(0, self.ROLE_CATEGORY, cat or "")
                 sub_item.setData(0, self.ROLE_SUB_CATEGORY, sub or "")
                 sub_item.setData(0, self.ROLE_MONTH, None)
                 sub_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+                # Style sub-category - regular weight
+                sub_font = sub_item.font(0)
+                sub_font.setPointSize(13)
+                sub_item.setFont(0, sub_font)
+                sub_item.setFont(1, sub_font)
+
                 cat_item.addChild(sub_item)
             root_item.addChild(cat_item)
 
@@ -256,23 +331,41 @@ class ExpensesPage(QtWidgets.QWidget):
             # Bold month items
             font = month_item.font(0)
             font.setBold(True)
+            font.setPointSize(14)
             month_item.setFont(0, font)
+            month_item.setFont(1, font)
 
             # Add category children
             for cat, cat_total, subs in cat_breakdown:
-                cat_item = QtWidgets.QTreeWidgetItem([cat or "(Uncategorized)", self._fmt_currency(cat_total)])
+                cat_name = cat.title() if cat else "Uncategorized"
+                cat_item = QtWidgets.QTreeWidgetItem([cat_name, self._fmt_currency(cat_total)])
                 cat_item.setData(0, self.ROLE_NODE_KIND, "category")
                 cat_item.setData(0, self.ROLE_CATEGORY, cat or "")
                 cat_item.setData(0, self.ROLE_MONTH, period)
                 cat_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
+                # Style category
+                cat_font = cat_item.font(0)
+                cat_font.setBold(True)
+                cat_font.setPointSize(14)
+                cat_item.setFont(0, cat_font)
+                cat_item.setFont(1, cat_font)
+
                 for sub, amt in subs:
-                    sub_item = QtWidgets.QTreeWidgetItem([sub or "(Uncategorized)", self._fmt_currency(amt)])
+                    sub_name = sub.title() if sub else "Uncategorized"
+                    sub_item = QtWidgets.QTreeWidgetItem([sub_name, self._fmt_currency(amt)])
                     sub_item.setData(0, self.ROLE_NODE_KIND, "sub")
                     sub_item.setData(0, self.ROLE_CATEGORY, cat or "")
                     sub_item.setData(0, self.ROLE_SUB_CATEGORY, sub or "")
                     sub_item.setData(0, self.ROLE_MONTH, period)
                     sub_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+                    # Style sub-category
+                    sub_font = sub_item.font(0)
+                    sub_font.setPointSize(13)
+                    sub_item.setFont(0, sub_font)
+                    sub_item.setFont(1, sub_font)
+
                     cat_item.addChild(sub_item)
 
                 month_item.addChild(cat_item)
@@ -295,18 +388,35 @@ class ExpensesPage(QtWidgets.QWidget):
 
         # Add categories and sub-categories
         for cat, cat_total, subs in self._controller.category_breakdown_for_range(start, end):
-            cat_item = QtWidgets.QTreeWidgetItem([cat or "(Uncategorized)", self._fmt_currency(cat_total)])
+            cat_name = cat.title() if cat else "Uncategorized"
+            cat_item = QtWidgets.QTreeWidgetItem([cat_name, self._fmt_currency(cat_total)])
             cat_item.setData(0, self.ROLE_NODE_KIND, "category")
             cat_item.setData(0, self.ROLE_CATEGORY, cat or "")
             cat_item.setData(0, self.ROLE_MONTH, None)
             cat_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+            # Style category
+            cat_font = cat_item.font(0)
+            cat_font.setBold(True)
+            cat_font.setPointSize(14)
+            cat_item.setFont(0, cat_font)
+            cat_item.setFont(1, cat_font)
+
             for sub, amt in subs:
-                sub_item = QtWidgets.QTreeWidgetItem([sub or "(Uncategorized)", self._fmt_currency(amt)])
+                sub_name = sub.title() if sub else "Uncategorized"
+                sub_item = QtWidgets.QTreeWidgetItem([sub_name, self._fmt_currency(amt)])
                 sub_item.setData(0, self.ROLE_NODE_KIND, "sub")
                 sub_item.setData(0, self.ROLE_CATEGORY, cat or "")
                 sub_item.setData(0, self.ROLE_SUB_CATEGORY, sub or "")
                 sub_item.setData(0, self.ROLE_MONTH, None)
                 sub_item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+                # Style sub-category
+                sub_font = sub_item.font(0)
+                sub_font.setPointSize(13)
+                sub_item.setFont(0, sub_font)
+                sub_item.setFont(1, sub_font)
+
                 cat_item.addChild(sub_item)
             root_item.addChild(cat_item)
 
@@ -318,6 +428,7 @@ class ExpensesPage(QtWidgets.QWidget):
         """Apply bold styling to root tree item."""
         font = item.font(0)
         font.setBold(True)
+        font.setPointSize(15)
         item.setFont(0, font)
         item.setFont(1, font)
         item.setTextAlignment(1, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)

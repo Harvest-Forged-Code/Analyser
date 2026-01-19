@@ -177,6 +177,9 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             row = cursor.fetchone()
             conn.commit()
 
+        if row is None:
+            raise RuntimeError(f"Failed to set budget goal for category: {category}")
+
         self._logger.info("Set budget goal: %s = $%.2f (%s)",
                          category, monthly_limit, year_month)
         return BudgetGoal(
@@ -288,6 +291,9 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             row = cursor.fetchone()
             conn.commit()
 
+        if row is None:
+            raise RuntimeError(f"Failed to set earnings goal for sub_category: {sub_category}")
+
         self._logger.info(
             "Set earnings goal: %s = $%.2f (%s)",
             sub_category,
@@ -390,6 +396,9 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             """, (name, account_type, balance, today, notes))
             row = cursor.fetchone()
             conn.commit()
+
+        if row is None:
+            raise RuntimeError(f"Failed to insert account: {name}")
 
         self._logger.info("Added account: %s (%s) = $%.2f", name, account_type, balance)
         return Account(
@@ -505,6 +514,9 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             """, (description, expected_amount, frequency, category, sub_category))
             row = cursor.fetchone()
             conn.commit()
+
+        if row is None:
+            raise RuntimeError(f"Failed to insert recurring transaction: {description}")
 
         self._logger.info(
             "Added recurring transaction: %s ($%.2f %s)",
