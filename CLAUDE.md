@@ -174,28 +174,53 @@ Use **PlantUML** for detailed UML diagrams in `docs/uml/*.puml` (requires export
 1. **Write test first** - Create failing test for the new feature/fix
 2. **Implement code** - Write minimal code to make the test pass
 3. **Refactor** - Clean up while keeping tests green
-4. **Run all tests** - Ensure no regressions before committing
+4. **Run unit tests** - All unit tests must pass before committing
+
+**Test types:**
+
+| Type | Purpose | Location | Scope |
+|------|---------|----------|-------|
+| **Unit** | Test individual functions/classes in isolation | `tests/unit/` | Single module, mocked dependencies |
+| **Integration** | Test component interactions | `tests/integration/` | Multiple modules, real dependencies |
+| **System** | Test end-to-end workflows | `tests/system/` | Full application, user scenarios |
 
 ```bash
-# Run all tests before committing
-pytest -q
+# Run unit tests (REQUIRED before committing)
+pytest tests/unit/ -q
 
-# Run specific test file
-pytest tests/test_module.py -v
+# Run integration tests
+pytest tests/integration/ -q
+
+# Run system tests
+pytest tests/system/ -q
+
+# Run all tests
+pytest -q
 
 # Run with coverage
 pytest --cov=src/budget_analyser
 ```
 
 **Testing requirements:**
-- Every new feature must have corresponding test cases
+- Every new feature must have unit tests (required), integration/system tests as appropriate
 - Every bug fix must have a regression test
-- All tests must pass before committing (`pytest -q`)
+- **All unit tests must pass before committing** (`pytest tests/unit/ -q`)
 - Tests in `tests/` directory using pytest
 - `tests/conftest.py` adds `src/` to PYTHONPATH
 - CI runs on Linux/macOS/Windows across Python 3.10-3.12
 
 **Test organization:**
-- Mirror source structure: `src/budget_analyser/domain/` → `tests/domain/`
+```
+tests/
+├── unit/           # Fast, isolated tests (mock external dependencies)
+│   ├── domain/     # Business logic tests
+│   ├── controller/ # Controller tests
+│   └── infrastructure/  # Repository/adapter tests
+├── integration/    # Component interaction tests (real DB, file I/O)
+└── system/         # End-to-end workflow tests (full app scenarios)
+```
+
+**Naming conventions:**
 - Use descriptive test names: `test_<function>_<scenario>_<expected>`
 - Group related tests in classes when appropriate
+- Prefix test files with `test_`
