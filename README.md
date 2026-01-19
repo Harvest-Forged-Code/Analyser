@@ -211,4 +211,4 @@ Set back to `eng_ver = 1` for production releases.
 
 —
 
-For a deeper dive (architecture diagrams, flows), see `documentation/` and the LaTeX PDF.
+For a deeper dive (architecture diagrams, flows), see `docs/` and the LaTeX PDF.

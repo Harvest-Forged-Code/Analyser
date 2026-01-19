@@ -8,9 +8,9 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 echo "Base directory: $BASE_DIR"
 
 # Set the paths for documentation
-LATEX_DIR="$BASE_DIR/documentation/LaTeX"
-UML_DIR="$BASE_DIR/documentation/uml"
-PDF_OUTPUT_DIR="$BASE_DIR/documentation"
+LATEX_DIR="$BASE_DIR/docs/LaTeX"
+UML_DIR="$BASE_DIR/docs/uml"
+PDF_OUTPUT_DIR="$BASE_DIR/docs"
 
 # Set the path for the PlantUML JAR
 PLANTUML_JAR="/Users/Prabhukumar/Library/Application Support/JetBrains/PyCharm2025.1/plugins/plantuml4idea/lib/plantuml-mit-1.2025.4.jar"

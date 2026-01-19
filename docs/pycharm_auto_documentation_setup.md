@@ -101,7 +101,7 @@ If you need to modify the documentation update process:
 
 1. Edit the script at `scripts/update_documentation.sh`
 
-2. If you add new UML diagrams, they will be automatically processed if they are placed in the `documentation/uml/` directory with the `.puml` extension
+2. If you add new UML diagrams, they will be automatically processed if they are placed in the `docs/uml/` directory with the `.puml` extension
 
 3. If you change the LaTeX file name or location, update the script accordingly
 

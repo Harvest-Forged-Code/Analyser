@@ -8,7 +8,7 @@ This document describes the reorganization of LaTeX-related files in the documen
 
 ### 1. Created a New LaTeX Directory
 
-A new directory `documentation/LaTeX` was created to store all LaTeX-related files.
+A new directory `docs/LaTeX` was created to store all LaTeX-related files.
 
 ### 2. Moved LaTeX Files
 
@@ -33,12 +33,12 @@ The PDF file `budget_analyser_documentation.pdf` was kept in the root documentat
 ## Accessing LaTeX Files
 
 To access the LaTeX source files for editing:
-- Navigate to the `documentation/LaTeX` directory
+- Navigate to the `docs/LaTeX` directory
 - Edit the `.tex` files as needed
 - Compile the LaTeX documents to generate updated PDF files in the root documentation directory
 
 ## Next Steps
 
 No further action is needed. The documentation directory is now organized with:
-- LaTeX source and auxiliary files in the `documentation/LaTeX` directory
+- LaTeX source and auxiliary files in the `docs/LaTeX` directory
 - PDF files in the root documentation directory

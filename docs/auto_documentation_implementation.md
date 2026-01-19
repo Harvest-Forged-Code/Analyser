@@ -22,7 +22,7 @@ The script handles:
 
 ### 2. PyCharm Configuration Documentation
 
-Created detailed documentation at `documentation/pycharm_auto_documentation_setup.md` that explains:
+Created detailed documentation at `docs/pycharm_auto_documentation_setup.md` that explains:
 
 - How to set up an external tool in PyCharm to run the documentation update script
 - How to create a compound run configuration that runs the documentation update script before running the application
