@@ -62,6 +62,8 @@ src/budget_analyser/
 
 ## Code Style & Linting
 
+**Always follow pylint coding standards.** Run `pylint src/budget_analyser` before committing.
+
 Pylint configuration (`.pylintrc`):
 - Max line length: 100 characters
 - Max function arguments: 6
@@ -71,19 +73,69 @@ Pylint configuration (`.pylintrc`):
 - Views layer (`src/budget_analyser/views/`) is exempted from linting
 - Docstrings are not enforced
 
+**Coding guidelines:**
+- Use `from __future__ import annotations` for forward references
+- Prefer keyword-only arguments (`def foo(*, arg1, arg2)`) for clarity
+- Use type hints on all function signatures
+- Keep functions focused and single-purpose
+- Extract complex conditions into well-named boolean variables
+
 ## Versioning
 
 - **Patch** version auto-increments on push to `main` via GitHub Actions
 - **Minor/Major** versions: create Git tags manually (`git tag -a vX.Y.0 -m "..."`)
 - Set `eng_ver = 0` in `pyproject.toml` during development to disable auto-increment
 
-## Key Patterns
+## Design Patterns & Modularity
 
-- **Dependency injection** via constructors (controllers receive repositories, services)
-- **Protocol-based abstractions** in domain layer for testability
-- **Frozen dataclasses** for immutable configuration objects
-- **Type hints** throughout (`from __future__ import annotations`)
-- DB is single source of truth; CSV ingestion is one-way (CSV → DB → Reports)
+**Always use appropriate design patterns.** Select the best-fit pattern for the problem:
+
+| Pattern | When to Use | Example in Codebase |
+|---------|-------------|---------------------|
+| **Strategy** | Multiple algorithms for same task | `StatementFormatters` (Citi, Discover, Default) |
+| **Factory** | Object creation with selection logic | `create_statement_formatter()` |
+| **Repository** | Abstract data access | `TransactionDatabase`, `CsvStatementRepository` |
+| **Protocol/Interface** | Decouple layers, enable testing | `StatementRepository`, `ColumnMappingProvider` |
+| **Service** | Encapsulate business logic | `ReportService`, `TransactionProcessor` |
+| **Dependency Injection** | Loose coupling, testability | Controllers receive dependencies via constructor |
+
+**Modularity principles:**
+- **One class per file** - each module has a single responsibility
+- **Layered architecture** - views → controllers → domain → infrastructure
+- **Domain independence** - domain layer has no dependencies on infrastructure
+- **Protocol-based abstractions** - define interfaces in domain, implement in infrastructure
+- **Frozen dataclasses** for immutable configuration and DTOs
+- **Pure functions** in domain where possible (no side effects)
+
+**When adding new features:**
+1. Identify which layer(s) the feature touches
+2. Define protocols/interfaces first if crossing layers
+3. Implement in infrastructure, consume in domain/controller
+4. Keep business logic in domain layer, not in views or infrastructure
+5. Use dependency injection to wire components together
+
+## Diagrams (Hybrid Approach)
+
+Use **Mermaid** for inline diagrams in markdown files (renders on GitHub):
+
+```mermaid
+flowchart LR
+    A[Component] --> B[Component]
+```
+
+Use **PlantUML** for detailed UML diagrams in `docs/uml/*.puml` (requires export to PNG).
+
+| Tool | Use For | Location |
+|------|---------|----------|
+| **Mermaid** | Architecture, flowcharts, sequences in docs | `docs/*.md`, `README.md` |
+| **PlantUML** | Detailed class diagrams, complex UML | `docs/uml/*.puml` |
+
+**Mermaid diagram types:**
+- `flowchart` - Architecture, data flow
+- `sequenceDiagram` - API calls, process flows
+- `classDiagram` - Class relationships
+- `erDiagram` - Database schema
+- `stateDiagram-v2` - State machines
 
 ## Testing
 
