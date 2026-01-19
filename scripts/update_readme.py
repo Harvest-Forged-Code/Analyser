@@ -300,7 +300,7 @@ def generate_readme_content(latex_content):
 
 ---
 
-*This README is automatically generated from the comprehensive documentation. For more details, please refer to the [full documentation](documentation/budget_analyser_documentation.pdf).*
+*This README is automatically generated from the comprehensive documentation. For more details, please refer to the [full documentation](docs/budget_analyser_documentation.pdf).*
 
 *Last updated: {datetime.now().strftime('%Y-%m-%d')}*
 """
