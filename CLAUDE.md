@@ -224,3 +224,24 @@ tests/
 - Use descriptive test names: `test_<function>_<scenario>_<expected>`
 - Group related tests in classes when appropriate
 - Prefix test files with `test_`
+
+**Test execution:**
+
+| Stage | Tests Run | Purpose |
+|-------|-----------|---------|
+| **Before commit** | Unit tests only | Fast feedback, catch logic errors |
+| **CI pipeline** | Unit → Integration → System | Full validation across all layers |
+
+**Coverage focus:**
+
+| Test Type | Focus Areas |
+|-----------|-------------|
+| **Unit** | Domain layer (business logic), controllers, pure functions |
+| **Integration** | Database operations, file I/O, CSV parsing, JSON mappings |
+| **System** | Critical user workflows (CSV import → categorization → reports) |
+
+**GUI testing (for system tests):**
+- Prefer controller-level system tests (faster, less flaky)
+- Use `pytest-qt` for GUI tests only when necessary (critical UI flows)
+- Keep GUI tests minimal - focus on user-facing critical paths
+- Mock heavy dependencies (DB, file system) even in GUI tests when possible
