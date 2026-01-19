@@ -86,6 +86,35 @@ Pylint configuration (`.pylintrc`):
 - **Minor/Major** versions: create Git tags manually (`git tag -a vX.Y.0 -m "..."`)
 - Set `eng_ver = 0` in `pyproject.toml` during development to disable auto-increment
 
+## Git Commits
+
+**Always use signed commits and semantic commit messages.**
+
+```bash
+# Commit with GPG signing
+git commit -S -m "type: description"
+```
+
+**Semantic commit format:**
+```
+<type>: <short description>
+
+[optional body with more details]
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+```
+
+**Commit types:**
+| Type | Description |
+|------|-------------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `docs` | Documentation changes |
+| `style` | Code style (formatting, no logic change) |
+| `refactor` | Code refactoring (no feature/fix) |
+| `test` | Adding or updating tests |
+| `chore` | Maintenance tasks, dependencies |
+
 ## Design Patterns & Modularity
 
 **Always use appropriate design patterns.** Select the best-fit pattern for the problem:
