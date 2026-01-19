@@ -168,6 +168,34 @@ Use **PlantUML** for detailed UML diagrams in `docs/uml/*.puml` (requires export
 
 ## Testing
 
+**Follow Test-Driven Development (TDD).** Write tests before implementing features.
+
+**TDD workflow:**
+1. **Write test first** - Create failing test for the new feature/fix
+2. **Implement code** - Write minimal code to make the test pass
+3. **Refactor** - Clean up while keeping tests green
+4. **Run all tests** - Ensure no regressions before committing
+
+```bash
+# Run all tests before committing
+pytest -q
+
+# Run specific test file
+pytest tests/test_module.py -v
+
+# Run with coverage
+pytest --cov=src/budget_analyser
+```
+
+**Testing requirements:**
+- Every new feature must have corresponding test cases
+- Every bug fix must have a regression test
+- All tests must pass before committing (`pytest -q`)
 - Tests in `tests/` directory using pytest
 - `tests/conftest.py` adds `src/` to PYTHONPATH
 - CI runs on Linux/macOS/Windows across Python 3.10-3.12
+
+**Test organization:**
+- Mirror source structure: `src/budget_analyser/domain/` → `tests/domain/`
+- Use descriptive test names: `test_<function>_<scenario>_<expected>`
+- Group related tests in classes when appropriate
