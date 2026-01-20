@@ -93,6 +93,21 @@ class BudgetController:  # pylint: disable=too-many-public-methods
         """Delete a budget goal."""
         return self._budget_db.delete_budget_goal(category, year_month)
 
+    def set_budget_for_year(
+        self, category: str, monthly_limit: float, year: int
+    ) -> List[BudgetGoal]:
+        """Set budget limits for all 12 months of a year.
+
+        Args:
+            category: The expense category name.
+            monthly_limit: The monthly spending limit.
+            year: The year to set goals for (e.g., 2025).
+
+        Returns:
+            List of 12 BudgetGoal objects, one for each month.
+        """
+        return self._budget_db.set_budget_goals_for_year(category, monthly_limit, year)
+
     # ==================== Earnings Goals ====================
 
     def set_earnings_goal(
@@ -117,6 +132,21 @@ class BudgetController:  # pylint: disable=too-many-public-methods
     def delete_earnings_goal(self, sub_category: str, year_month: str = "ALL") -> bool:
         """Delete an earnings goal."""
         return self._budget_db.delete_earnings_goal(sub_category, year_month)
+
+    def set_earnings_goal_for_year(
+        self, sub_category: str, expected_amount: float, year: int
+    ) -> List[EarningsGoal]:
+        """Set expected earnings for all 12 months of a year.
+
+        Args:
+            sub_category: The earnings sub-category name (e.g., "salary").
+            expected_amount: The expected monthly earnings amount.
+            year: The year to set goals for (e.g., 2025).
+
+        Returns:
+            List of 12 EarningsGoal objects, one for each month.
+        """
+        return self._budget_db.set_earnings_goals_for_year(sub_category, expected_amount, year)
 
     def get_earnings_goal_map(self, year_month: str = "ALL") -> Dict[str, float]:
         """Get a mapping of sub-category to expected amount for easy lookup.

@@ -256,6 +256,31 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             self._logger.info("Deleted budget goal: %s (%s)", category, year_month)
         return deleted
 
+    def set_budget_goals_for_year(
+        self, category: str, monthly_limit: float, year: int
+    ) -> List[BudgetGoal]:
+        """Create/update budget goals for all 12 months of a year.
+
+        Args:
+            category: The expense category name.
+            monthly_limit: The monthly spending limit.
+            year: The year to set goals for (e.g., 2025).
+
+        Returns:
+            List of 12 BudgetGoal objects, one for each month.
+        """
+        goals = []
+        for month in range(1, 13):
+            year_month = f"{year}-{month:02d}"
+            goal = self.set_budget_goal(category, monthly_limit, year_month)
+            goals.append(goal)
+
+        self._logger.info(
+            "Set budget goals for year %d: %s = $%.2f/month (12 entries)",
+            year, category, monthly_limit
+        )
+        return goals
+
     # ==================== Earnings Goals Methods ====================
 
     def set_earnings_goal(
@@ -375,6 +400,31 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         if deleted:
             self._logger.info("Deleted earnings goal: %s (%s)", sub_category, year_month)
         return deleted
+
+    def set_earnings_goals_for_year(
+        self, sub_category: str, expected_amount: float, year: int
+    ) -> List[EarningsGoal]:
+        """Create/update earnings goals for all 12 months of a year.
+
+        Args:
+            sub_category: The earnings sub-category name (e.g., "salary").
+            expected_amount: The expected monthly earnings amount.
+            year: The year to set goals for (e.g., 2025).
+
+        Returns:
+            List of 12 EarningsGoal objects, one for each month.
+        """
+        goals = []
+        for month in range(1, 13):
+            year_month = f"{year}-{month:02d}"
+            goal = self.set_earnings_goal(sub_category, expected_amount, year_month)
+            goals.append(goal)
+
+        self._logger.info(
+            "Set earnings goals for year %d: %s = $%.2f/month (12 entries)",
+            year, sub_category, expected_amount
+        )
+        return goals
 
     # ==================== Accounts Methods ====================
 

@@ -31,9 +31,11 @@ from budget_analyser.views.pages import (
     SubCategoryMapperPage,
     SettingsPage,
     BudgetGoalsPage,
+    RecurringPage,
+    CashflowDashboardPage,
+    UnifiedMapperPage,
     SavingsPage,
     NetWorthPage,
-    RecurringPage,
 )
 from budget_analyser.views.styles import app_stylesheet
 from budget_analyser.settings.preferences import AppPreferences
@@ -89,19 +91,18 @@ class DashboardWindow(QtWidgets.QMainWindow):
     reload_requested = QtCore.Signal()
 
     # Page indices
-    PAGE_YEARLY_SUMMARY = 0
-    PAGE_EARNINGS = 1
-    PAGE_EXPENSES = 2
-    PAGE_PAYMENTS = 3
-    PAGE_BUDGET_GOALS = 4
-    PAGE_SAVINGS = 5
-    PAGE_NET_WORTH = 6
-    PAGE_RECURRING = 7
-    PAGE_UPLOAD = 8
-    PAGE_MAPPER = 9
-    PAGE_CASHFLOW_MAPPER = 10
-    PAGE_SUB_CATEGORY_MAPPER = 11
-    PAGE_SETTINGS = 12
+    PAGE_CASHFLOW_DASHBOARD = 0
+    PAGE_YEARLY_SUMMARY = 1
+    PAGE_EARNINGS = 2
+    PAGE_EXPENSES = 3
+    PAGE_PAYMENTS = 4
+    PAGE_BUDGET_GOALS = 5
+    PAGE_SAVINGS = 6
+    PAGE_NET_WORTH = 7
+    PAGE_RECURRING = 8
+    PAGE_UPLOAD = 9
+    PAGE_MAPPER_HUB = 10
+    PAGE_SETTINGS = 11
 
     def __init__(
         self,
@@ -155,6 +156,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             action.triggered.connect(partial(self._navigate_to, index))
             menu.addAction(action)
 
+        add_nav_action(reports_menu, "Cashflow Dashboard", self.PAGE_CASHFLOW_DASHBOARD)
         add_nav_action(reports_menu, "Yearly Summary", self.PAGE_YEARLY_SUMMARY)
         add_nav_action(reports_menu, "Earnings", self.PAGE_EARNINGS)
         add_nav_action(reports_menu, "Expenses", self.PAGE_EXPENSES)
@@ -165,9 +167,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         add_nav_action(reports_menu, "Recurring", self.PAGE_RECURRING)
 
         add_nav_action(data_menu, "Upload", self.PAGE_UPLOAD)
-        add_nav_action(data_menu, "Mapper", self.PAGE_MAPPER)
-        add_nav_action(data_menu, "Cashflow Mapping", self.PAGE_CASHFLOW_MAPPER)
-        add_nav_action(data_menu, "Sub-category Mapping", self.PAGE_SUB_CATEGORY_MAPPER)
+        add_nav_action(data_menu, "Mapper Hub", self.PAGE_MAPPER_HUB)
 
         add_nav_action(settings_menu, "Open Settings", self.PAGE_SETTINGS)
 
@@ -195,7 +195,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
 
         header_layout.addStretch(1)
 
-        self._subtitle = QtWidgets.QLabel("Yearly Summary")
+        self._subtitle = QtWidgets.QLabel("Cashflow Dashboard")
         self._subtitle.setObjectName("headerSubtitleLabel")
         header_layout.addWidget(self._subtitle)
 
@@ -255,6 +255,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             return btn
 
         self._section_names = {
+            self.PAGE_CASHFLOW_DASHBOARD: "📈 Cashflow Dashboard",
             self.PAGE_YEARLY_SUMMARY: "🗓️ Yearly Summary",
             self.PAGE_EARNINGS: "💰 Earnings",
             self.PAGE_EXPENSES: "🧾 Expenses",
@@ -264,9 +265,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             self.PAGE_NET_WORTH: "📊 Net Worth",
             self.PAGE_RECURRING: "🔄 Recurring",
             self.PAGE_UPLOAD: "⬆️ Upload",
-            self.PAGE_MAPPER: "🧭 Mapper",
-            self.PAGE_CASHFLOW_MAPPER: "💹 Cashflow Mapping",
-            self.PAGE_SUB_CATEGORY_MAPPER: "🗂️ Sub-category Mapping",
+            self.PAGE_MAPPER_HUB: "🗂️ Mapper Hub",
             self.PAGE_SETTINGS: "⚙️ Settings",
         }
 
@@ -276,6 +275,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             (
                 "Reports",
                 [
+                    (self._section_names[self.PAGE_CASHFLOW_DASHBOARD], self.PAGE_CASHFLOW_DASHBOARD),
                     (self._section_names[self.PAGE_YEARLY_SUMMARY], self.PAGE_YEARLY_SUMMARY),
                     (self._section_names[self.PAGE_EARNINGS], self.PAGE_EARNINGS),
                     (self._section_names[self.PAGE_EXPENSES], self.PAGE_EXPENSES),
@@ -300,9 +300,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
                 "Data",
                 [
                     (self._section_names[self.PAGE_UPLOAD], self.PAGE_UPLOAD),
-                    (self._section_names[self.PAGE_MAPPER], self.PAGE_MAPPER),
-                    (self._section_names[self.PAGE_CASHFLOW_MAPPER], self.PAGE_CASHFLOW_MAPPER),
-                    (self._section_names[self.PAGE_SUB_CATEGORY_MAPPER], self.PAGE_SUB_CATEGORY_MAPPER),
+                    (self._section_names[self.PAGE_MAPPER_HUB], self.PAGE_MAPPER_HUB),
                 ],
             ),
             (
@@ -350,24 +348,36 @@ class DashboardWindow(QtWidgets.QMainWindow):
         settings_controller = SettingsController(self._logger, self._prefs)
 
         self._upload_page = UploadPage(self._logger, self._upload_controller)
+
+        # Create mapper pages for the Unified Mapper Hub
         self._mapper_page = MapperPage(self._logger, self._mapper_controller)
-        self._cashflow_mapper_page = CashflowMapperPage(self._logger, self._cashflow_mapper_controller)
         self._sub_category_mapper_page = SubCategoryMapperPage(
             self._logger, self._sub_category_mapper_controller
         )
+        self._cashflow_mapper_page = CashflowMapperPage(
+            self._logger, self._cashflow_mapper_controller
+        )
+
+        # Unified Mapper Hub with all mappers as tabs
+        self._mapper_hub_page = UnifiedMapperPage(
+            transaction_mapper_widget=self._mapper_page,
+            sub_category_mapper_widget=self._sub_category_mapper_page,
+            cashflow_mapper_widget=self._cashflow_mapper_page,
+            logger=self._logger,
+        )
+
         self._pages = [
+            CashflowDashboardPage(self._reports, self._logger),
             YearlySummaryPage(self._reports, self._logger),
             EarningsPage(self._reports, self._logger, self._budget_controller),
-            ExpensesPage(self._reports, self._logger),
+            ExpensesPage(self._reports, self._logger, self._budget_controller),
             PaymentsPage(self._reports, self._logger),
             BudgetGoalsPage(self._reports, self._budget_controller, self._logger),
             SavingsPage(self._reports, self._budget_controller, self._logger),
             NetWorthPage(self._budget_controller, self._logger),
             RecurringPage(self._reports, self._budget_controller, self._logger),
             self._upload_page,
-            self._mapper_page,
-            self._cashflow_mapper_page,
-            self._sub_category_mapper_page,
+            self._mapper_hub_page,
             SettingsPage(self._logger, settings_controller),
         ]
         for page in self._pages:
@@ -377,7 +387,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         # Connect upload page success signal to dashboard reload signal
         self._upload_page.upload_successful.connect(self.reload_requested.emit)
 
-        # Connect mapping saves to refresh workflow
+        # Connect mapping saves to refresh workflow (from mappers inside Mapper Hub)
         self._mapper_page.refresh_requested.connect(self._on_mapping_saved)
         self._cashflow_mapper_page.refresh_requested.connect(self._on_mapping_saved)
         self._sub_category_mapper_page.refresh_requested.connect(self._on_mapping_saved)
@@ -399,8 +409,8 @@ class DashboardWindow(QtWidgets.QMainWindow):
         if self._csv_missing:
             self._apply_restricted_mode()
         else:
-            # Default selection: Yearly Summary
-            self._navigate_to(self.PAGE_YEARLY_SUMMARY)
+            # Default selection: Cashflow Dashboard
+            self._navigate_to(self.PAGE_CASHFLOW_DASHBOARD)
 
     def _toggle_sidebar(self) -> None:
         """Toggle sidebar visibility with smooth animation."""
@@ -568,6 +578,10 @@ class DashboardWindow(QtWidgets.QMainWindow):
 
         replacements = [
             (
+                self.PAGE_CASHFLOW_DASHBOARD,
+                CashflowDashboardPage(self._reports, self._logger),
+            ),
+            (
                 self.PAGE_YEARLY_SUMMARY,
                 YearlySummaryPage(self._reports, self._logger),
             ),
@@ -577,7 +591,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             ),
             (
                 self.PAGE_EXPENSES,
-                ExpensesPage(self._reports, self._logger),
+                ExpensesPage(self._reports, self._logger, self._budget_controller),
             ),
             (
                 self.PAGE_PAYMENTS,
@@ -607,7 +621,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         if 0 <= current_index < self._stack.count():
             self._navigate_to(current_index)
         else:
-            self._navigate_to(self.PAGE_YEARLY_SUMMARY)
+            self._navigate_to(self.PAGE_CASHFLOW_DASHBOARD)
 
     def _replace_page(self, index: int, widget: QtWidgets.QWidget) -> None:
         old_widget = self._stack.widget(index)

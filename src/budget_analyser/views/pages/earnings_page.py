@@ -1,3 +1,7 @@
+"""Earnings page with KPI cards, donut chart, and transaction tables.
+
+Provides income tracking by sub-category with budget comparison.
+"""
 from __future__ import annotations
 
 import logging
@@ -10,6 +14,17 @@ from budget_analyser.controller.controllers import MonthlyReports
 from budget_analyser.controller import EarningsStatsController
 from budget_analyser.controller.budget_controller import BudgetController
 from budget_analyser.views.pages._page_base import ModernPageMixin
+from budget_analyser.views.widgets.kpi_card import KPICard, KPICardData
+from budget_analyser.views.widgets.charts import PieChartWidget
+from budget_analyser.views.constants import (
+    COLOR_INCOME,
+    COLOR_POSITIVE,
+    COLOR_EXPENSE,
+    COLOR_PRIMARY,
+    INCOME_CHART_COLORS,
+    format_currency,
+    format_percentage,
+)
 
 import pandas as pd
 
@@ -21,7 +36,7 @@ VIEW_MODE_CUSTOM = "Custom Range"
 
 
 class EarningsPage(QtWidgets.QWidget):
-    """Earnings page with table view (Monthly/Yearly/Custom) plus transactions table."""
+    """Earnings page with KPI cards, donut chart, and transaction tables."""
 
     def __init__(
         self,
@@ -37,10 +52,13 @@ class EarningsPage(QtWidgets.QWidget):
             self._reports, self._logger, budget_controller=self._budget_controller
         )
 
-        self._current_period = None  # type: ignore[var-annotated]
+        self._current_period = None
         self._current_year: Optional[int] = None
         self._current_view_mode = VIEW_MODE_MONTHLY
         self._current_sub_category: Optional[str] = None
+        self._last_rows = []
+        self._last_actual_total = 0.0
+        self._last_expected_total = 0.0
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -63,7 +81,73 @@ class EarningsPage(QtWidgets.QWidget):
         )
         root.addWidget(header)
 
+        # KPI Cards Section
+        kpi_section = self._create_kpi_section()
+        root.addWidget(kpi_section)
+
         # Filters card
+        filters_card = self._create_filters_section()
+        root.addWidget(filters_card)
+
+        # Earnings breakdown section (chart + table)
+        breakdown_section = self._create_breakdown_section()
+        root.addWidget(breakdown_section)
+
+        # Transactions card
+        transactions_card = self._create_transactions_section()
+        root.addWidget(transactions_card, 1)
+
+        # Populate months and years
+        self._populate_months()
+        self._populate_years()
+        self._set_default_date_range()
+
+        # Wire events
+        self.view_mode_combo.currentTextChanged.connect(self._on_view_mode_changed)
+        self.month_combo.currentIndexChanged.connect(self._on_month_changed)
+        self.year_combo.currentIndexChanged.connect(self._on_year_changed)
+        self.apply_btn.clicked.connect(self._on_apply_custom_range)
+
+        # Initial visibility and selection
+        self._update_selector_visibility()
+        if self.month_combo.count() > 0:
+            self.month_combo.setCurrentIndex(self.month_combo.count() - 1)
+        self._rebuild_summary()
+
+    def _create_kpi_section(self) -> QtWidgets.QWidget:
+        """Create KPI summary cards row."""
+        container = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(16)
+
+        # Total Income Card
+        self._total_income_card = KPICard(KPICardData(
+            title="TOTAL INCOME",
+            value="$0.00",
+            accent_color=COLOR_INCOME,
+        ))
+        layout.addWidget(self._total_income_card)
+
+        # VS Expected Card
+        self._vs_expected_card = KPICard(KPICardData(
+            title="VS EXPECTED",
+            value="$0.00",
+        ))
+        layout.addWidget(self._vs_expected_card)
+
+        # Top Source Card
+        self._top_source_card = KPICard(KPICardData(
+            title="TOP SOURCE",
+            value="--",
+            accent_color=COLOR_PRIMARY,
+        ))
+        layout.addWidget(self._top_source_card)
+
+        return container
+
+    def _create_filters_section(self) -> QtWidgets.QWidget:
+        """Create filters card."""
         filters_card, filters_layout = ModernPageMixin.create_card("FILTERS")
 
         # View Mode
@@ -75,7 +159,7 @@ class EarningsPage(QtWidgets.QWidget):
         ModernPageMixin.style_combo_box(self.view_mode_combo)
         filters_layout.addWidget(self.view_mode_combo)
 
-        # Date selection container (dynamic visibility)
+        # Date selection container
         self._date_selection = QtWidgets.QWidget()
         date_layout = QtWidgets.QVBoxLayout(self._date_selection)
         date_layout.setContentsMargins(0, 16, 0, 0)
@@ -144,10 +228,47 @@ class EarningsPage(QtWidgets.QWidget):
         date_layout.addWidget(self._custom_container)
 
         filters_layout.addWidget(self._date_selection)
-        root.addWidget(filters_card)
 
-        # Summary card
-        summary_card, summary_layout = ModernPageMixin.create_card("EARNINGS BREAKDOWN")
+        return filters_card
+
+    def _create_breakdown_section(self) -> QtWidgets.QWidget:
+        """Create earnings breakdown section with chart and table."""
+        card, card_layout = ModernPageMixin.create_card("EARNINGS BREAKDOWN")
+
+        # Content container with chart and table side by side
+        content = QtWidgets.QWidget()
+        content_layout = QtWidgets.QHBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(24)
+
+        # Donut chart
+        chart_container = QtWidgets.QWidget()
+        chart_layout = QtWidgets.QVBoxLayout(chart_container)
+        chart_layout.setContentsMargins(0, 0, 0, 0)
+        chart_layout.setSpacing(8)
+
+        chart_title = QtWidgets.QLabel("INCOME DISTRIBUTION")
+        chart_title.setStyleSheet("""
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #9CA3AF;
+        """)
+        chart_layout.addWidget(chart_title)
+
+        self._income_chart = PieChartWidget(donut=True)
+        self._income_chart.setMinimumSize(220, 220)
+        self._income_chart.setMaximumSize(280, 280)
+        chart_layout.addWidget(self._income_chart)
+        chart_layout.addStretch()
+
+        content_layout.addWidget(chart_container)
+
+        # Summary table
+        table_container = QtWidgets.QWidget()
+        table_layout = QtWidgets.QVBoxLayout(table_container)
+        table_layout.setContentsMargins(0, 0, 0, 0)
+        table_layout.setSpacing(0)
 
         self.summary_table = QtWidgets.QTableWidget(0, 6)
         self.summary_table.setHorizontalHeaderLabels([
@@ -158,7 +279,9 @@ class EarningsPage(QtWidgets.QWidget):
         self.summary_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.summary_table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.summary_table.horizontalHeader().setStretchLastSection(False)
-        self.summary_table.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self.summary_table.horizontalHeader().setSectionResizeMode(
+            0, QtWidgets.QHeaderView.Stretch
+        )
         for col in range(1, 6):
             self.summary_table.horizontalHeader().setSectionResizeMode(
                 col, QtWidgets.QHeaderView.ResizeToContents
@@ -166,11 +289,16 @@ class EarningsPage(QtWidgets.QWidget):
         self.summary_table.setAlternatingRowColors(True)
         self.summary_table.verticalHeader().setDefaultSectionSize(34)
         self.summary_table.itemSelectionChanged.connect(self._on_summary_selection_changed)
-        summary_layout.addWidget(self.summary_table)
+        table_layout.addWidget(self.summary_table)
 
-        root.addWidget(summary_card)
+        content_layout.addWidget(table_container, 1)
 
-        # Transactions card
+        card_layout.addWidget(content)
+
+        return card
+
+    def _create_transactions_section(self) -> QtWidgets.QWidget:
+        """Create transactions table card."""
         transactions_card, transactions_layout = ModernPageMixin.create_card("TRANSACTIONS")
 
         self.table = QtWidgets.QTableWidget(0, 5)
@@ -185,24 +313,82 @@ class EarningsPage(QtWidgets.QWidget):
         self.table.verticalHeader().setDefaultSectionSize(32)
         transactions_layout.addWidget(self.table)
 
-        root.addWidget(transactions_card, 1)
+        return transactions_card
 
-        # Populate months and years
-        self._populate_months()
-        self._populate_years()
-        self._set_default_date_range()
+    def _update_kpi_cards(self) -> None:
+        """Update KPI cards with current data."""
+        rows = self._last_rows
+        actual_total = self._last_actual_total
+        expected_total = self._last_expected_total
 
-        # Wire events
-        self.view_mode_combo.currentTextChanged.connect(self._on_view_mode_changed)
-        self.month_combo.currentIndexChanged.connect(self._on_month_changed)
-        self.year_combo.currentIndexChanged.connect(self._on_year_changed)
-        self.apply_btn.clicked.connect(self._on_apply_custom_range)
+        # Total Income Card
+        diff = actual_total - expected_total
+        diff_pct = (diff / expected_total * 100) if expected_total > 0 else 0
 
-        # Initial visibility and selection
-        self._update_selector_visibility()
-        if self.month_combo.count() > 0:
-            self.month_combo.setCurrentIndex(self.month_combo.count() - 1)  # latest
-        self._rebuild_summary()
+        trend_direction = "up" if diff >= 0 else "down"
+        trend_value = format_percentage(abs(diff_pct), show_sign=False)
+
+        self._total_income_card.update_data(KPICardData(
+            title="TOTAL INCOME",
+            value=format_currency(actual_total),
+            trend_value=trend_value if expected_total > 0 else None,
+            trend_direction=trend_direction,
+            comparison_text=f"Expected: {format_currency(expected_total)}" if expected_total > 0 else None,
+            accent_color=COLOR_INCOME,
+        ))
+
+        # VS Expected Card
+        vs_color = COLOR_POSITIVE if diff >= 0 else COLOR_EXPENSE
+        pct_of_expected = (actual_total / expected_total * 100) if expected_total > 0 else 0
+
+        self._vs_expected_card.update_data(KPICardData(
+            title="VS EXPECTED",
+            value=format_currency(diff, show_sign=True) if expected_total > 0 else "--",
+            progress_percent=pct_of_expected if expected_total > 0 else None,
+            comparison_text=f"{pct_of_expected:.0f}% of target" if expected_total > 0 else "No budget set",
+            accent_color=vs_color,
+            value_color=vs_color,
+        ))
+
+        # Top Source Card
+        if rows:
+            top_row = max(rows, key=lambda r: r.actual)
+            top_pct = (top_row.actual / actual_total * 100) if actual_total > 0 else 0
+            self._top_source_card.update_data(KPICardData(
+                title="TOP SOURCE",
+                value=top_row.sub_category or "Uncategorized",
+                trend_value=f"{top_pct:.0f}%",
+                trend_direction="neutral",
+                comparison_text=f"{format_currency(top_row.actual)} this period",
+                accent_color=COLOR_PRIMARY,
+            ))
+        else:
+            self._top_source_card.update_data(KPICardData(
+                title="TOP SOURCE",
+                value="--",
+                comparison_text="No income data",
+                accent_color=COLOR_PRIMARY,
+            ))
+
+    def _update_income_chart(self) -> None:
+        """Update the income distribution donut chart."""
+        rows = self._last_rows
+
+        if not rows:
+            self._income_chart.set_data([], [])
+            return
+
+        labels = []
+        values = []
+        colors = []
+
+        for i, row in enumerate(rows):
+            if row.actual > 0:
+                labels.append(row.sub_category or "Uncategorized")
+                values.append(row.actual)
+                colors.append(INCOME_CHART_COLORS[i % len(INCOME_CHART_COLORS)])
+
+        self._income_chart.set_data(labels, values, colors=colors)
 
     def _populate_months(self) -> None:
         self.month_combo.clear()
@@ -264,7 +450,14 @@ class EarningsPage(QtWidgets.QWidget):
             end = self.to_date.date().toPython()
             rows, actual_total, expected_total = self._controller.table_for_range(start, end)
 
+        # Store for KPI updates
+        self._last_rows = rows
+        self._last_actual_total = actual_total
+        self._last_expected_total = expected_total
+
         self._populate_summary_table(rows, actual_total, expected_total)
+        self._update_kpi_cards()
+        self._update_income_chart()
         self._select_default_row()
 
     def _populate_summary_table(
@@ -275,7 +468,8 @@ class EarningsPage(QtWidgets.QWidget):
         self.summary_table.clearSelection()
 
         def _add_row(
-            values, bold: bool = False, color: Optional[QtGui.QColor] = None, raw_name: Optional[str] = None
+            values, bold: bool = False, color: Optional[QtGui.QColor] = None,
+            raw_name: Optional[str] = None, color_indicator: str | None = None
         ):
             r = self.summary_table.rowCount()
             self.summary_table.insertRow(r)
@@ -294,18 +488,19 @@ class EarningsPage(QtWidgets.QWidget):
                 self.summary_table.setItem(r, c, item)
             return r
 
-        # Data rows with radio indicator
-        for row in rows:
+        # Data rows with color indicator
+        for i, row in enumerate(rows):
             diff_color = QtGui.QColor("#10B981") if row.diff >= 0 else QtGui.QColor("#EF4444")
             raw_name = row.sub_category or "(Uncategorized)"
+            chart_color = INCOME_CHART_COLORS[i % len(INCOME_CHART_COLORS)]
             _add_row([
-                f"○ {raw_name}",
+                f"● {raw_name}",
                 self._fmt_currency(row.actual),
                 self._fmt_percent(row.percent_of_total),
                 self._fmt_currency(row.expected),
                 self._fmt_currency(row.diff),
                 self._fmt_percent(row.diff_percent),
-            ], bold=False, color=diff_color, raw_name=raw_name)
+            ], bold=False, color=diff_color, raw_name=raw_name, color_indicator=chart_color)
 
         # Total row
         total_diff = actual_total - expected_total
@@ -349,7 +544,7 @@ class EarningsPage(QtWidgets.QWidget):
         if not df.empty and "transaction_date" in df.columns:
             try:
                 df = df.sort_values(by="transaction_date", ascending=False)
-            except Exception:  # pragma: no cover
+            except Exception:
                 pass
 
         self._populate_table(df)
@@ -435,7 +630,7 @@ class EarningsPage(QtWidgets.QWidget):
     def _on_summary_selection_changed(self) -> None:
         selected_row = self.summary_table.currentRow()
 
-        # Update radio indicators
+        # Update selection indicators
         for row in range(self.summary_table.rowCount()):
             name_item = self.summary_table.item(row, 0)
             if name_item is None:
@@ -463,7 +658,7 @@ class EarningsPage(QtWidgets.QWidget):
     def _fmt_currency(value: float) -> str:
         try:
             return f"${value:,.2f}"
-        except Exception:  # pragma: no cover
+        except Exception:
             return str(value)
 
     @staticmethod
@@ -479,7 +674,7 @@ class EarningsPage(QtWidgets.QWidget):
     def _fmt_date(value) -> str:
         try:
             return str(getattr(value, "date", lambda: value)()) if hasattr(value, "date") else str(value)[:10]
-        except Exception:  # pragma: no cover
+        except Exception:
             return str(value)[:10]
 
     def _select_default_row(self) -> None:
