@@ -90,6 +90,26 @@ BORDER_RADIUS_BUTTON: Final = 14
 BORDER_RADIUS_INPUT: Final = 12
 BORDER_RADIUS_PROGRESS: Final = 4
 
+# Shadow constants
+SHADOW_BLUR_RADIUS: Final = 20
+SHADOW_BLUR_RADIUS_HOVER: Final = 28
+SHADOW_OFFSET_X: Final = 0
+SHADOW_OFFSET_Y: Final = 4
+SHADOW_OFFSET_Y_HOVER: Final = 8
+SHADOW_COLOR: Final = "rgba(0, 0, 0, 0.15)"
+SHADOW_COLOR_DARK: Final = "rgba(0, 0, 0, 0.25)"
+
+# Animation durations (milliseconds)
+ANIMATION_DURATION_INSTANT: Final = 50
+ANIMATION_DURATION_FAST: Final = 150
+ANIMATION_DURATION_NORMAL: Final = 250
+ANIMATION_DURATION_SLOW: Final = 400
+
+# Hover color variants
+COLOR_PRIMARY_HOVER: Final = "#A78BFA"  # Lighter purple for hover
+COLOR_CARD_BORDER_HOVER: Final = "rgba(139, 92, 246, 0.4)"
+COLOR_ROW_HOVER_BG: Final = "rgba(139, 92, 246, 0.08)"
+
 
 def get_status_color(percentage: float) -> str:
     """Get appropriate status color based on percentage.

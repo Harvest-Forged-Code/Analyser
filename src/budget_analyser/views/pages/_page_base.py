@@ -6,18 +6,24 @@ from __future__ import annotations
 
 from PySide6 import QtWidgets, QtCore
 
+from budget_analyser.views.icons import AppIcon, get_icon_pixmap, ICON_SIZE_XLARGE
+
 
 class ModernPageMixin:
     """Mixin providing modern page layout utilities."""
 
     @staticmethod
-    def create_page_header(title: str, subtitle: str = "", icon: str = "") -> QtWidgets.QWidget:
+    def create_page_header(
+        title: str,
+        subtitle: str = "",
+        icon: str | AppIcon = "",
+    ) -> QtWidgets.QWidget:
         """Create a modern page header with icon, title, and subtitle.
 
         Args:
             title: Page title text
             subtitle: Optional subtitle/description
-            icon: Optional emoji icon
+            icon: Optional emoji string or AppIcon enum
 
         Returns:
             Widget containing the formatted header
@@ -28,8 +34,16 @@ class ModernPageMixin:
         layout.setSpacing(12)
 
         if icon:
-            icon_label = QtWidgets.QLabel(icon)
-            icon_label.setStyleSheet("font-size: 28px;")
+            icon_label = QtWidgets.QLabel()
+            if isinstance(icon, AppIcon):
+                # Use AppIcon - render as pixmap
+                pixmap = get_icon_pixmap(icon, color="#A78BFA", size=ICON_SIZE_XLARGE)
+                icon_label.setPixmap(pixmap)
+                icon_label.setFixedSize(ICON_SIZE_XLARGE, ICON_SIZE_XLARGE)
+            else:
+                # Use emoji string
+                icon_label.setText(icon)
+                icon_label.setStyleSheet("font-size: 28px;")
             layout.addWidget(icon_label)
 
         title_container = QtWidgets.QWidget()

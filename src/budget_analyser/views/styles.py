@@ -183,12 +183,19 @@ def _dark_theme() -> str:
     QTableWidget {
         background: rgba(18, 18, 20, 0.9);
         color: #E2E4F0;
-        gridline-color: rgba(60, 60, 70, 0.2);
+        gridline-color: transparent;
         border: 1px solid rgba(60, 60, 70, 0.3);
         border-radius: 12px;
         selection-background-color: rgba(139, 92, 246, 0.15);
         alternate-background-color: rgba(25, 25, 28, 0.5);
         font-size: 13px;
+    }
+    QTableWidget::item {
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(60, 60, 70, 0.15);
+    }
+    QTableWidget::item:hover {
+        background: rgba(139, 92, 246, 0.08);
     }
     QTableWidget::item:selected {
         background: rgba(139, 92, 246, 0.15);
@@ -199,10 +206,12 @@ def _dark_theme() -> str:
         background: rgba(25, 25, 28, 0.95);
         color: #DDD6FE;
         border: none;
-        padding: 10px 12px;
+        border-bottom: 1px solid rgba(60, 60, 70, 0.3);
+        padding: 12px 12px;
         font-weight: 700;
-        font-size: 12px;
-        letter-spacing: 0.5px;
+        font-size: 11px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
     }
 
     /* Tree Widgets - Professional Typography */
@@ -320,7 +329,7 @@ def _dark_theme() -> str:
     /* Inputs and primary buttons - Professional Design */
     QLineEdit {
         background: rgba(18, 18, 20, 0.9);
-        border: 1px solid rgba(60, 60, 70, 0.4);
+        border: 2px solid rgba(60, 60, 70, 0.4);
         border-radius: 14px;
         padding: 12px 16px;
         color: #E9D5FF;
@@ -328,8 +337,11 @@ def _dark_theme() -> str:
         font-size: 13px;
         font-weight: 500;
     }
+    QLineEdit:hover {
+        border-color: rgba(139, 92, 246, 0.3);
+    }
     QLineEdit:focus {
-        border: 1px solid rgba(139, 92, 246, 0.4);
+        border: 2px solid #8B5CF6;
         background: rgba(18, 18, 20, 1.0);
     }
     QLineEdit::placeholder {
@@ -358,6 +370,66 @@ def _dark_theme() -> str:
         background-color: rgba(18, 18, 20, 0.7);
         color: #6B7280;
         border-color: rgba(60, 60, 70, 0.3);
+    }
+
+    /* Primary action button with gradient */
+    QPushButton#primaryAction {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8B5CF6, stop:1 #7C3AED);
+        color: #FFFFFF;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 20px;
+        min-height: 36px;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    QPushButton#primaryAction:hover {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #A78BFA, stop:1 #8B5CF6);
+    }
+    QPushButton#primaryAction:pressed {
+        background: #7C3AED;
+    }
+    QPushButton#primaryAction:disabled {
+        background: rgba(139, 92, 246, 0.3);
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Secondary/ghost button */
+    QPushButton#secondaryAction {
+        background: transparent;
+        color: #DDD6FE;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 12px;
+        padding: 10px 20px;
+        min-height: 36px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    QPushButton#secondaryAction:hover {
+        background: rgba(139, 92, 246, 0.1);
+        border-color: rgba(139, 92, 246, 0.5);
+        color: #FFFFFF;
+    }
+    QPushButton#secondaryAction:pressed {
+        background: rgba(139, 92, 246, 0.2);
+    }
+
+    /* Icon-only button */
+    QPushButton#iconButton {
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        padding: 8px;
+        min-width: 32px;
+        max-width: 32px;
+        min-height: 32px;
+        max-height: 32px;
+    }
+    QPushButton#iconButton:hover {
+        background: rgba(139, 92, 246, 0.15);
+    }
+    QPushButton#iconButton:pressed {
+        background: rgba(139, 92, 246, 0.25);
     }
 
     /* Scroll bars - Custom styling */
@@ -573,12 +645,19 @@ def _light_theme() -> str:
     QTableWidget {
         background: #FFFFFF;
         color: #1E1B4B;
-        gridline-color: rgba(139, 92, 246, 0.08);
+        gridline-color: transparent;
         border: 1px solid rgba(139, 92, 246, 0.15);
         border-radius: 12px;
         selection-background-color: rgba(139, 92, 246, 0.15);
         alternate-background-color: rgba(250, 245, 255, 0.5);
         font-size: 13px;
+    }
+    QTableWidget::item {
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(139, 92, 246, 0.08);
+    }
+    QTableWidget::item:hover {
+        background: rgba(139, 92, 246, 0.06);
     }
     QTableWidget::item:selected {
         background: rgba(139, 92, 246, 0.15);
@@ -589,10 +668,12 @@ def _light_theme() -> str:
         background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(233, 213, 255, 0.6), stop:1 rgba(196, 181, 253, 0.6));
         color: #5B21B6;
         border: none;
-        padding: 10px 12px;
+        border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+        padding: 12px 12px;
         font-weight: 700;
-        font-size: 12px;
-        letter-spacing: 0.5px;
+        font-size: 11px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
     }
 
     /* Tree Widgets - Professional Typography */
@@ -709,7 +790,7 @@ def _light_theme() -> str:
     /* Inputs and primary buttons - Professional Design */
     QLineEdit {
         background: #FFFFFF;
-        border: 1px solid rgba(139, 92, 246, 0.25);
+        border: 2px solid rgba(139, 92, 246, 0.25);
         border-radius: 14px;
         padding: 12px 16px;
         color: #3B0764;
@@ -717,8 +798,11 @@ def _light_theme() -> str:
         font-size: 13px;
         font-weight: 500;
     }
+    QLineEdit:hover {
+        border-color: rgba(139, 92, 246, 0.4);
+    }
     QLineEdit:focus {
-        border: 1px solid rgba(139, 92, 246, 0.5);
+        border: 2px solid #8B5CF6;
         background: #FFFFFF;
     }
     QLineEdit::placeholder {
@@ -745,6 +829,66 @@ def _light_theme() -> str:
     QPushButton:disabled {
         background-color: rgba(250, 245, 255, 0.5);
         color: #9CA3AF;
+    }
+
+    /* Primary action button with gradient */
+    QPushButton#primaryAction {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #9333EA, stop:1 #7C3AED);
+        color: #FFFFFF;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 20px;
+        min-height: 36px;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    QPushButton#primaryAction:hover {
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #A855F7, stop:1 #8B5CF6);
+    }
+    QPushButton#primaryAction:pressed {
+        background: #7C3AED;
+    }
+    QPushButton#primaryAction:disabled {
+        background: rgba(139, 92, 246, 0.3);
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Secondary/ghost button */
+    QPushButton#secondaryAction {
+        background: transparent;
+        color: #5B21B6;
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 12px;
+        padding: 10px 20px;
+        min-height: 36px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    QPushButton#secondaryAction:hover {
+        background: rgba(139, 92, 246, 0.1);
+        border-color: rgba(139, 92, 246, 0.5);
+        color: #3B0764;
+    }
+    QPushButton#secondaryAction:pressed {
+        background: rgba(139, 92, 246, 0.2);
+    }
+
+    /* Icon-only button */
+    QPushButton#iconButton {
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        padding: 8px;
+        min-width: 32px;
+        max-width: 32px;
+        min-height: 32px;
+        max-height: 32px;
+    }
+    QPushButton#iconButton:hover {
+        background: rgba(139, 92, 246, 0.1);
+    }
+    QPushButton#iconButton:pressed {
+        background: rgba(139, 92, 246, 0.2);
     }
 
     /* Scroll bars - Custom styling */

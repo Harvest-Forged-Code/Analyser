@@ -29,8 +29,18 @@ from budget_analyser.views.constants import (
     GOAL_CARD_MIN_HEIGHT,
     BORDER_RADIUS_CARD,
     PROGRESS_BAR_HEIGHT_LARGE,
+    SHADOW_BLUR_RADIUS,
+    SHADOW_BLUR_RADIUS_HOVER,
+    SHADOW_OFFSET_Y,
+    SHADOW_OFFSET_Y_HOVER,
     format_currency,
 )
+from budget_analyser.views.animations import (
+    create_card_shadow,
+    ShadowAnimator,
+    DURATION_FAST,
+)
+from budget_analyser.views.icons import AppIcon, get_icon, get_icon_pixmap
 
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QWidget
@@ -39,22 +49,22 @@ if TYPE_CHECKING:
 class GoalStatus(Enum):
     """Goal tracking status."""
 
-    ON_TRACK = ("on_track", COLOR_POSITIVE, "✓", "On Track")
-    AT_RISK = ("at_risk", COLOR_WARNING, "⚠", "At Risk")
-    BEHIND = ("behind", COLOR_EXPENSE, "!", "Behind")
-    COMPLETED = ("completed", "#FFD700", "★", "Completed")
-    PAUSED = ("paused", COLOR_MUTED, "⏸", "Paused")
+    ON_TRACK = ("on_track", COLOR_POSITIVE, AppIcon.STATUS_ON_TRACK, "On Track")
+    AT_RISK = ("at_risk", COLOR_WARNING, AppIcon.STATUS_AT_RISK, "At Risk")
+    BEHIND = ("behind", COLOR_EXPENSE, AppIcon.STATUS_BEHIND, "Behind")
+    COMPLETED = ("completed", "#FFD700", AppIcon.STATUS_COMPLETED, "Completed")
+    PAUSED = ("paused", COLOR_MUTED, AppIcon.STATUS_PAUSED, "Paused")
 
     def __init__(
         self,
         status_id: str,
         color: str,
-        icon: str,
+        icon: AppIcon,
         label: str,
     ) -> None:
         self.status_id = status_id
         self.color = color
-        self.icon = icon
+        self.app_icon = icon
         self.label = label
 
     @classmethod
@@ -143,7 +153,11 @@ class GoalCard(QtWidgets.QWidget):
         super().__init__(parent)
         self._data = data
         self._compact = compact
+        self._shadow: QtWidgets.QGraphicsDropShadowEffect | None = None
+        self._shadow_animator: ShadowAnimator | None = None
+        self._hover_animation: QtCore.QParallelAnimationGroup | None = None
         self._init_ui()
+        self._setup_shadow()
         self.update_data(data)
 
     def _init_ui(self) -> None:
@@ -386,15 +400,31 @@ class GoalCard(QtWidgets.QWidget):
         self._icon_label.setText(data.icon)
         self._name_label.setText(data.name)
 
-        # Update status badge
-        self._status_badge.setText(f"{status.icon} {status.label}")
-        self._status_badge.setStyleSheet(f"""
-            background: {status.color}33;
+        # Update status badge with icon
+        status_icon = get_icon(status.app_icon, color=status.color, size=14)
+        status_pixmap = status_icon.pixmap(QtCore.QSize(14, 14))
+
+        # Create a horizontal layout for icon + text if not already set up
+        if not hasattr(self, '_status_icon_label'):
+            self._status_icon_label = QtWidgets.QLabel()
+            self._status_text_label = QtWidgets.QLabel()
+
+            badge_layout = QtWidgets.QHBoxLayout(self._status_badge)
+            badge_layout.setContentsMargins(8, 4, 8, 4)
+            badge_layout.setSpacing(4)
+            badge_layout.addWidget(self._status_icon_label)
+            badge_layout.addWidget(self._status_text_label)
+
+        self._status_icon_label.setPixmap(status_pixmap)
+        self._status_text_label.setText(status.label)
+        self._status_text_label.setStyleSheet(f"""
             color: {status.color};
-            border-radius: 4px;
-            padding: 4px 8px;
             font-size: {FONT_SIZE_CAPTION}px;
             font-weight: 600;
+        """)
+        self._status_badge.setStyleSheet(f"""
+            background: {status.color}33;
+            border-radius: 4px;
         """)
 
         # Update target
@@ -449,11 +479,57 @@ class GoalCard(QtWidgets.QWidget):
 
         # Update button state
         if status == GoalStatus.COMPLETED:
-            self._top_up_btn.setText("Completed ★")
+            self._top_up_btn.setText("Completed")
+            completed_icon = get_icon(AppIcon.STATUS_COMPLETED, color="#FFD700", size=16)
+            self._top_up_btn.setIcon(completed_icon)
             self._top_up_btn.setEnabled(False)
         else:
             self._top_up_btn.setText("Top Up")
+            self._top_up_btn.setIcon(QtGui.QIcon())
             self._top_up_btn.setEnabled(True)
+
+    def _setup_shadow(self) -> None:
+        """Set up drop shadow effect with animation support."""
+        self._shadow = create_card_shadow(
+            blur_radius=SHADOW_BLUR_RADIUS,
+            y_offset=SHADOW_OFFSET_Y,
+        )
+        self.setGraphicsEffect(self._shadow)
+        self._shadow_animator = ShadowAnimator(self._shadow, self)
+
+    def enterEvent(self, event: QtCore.QEvent) -> None:
+        """Handle mouse enter for hover state with shadow animation."""
+        # Stop any running animation
+        if self._hover_animation is not None:
+            self._hover_animation.stop()
+
+        # Animate shadow elevation
+        if self._shadow_animator is not None:
+            self._hover_animation = self._shadow_animator.animate_hover_enter(
+                target_blur=SHADOW_BLUR_RADIUS_HOVER,
+                target_offset=SHADOW_OFFSET_Y_HOVER,
+                duration=DURATION_FAST,
+            )
+            self._hover_animation.start()
+
+        super().enterEvent(event)
+
+    def leaveEvent(self, event: QtCore.QEvent) -> None:
+        """Handle mouse leave for hover state with shadow animation."""
+        # Stop any running animation
+        if self._hover_animation is not None:
+            self._hover_animation.stop()
+
+        # Animate shadow back to normal
+        if self._shadow_animator is not None:
+            self._hover_animation = self._shadow_animator.animate_hover_leave(
+                target_blur=SHADOW_BLUR_RADIUS,
+                target_offset=SHADOW_OFFSET_Y,
+                duration=DURATION_FAST,
+            )
+            self._hover_animation.start()
+
+        super().leaveEvent(event)
 
 
 class SavingsGoalsGrid(QtWidgets.QWidget):

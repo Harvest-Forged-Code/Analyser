@@ -146,11 +146,11 @@ class BudgetGoalsPage(QtWidgets.QWidget):
         )
         root.addWidget(header)
 
-        # Year filter
+        # Year and Month filter
         filter_card, filter_layout = ModernPageMixin.create_card("FILTER")
         filter_row, filter_row_layout = ModernPageMixin.create_controls_row()
 
-        year_label = ModernPageMixin.create_control_label("Filter by Year:")
+        year_label = ModernPageMixin.create_control_label("Year:")
         filter_row_layout.addWidget(year_label)
 
         self._manage_year_combo = QtWidgets.QComboBox()
@@ -158,6 +158,15 @@ class BudgetGoalsPage(QtWidgets.QWidget):
         self._manage_year_combo.setMinimumWidth(120)
         self._manage_year_combo.currentIndexChanged.connect(self._refresh_manage_tables)
         filter_row_layout.addWidget(self._manage_year_combo)
+
+        month_label = ModernPageMixin.create_control_label("Month:")
+        filter_row_layout.addWidget(month_label)
+
+        self._manage_month_combo = QtWidgets.QComboBox()
+        ModernPageMixin.style_combo_box(self._manage_month_combo, min_height=40)
+        self._manage_month_combo.setMinimumWidth(140)
+        self._manage_month_combo.currentIndexChanged.connect(self._refresh_manage_tables)
+        filter_row_layout.addWidget(self._manage_month_combo)
 
         filter_row_layout.addStretch()
         filter_layout.addWidget(filter_row)
@@ -611,7 +620,7 @@ class BudgetGoalsPage(QtWidgets.QWidget):
             combo.clear()
             combo.addItem("ALL", "ALL")
             for m in self._months:
-                combo.addItem(m, m)
+                combo.addItem(format_year_month(m), m)  # Display "Jan 2026", store "2026-01"
             if self._months:
                 combo.setCurrentIndex(combo.count() - 1)
             else:
@@ -641,6 +650,14 @@ class BudgetGoalsPage(QtWidgets.QWidget):
         for y in self._available_years:
             self._manage_year_combo.addItem(str(y), y)
         self._manage_year_combo.blockSignals(False)
+
+        # Manage tab month filter
+        self._manage_month_combo.blockSignals(True)
+        self._manage_month_combo.clear()
+        self._manage_month_combo.addItem("All Months", None)
+        for i, name in enumerate(MONTH_NAMES_SHORT):
+            self._manage_month_combo.addItem(name, i + 1)  # 1-12
+        self._manage_month_combo.blockSignals(False)
 
     def _populate_categories(self) -> None:
         """Populate category dropdown from existing data."""
@@ -877,8 +894,9 @@ class BudgetGoalsPage(QtWidgets.QWidget):
             sub_item = QtWidgets.QTableWidgetItem(sub)
             self._earnings_table.setItem(r, 0, sub_item)
 
-            # Month
-            month_item = QtWidgets.QTableWidgetItem(month)
+            # Month - formatted as "Jan 2026"
+            display_month = format_year_month(month)
+            month_item = QtWidgets.QTableWidgetItem(display_month)
             month_item.setTextAlignment(QtCore.Qt.AlignCenter)
             self._earnings_table.setItem(r, 1, month_item)
 
@@ -944,17 +962,41 @@ class BudgetGoalsPage(QtWidgets.QWidget):
     def _refresh_manage_tables(self) -> None:
         """Refresh the manage goals tables."""
         selected_year = self._manage_year_combo.currentData()
+        selected_month = self._manage_month_combo.currentData()  # 1-12 or None
 
-        # Refresh budget goals table
+        def _matches_filter(year_month: str) -> bool:
+            """Check if goal matches year and month filters."""
+            if year_month == "ALL":
+                return selected_year is None and selected_month is None
+
+            if selected_year is not None:
+                if not year_month.startswith(str(selected_year)):
+                    return False
+
+            if selected_month is not None:
+                try:
+                    goal_month = int(year_month.split("-")[1])
+                    if goal_month != selected_month:
+                        return False
+                except (ValueError, IndexError):
+                    return False
+
+            return True
+
+        # Refresh budget goals table - sorted by month for grouping
         budget_goals = self._budget_controller.get_all_budgets()
+        # Sort by year_month for grouping
+        sorted_budget_goals = sorted(
+            budget_goals,
+            key=lambda g: (g.year_month if g.year_month != "ALL" else "0000-00", g.category)
+        )
+
         self._manage_budget_table.setSortingEnabled(False)
         self._manage_budget_table.setRowCount(0)
 
-        for goal in budget_goals:
-            # Filter by year if selected
-            if selected_year is not None:
-                if goal.year_month != "ALL" and not goal.year_month.startswith(str(selected_year)):
-                    continue
+        for goal in sorted_budget_goals:
+            if not _matches_filter(goal.year_month):
+                continue
 
             r = self._manage_budget_table.rowCount()
             self._manage_budget_table.insertRow(r)
@@ -963,8 +1005,9 @@ class BudgetGoalsPage(QtWidgets.QWidget):
             cat_item = QtWidgets.QTableWidgetItem(goal.category)
             self._manage_budget_table.setItem(r, 0, cat_item)
 
-            # Month
-            month_item = QtWidgets.QTableWidgetItem(goal.year_month)
+            # Month - formatted as "Jan 2026"
+            display_month = format_year_month(goal.year_month)
+            month_item = QtWidgets.QTableWidgetItem(display_month)
             month_item.setTextAlignment(QtCore.Qt.AlignCenter)
             self._manage_budget_table.setItem(r, 1, month_item)
 
@@ -979,17 +1022,19 @@ class BudgetGoalsPage(QtWidgets.QWidget):
 
         self._manage_budget_table.setSortingEnabled(True)
 
-        # Refresh earnings goals table
+        # Refresh earnings goals table - sorted by month for grouping
         earnings_goals = self._budget_controller.get_all_earnings_goals()
+        sorted_earnings_goals = sorted(
+            earnings_goals,
+            key=lambda g: (g.year_month if g.year_month != "ALL" else "0000-00", g.sub_category)
+        )
+
         self._manage_earnings_table.setSortingEnabled(False)
         self._manage_earnings_table.setRowCount(0)
 
-        for goal in earnings_goals:
-            # Filter by year if selected
-            if selected_year is not None:
-                if (goal.year_month != "ALL"
-                        and not goal.year_month.startswith(str(selected_year))):
-                    continue
+        for goal in sorted_earnings_goals:
+            if not _matches_filter(goal.year_month):
+                continue
 
             r = self._manage_earnings_table.rowCount()
             self._manage_earnings_table.insertRow(r)
@@ -998,8 +1043,9 @@ class BudgetGoalsPage(QtWidgets.QWidget):
             sub_item = QtWidgets.QTableWidgetItem(goal.sub_category)
             self._manage_earnings_table.setItem(r, 0, sub_item)
 
-            # Month
-            month_item = QtWidgets.QTableWidgetItem(goal.year_month)
+            # Month - formatted as "Jan 2026"
+            display_month = format_year_month(goal.year_month)
+            month_item = QtWidgets.QTableWidgetItem(display_month)
             month_item.setTextAlignment(QtCore.Qt.AlignCenter)
             self._manage_earnings_table.setItem(r, 1, month_item)
 

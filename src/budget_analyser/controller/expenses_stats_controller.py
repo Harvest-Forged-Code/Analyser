@@ -69,8 +69,9 @@ class ExpensesStatsController:
 
     @staticmethod
     def month_label(period: pd.Period) -> str:
-        names = _month_names()
-        return f"{names[int(period.month) - 1]} {int(period.year)}"
+        short_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        return f"{short_names[int(period.month) - 1]} {int(period.year)}"
 
     def total_for_month(self, period: pd.Period) -> float:
         cached = self._month_total_cache.get(period)

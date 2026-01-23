@@ -26,8 +26,18 @@ from budget_analyser.views.constants import (
     KPI_CARD_MIN_WIDTH,
     BORDER_RADIUS_CARD,
     PROGRESS_BAR_HEIGHT,
+    SHADOW_BLUR_RADIUS,
+    SHADOW_BLUR_RADIUS_HOVER,
+    SHADOW_OFFSET_Y,
+    SHADOW_OFFSET_Y_HOVER,
     get_trend_color,
 )
+from budget_analyser.views.animations import (
+    create_card_shadow,
+    ShadowAnimator,
+    DURATION_FAST,
+)
+from budget_analyser.views.icons import AppIcon, get_icon
 
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QWidget
@@ -70,7 +80,11 @@ class KPICard(QtWidgets.QWidget):
         super().__init__(parent)
         self._data = data
         self._hovered = False
+        self._shadow: QtWidgets.QGraphicsDropShadowEffect | None = None
+        self._shadow_animator: ShadowAnimator | None = None
+        self._hover_animation: QtCore.QParallelAnimationGroup | None = None
         self._init_ui()
+        self._setup_shadow()
         self.update_data(data)
 
     def _init_ui(self) -> None:
@@ -228,10 +242,16 @@ class KPICard(QtWidgets.QWidget):
         # Update trend
         if data.trend_value:
             self._trend_container.setVisible(True)
-            arrow = "▲" if data.trend_direction == "up" else (
-                "▼" if data.trend_direction == "down" else ""
-            )
-            self._trend_arrow.setText(arrow)
+            trend_color = get_trend_color(data.trend_direction)
+            if data.trend_direction == "up":
+                icon = get_icon(AppIcon.TREND_UP, color=trend_color, size=16)
+            elif data.trend_direction == "down":
+                icon = get_icon(AppIcon.TREND_DOWN, color=trend_color, size=16)
+            else:
+                icon = get_icon(AppIcon.TREND_NEUTRAL, color=trend_color, size=16)
+
+            pixmap = icon.pixmap(QtCore.QSize(16, 16))
+            self._trend_arrow.setPixmap(pixmap)
             self._trend_label.setText(data.trend_value)
         else:
             self._trend_container.setVisible(False)
@@ -255,6 +275,15 @@ class KPICard(QtWidgets.QWidget):
 
         self._apply_styles()
 
+    def _setup_shadow(self) -> None:
+        """Set up drop shadow effect with animation support."""
+        self._shadow = create_card_shadow(
+            blur_radius=SHADOW_BLUR_RADIUS,
+            y_offset=SHADOW_OFFSET_Y,
+        )
+        self.setGraphicsEffect(self._shadow)
+        self._shadow_animator = ShadowAnimator(self._shadow, self)
+
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         """Handle mouse press for click detection."""
         if event.button() == QtCore.Qt.LeftButton:
@@ -262,14 +291,42 @@ class KPICard(QtWidgets.QWidget):
         super().mousePressEvent(event)
 
     def enterEvent(self, event: QtCore.QEvent) -> None:
-        """Handle mouse enter for hover state."""
+        """Handle mouse enter for hover state with shadow animation."""
         self._hovered = True
+
+        # Stop any running animation
+        if self._hover_animation is not None:
+            self._hover_animation.stop()
+
+        # Animate shadow elevation
+        if self._shadow_animator is not None:
+            self._hover_animation = self._shadow_animator.animate_hover_enter(
+                target_blur=SHADOW_BLUR_RADIUS_HOVER,
+                target_offset=SHADOW_OFFSET_Y_HOVER,
+                duration=DURATION_FAST,
+            )
+            self._hover_animation.start()
+
         self.update()
         super().enterEvent(event)
 
     def leaveEvent(self, event: QtCore.QEvent) -> None:
-        """Handle mouse leave for hover state."""
+        """Handle mouse leave for hover state with shadow animation."""
         self._hovered = False
+
+        # Stop any running animation
+        if self._hover_animation is not None:
+            self._hover_animation.stop()
+
+        # Animate shadow back to normal
+        if self._shadow_animator is not None:
+            self._hover_animation = self._shadow_animator.animate_hover_leave(
+                target_blur=SHADOW_BLUR_RADIUS,
+                target_offset=SHADOW_OFFSET_Y,
+                duration=DURATION_FAST,
+            )
+            self._hover_animation.start()
+
         self.update()
         super().leaveEvent(event)
 

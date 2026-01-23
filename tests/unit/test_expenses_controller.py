@@ -46,7 +46,7 @@ def test_available_months_and_labels():
     ctl = ExpensesStatsController(reports, _Logger())
     months = ctl.available_months()
     assert [str(m) for m in months] == ["2025-01", "2025-02"]
-    assert ctl.month_label(months[0]).startswith("January ")
+    assert ctl.month_label(months[0]).startswith("Jan ")
 
 
 def test_total_and_category_breakdown():

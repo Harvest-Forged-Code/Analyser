@@ -38,6 +38,12 @@ from budget_analyser.views.pages import (
     NetWorthPage,
 )
 from budget_analyser.views.styles import app_stylesheet
+from budget_analyser.views.icons import (
+    AppIcon,
+    get_icon,
+    get_themed_icon,
+    ICON_SIZE_MEDIUM,
+)
 from budget_analyser.settings.preferences import AppPreferences
 from budget_analyser.controller import SettingsController
 from budget_analyser.controller import MapperController
@@ -203,9 +209,14 @@ class DashboardWindow(QtWidgets.QMainWindow):
         header_layout.addStretch(1)
 
         # Sidebar toggle button
-        self._toggle_sidebar_btn = QtWidgets.QPushButton("☰")
+        self._toggle_sidebar_btn = QtWidgets.QPushButton()
         self._toggle_sidebar_btn.setObjectName("toggleSidebar")
         self._toggle_sidebar_btn.setToolTip("Toggle sidebar visibility")
+        self._toggle_sidebar_btn.setIcon(get_themed_icon(
+            AppIcon.MENU,
+            dark_mode=self._prefs.get_theme() == "dark"
+        ))
+        self._toggle_sidebar_btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
         self._toggle_sidebar_btn.clicked.connect(self._toggle_sidebar)
         header_layout.addWidget(self._toggle_sidebar_btn)
 
@@ -247,26 +258,44 @@ class DashboardWindow(QtWidgets.QMainWindow):
         self._btn_group = QtWidgets.QButtonGroup(self)
         self._btn_group.setExclusive(True)
 
-        def make_btn(text: str) -> QtWidgets.QPushButton:
+        def make_btn(text: str, icon: AppIcon | None = None) -> QtWidgets.QPushButton:
             btn = QtWidgets.QPushButton(text)
             btn.setCheckable(True)
             btn.setMinimumHeight(40)
             btn.setCursor(QtCore.Qt.PointingHandCursor)
+            if icon is not None:
+                btn.setIcon(get_themed_icon(icon, dark_mode=self._prefs.get_theme() == "dark"))
+                btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
             return btn
 
         self._section_names = {
-            self.PAGE_CASHFLOW_DASHBOARD: "📈 Cashflow Dashboard",
-            self.PAGE_YEARLY_SUMMARY: "🗓️ Yearly Summary",
-            self.PAGE_EARNINGS: "💰 Earnings",
-            self.PAGE_EXPENSES: "🧾 Expenses",
-            self.PAGE_PAYMENTS: "🔁 Payments",
-            self.PAGE_BUDGET_GOALS: "🎯 Budget Goals",
-            self.PAGE_SAVINGS: "💵 Savings",
-            self.PAGE_NET_WORTH: "📊 Net Worth",
-            self.PAGE_RECURRING: "🔄 Recurring",
-            self.PAGE_UPLOAD: "⬆️ Upload",
-            self.PAGE_MAPPER_HUB: "🗂️ Mapper Hub",
-            self.PAGE_SETTINGS: "⚙️ Settings",
+            self.PAGE_CASHFLOW_DASHBOARD: "Cashflow Dashboard",
+            self.PAGE_YEARLY_SUMMARY: "Yearly Summary",
+            self.PAGE_EARNINGS: "Earnings",
+            self.PAGE_EXPENSES: "Expenses",
+            self.PAGE_PAYMENTS: "Payments",
+            self.PAGE_BUDGET_GOALS: "Budget Goals",
+            self.PAGE_SAVINGS: "Savings",
+            self.PAGE_NET_WORTH: "Net Worth",
+            self.PAGE_RECURRING: "Recurring",
+            self.PAGE_UPLOAD: "Upload",
+            self.PAGE_MAPPER_HUB: "Mapper Hub",
+            self.PAGE_SETTINGS: "Settings",
+        }
+
+        self._section_icons = {
+            self.PAGE_CASHFLOW_DASHBOARD: AppIcon.NAV_DASHBOARD,
+            self.PAGE_YEARLY_SUMMARY: AppIcon.NAV_CALENDAR,
+            self.PAGE_EARNINGS: AppIcon.NAV_EARNINGS,
+            self.PAGE_EXPENSES: AppIcon.NAV_EXPENSES,
+            self.PAGE_PAYMENTS: AppIcon.NAV_PAYMENTS,
+            self.PAGE_BUDGET_GOALS: AppIcon.NAV_GOALS,
+            self.PAGE_SAVINGS: AppIcon.NAV_SAVINGS,
+            self.PAGE_NET_WORTH: AppIcon.NAV_NET_WORTH,
+            self.PAGE_RECURRING: AppIcon.NAV_RECURRING,
+            self.PAGE_UPLOAD: AppIcon.NAV_UPLOAD,
+            self.PAGE_MAPPER_HUB: AppIcon.NAV_MAPPER,
+            self.PAGE_SETTINGS: AppIcon.NAV_SETTINGS,
         }
 
         self._buttons: list[QtWidgets.QPushButton] = []
@@ -318,7 +347,8 @@ class DashboardWindow(QtWidgets.QMainWindow):
             sidebar_layout.addWidget(group_label)
 
             for name, idx in items:
-                btn = make_btn(name)
+                icon = self._section_icons.get(idx)
+                btn = make_btn(name, icon)
                 self._btn_group.addButton(btn, idx)
                 sidebar_layout.addWidget(btn)
                 self._buttons.append(btn)
@@ -414,16 +444,17 @@ class DashboardWindow(QtWidgets.QMainWindow):
 
     def _toggle_sidebar(self) -> None:
         """Toggle sidebar visibility with smooth animation."""
+        dark_mode = self._prefs.get_theme() == "dark"
         if self._sidebar_expanded:
             # Collapse sidebar
             self._sidebar.setVisible(False)
             self._sidebar_expanded = False
-            self._toggle_sidebar_btn.setText("☰")
+            self._toggle_sidebar_btn.setIcon(get_themed_icon(AppIcon.MENU, dark_mode=dark_mode))
         else:
             # Expand sidebar
             self._sidebar.setVisible(True)
             self._sidebar_expanded = True
-            self._toggle_sidebar_btn.setText("✕")
+            self._toggle_sidebar_btn.setIcon(get_themed_icon(AppIcon.CLOSE, dark_mode=dark_mode))
 
     def _filter_pages(self, search_text: str) -> None:
         """Filter navigation pages based on search text."""
@@ -479,11 +510,31 @@ class DashboardWindow(QtWidgets.QMainWindow):
         if app is not None:
             app.setStyleSheet(app_stylesheet(new_theme))
         self._update_theme_button()
+        self._refresh_nav_icons()
 
     def _update_theme_button(self) -> None:
         # Show icon that indicates target theme upon click
         cur = self._prefs.get_theme()
-        self._theme_btn.setText("☀️" if cur == "dark" else "🌙")
+        dark_mode = cur == "dark"
+        # Show sun icon in dark mode (to switch to light), moon in light mode (to switch to dark)
+        icon = AppIcon.THEME_LIGHT if dark_mode else AppIcon.THEME_DARK
+        self._theme_btn.setIcon(get_themed_icon(icon, dark_mode=dark_mode))
+        self._theme_btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
+        self._theme_btn.setText("")
+
+    def _refresh_nav_icons(self) -> None:
+        """Refresh navigation icons for current theme."""
+        dark_mode = self._prefs.get_theme() == "dark"
+        for btn in self._buttons:
+            idx = self._btn_group.id(btn)
+            icon = self._section_icons.get(idx)
+            if icon is not None:
+                btn.setIcon(get_themed_icon(icon, dark_mode=dark_mode))
+        # Update toggle sidebar icon
+        self._toggle_sidebar_btn.setIcon(get_themed_icon(
+            AppIcon.MENU if self._sidebar_expanded else AppIcon.CLOSE,
+            dark_mode=dark_mode
+        ))
 
     def _navigate_to(self, index: int) -> None:
         """Navigate to a page by index and update subtitle/button states."""

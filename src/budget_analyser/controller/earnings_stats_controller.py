@@ -82,8 +82,9 @@ class EarningsStatsController:
 
     @staticmethod
     def month_label(period: pd.Period) -> str:
-        names = _month_names()
-        return f"{names[int(period.month) - 1]} {int(period.year)}"
+        short_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        return f"{short_names[int(period.month) - 1]} {int(period.year)}"
 
     def total_for_month(self, period: pd.Period) -> float:
         return self._get_month_summary(period).total
