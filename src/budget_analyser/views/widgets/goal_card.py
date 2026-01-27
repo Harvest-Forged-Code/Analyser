@@ -40,7 +40,7 @@ from budget_analyser.views.animations import (
     ShadowAnimator,
     DURATION_FAST,
 )
-from budget_analyser.views.icons import AppIcon, get_icon, get_icon_pixmap
+from budget_analyser.views.icons import AppIcon, get_icon, is_icon_available
 
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QWidget
@@ -49,11 +49,11 @@ if TYPE_CHECKING:
 class GoalStatus(Enum):
     """Goal tracking status."""
 
-    ON_TRACK = ("on_track", COLOR_POSITIVE, AppIcon.STATUS_ON_TRACK, "On Track")
-    AT_RISK = ("at_risk", COLOR_WARNING, AppIcon.STATUS_AT_RISK, "At Risk")
-    BEHIND = ("behind", COLOR_EXPENSE, AppIcon.STATUS_BEHIND, "Behind")
-    COMPLETED = ("completed", "#FFD700", AppIcon.STATUS_COMPLETED, "Completed")
-    PAUSED = ("paused", COLOR_MUTED, AppIcon.STATUS_PAUSED, "Paused")
+    ON_TRACK = ("on_track", COLOR_POSITIVE, AppIcon.STATUS_ON_TRACK, "On Track", "✓")
+    AT_RISK = ("at_risk", COLOR_WARNING, AppIcon.STATUS_AT_RISK, "At Risk", "⚠")
+    BEHIND = ("behind", COLOR_EXPENSE, AppIcon.STATUS_BEHIND, "Behind", "!")
+    COMPLETED = ("completed", "#FFD700", AppIcon.STATUS_COMPLETED, "Completed", "★")
+    PAUSED = ("paused", COLOR_MUTED, AppIcon.STATUS_PAUSED, "Paused", "⏸")
 
     def __init__(
         self,
@@ -61,11 +61,13 @@ class GoalStatus(Enum):
         color: str,
         icon: AppIcon,
         label: str,
+        fallback_icon: str,
     ) -> None:
         self.status_id = status_id
         self.color = color
         self.app_icon = icon
         self.label = label
+        self.fallback_icon = fallback_icon
 
     @classmethod
     def from_string(cls, status: str) -> "GoalStatus":
@@ -400,10 +402,7 @@ class GoalCard(QtWidgets.QWidget):
         self._icon_label.setText(data.icon)
         self._name_label.setText(data.name)
 
-        # Update status badge with icon
-        status_icon = get_icon(status.app_icon, color=status.color, size=14)
-        status_pixmap = status_icon.pixmap(QtCore.QSize(14, 14))
-
+        # Update status badge with icon (or fallback to text)
         # Create a horizontal layout for icon + text if not already set up
         if not hasattr(self, '_status_icon_label'):
             self._status_icon_label = QtWidgets.QLabel()
@@ -415,7 +414,20 @@ class GoalCard(QtWidgets.QWidget):
             badge_layout.addWidget(self._status_icon_label)
             badge_layout.addWidget(self._status_text_label)
 
-        self._status_icon_label.setPixmap(status_pixmap)
+        # Try to use icon, fall back to emoji
+        if is_icon_available(status.app_icon):
+            status_icon = get_icon(status.app_icon, color=status.color, size=14)
+            if not status_icon.isNull():
+                status_pixmap = status_icon.pixmap(QtCore.QSize(14, 14))
+                if not status_pixmap.isNull():
+                    self._status_icon_label.setPixmap(status_pixmap)
+                else:
+                    self._status_icon_label.setText(status.fallback_icon)
+            else:
+                self._status_icon_label.setText(status.fallback_icon)
+        else:
+            self._status_icon_label.setText(status.fallback_icon)
+
         self._status_text_label.setText(status.label)
         self._status_text_label.setStyleSheet(f"""
             color: {status.color};
@@ -479,9 +491,15 @@ class GoalCard(QtWidgets.QWidget):
 
         # Update button state
         if status == GoalStatus.COMPLETED:
-            self._top_up_btn.setText("Completed")
-            completed_icon = get_icon(AppIcon.STATUS_COMPLETED, color="#FFD700", size=16)
-            self._top_up_btn.setIcon(completed_icon)
+            if is_icon_available(AppIcon.STATUS_COMPLETED):
+                completed_icon = get_icon(AppIcon.STATUS_COMPLETED, color="#FFD700", size=16)
+                if not completed_icon.isNull():
+                    self._top_up_btn.setIcon(completed_icon)
+                    self._top_up_btn.setText("Completed")
+                else:
+                    self._top_up_btn.setText("Completed ★")
+            else:
+                self._top_up_btn.setText("Completed ★")
             self._top_up_btn.setEnabled(False)
         else:
             self._top_up_btn.setText("Top Up")

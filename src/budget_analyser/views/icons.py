@@ -8,17 +8,24 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from PySide6.QtGui import QIcon, QPixmap, QColor
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import QSize
+from PySide6.QtWidgets import QApplication
 
 try:
     import qtawesome as qta
     QTAWESOME_AVAILABLE = True
 except ImportError:
+    qta = None
     QTAWESOME_AVAILABLE = False
 
 if TYPE_CHECKING:
     pass
+
+
+def _is_qapp_running() -> bool:
+    """Check if a QApplication instance exists and is running."""
+    return QApplication.instance() is not None
 
 
 class AppIcon(Enum):
@@ -117,14 +124,18 @@ def get_icon(
     Returns:
         QIcon instance, or empty QIcon if qtawesome is not available
     """
-    if not QTAWESOME_AVAILABLE:
+    if not QTAWESOME_AVAILABLE or not _is_qapp_running():
         return QIcon()
 
     icon_name = icon.value if isinstance(icon, AppIcon) else icon
     color = color or DEFAULT_ICON_COLOR
 
     try:
-        return qta.icon(icon_name, color=color, scale_factor=1.0)
+        result = qta.icon(icon_name, color=color, scale_factor=1.0)
+        # Verify the icon is valid before returning
+        if result.isNull():
+            return QIcon()
+        return result
     except Exception:  # pylint: disable=broad-except
         # Fallback to empty icon if icon not found
         return QIcon()
@@ -146,10 +157,34 @@ def get_icon_pixmap(
     Returns:
         QPixmap instance, or empty QPixmap if qtawesome is not available
     """
+    if not _is_qapp_running():
+        return QPixmap()
+
     qicon = get_icon(icon, color=color, size=size)
     if qicon.isNull():
         return QPixmap()
-    return qicon.pixmap(QSize(size, size))
+
+    # Get pixmap and verify it's valid
+    pixmap = qicon.pixmap(QSize(size, size))
+    if pixmap.isNull():
+        return QPixmap()
+    return pixmap
+
+
+def is_icon_available(icon: AppIcon | str) -> bool:
+    """Check if an icon is available and can be rendered.
+
+    Args:
+        icon: AppIcon enum value or icon name string
+
+    Returns:
+        True if icon can be rendered, False otherwise
+    """
+    if not QTAWESOME_AVAILABLE or not _is_qapp_running():
+        return False
+
+    qicon = get_icon(icon)
+    return not qicon.isNull()
 
 
 def get_themed_icon(

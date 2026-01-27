@@ -40,8 +40,8 @@ from budget_analyser.views.pages import (
 from budget_analyser.views.styles import app_stylesheet
 from budget_analyser.views.icons import (
     AppIcon,
-    get_icon,
     get_themed_icon,
+    is_icon_available,
     ICON_SIZE_MEDIUM,
 )
 from budget_analyser.settings.preferences import AppPreferences
@@ -212,11 +212,13 @@ class DashboardWindow(QtWidgets.QMainWindow):
         self._toggle_sidebar_btn = QtWidgets.QPushButton()
         self._toggle_sidebar_btn.setObjectName("toggleSidebar")
         self._toggle_sidebar_btn.setToolTip("Toggle sidebar visibility")
-        self._toggle_sidebar_btn.setIcon(get_themed_icon(
-            AppIcon.MENU,
-            dark_mode=self._prefs.get_theme() == "dark"
-        ))
-        self._toggle_sidebar_btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
+        if is_icon_available(AppIcon.MENU):
+            qicon = get_themed_icon(AppIcon.MENU, dark_mode=self._prefs.get_theme() == "dark")
+            if not qicon.isNull():
+                self._toggle_sidebar_btn.setIcon(qicon)
+                self._toggle_sidebar_btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
+        else:
+            self._toggle_sidebar_btn.setText("☰")
         self._toggle_sidebar_btn.clicked.connect(self._toggle_sidebar)
         header_layout.addWidget(self._toggle_sidebar_btn)
 
@@ -263,9 +265,11 @@ class DashboardWindow(QtWidgets.QMainWindow):
             btn.setCheckable(True)
             btn.setMinimumHeight(40)
             btn.setCursor(QtCore.Qt.PointingHandCursor)
-            if icon is not None:
-                btn.setIcon(get_themed_icon(icon, dark_mode=self._prefs.get_theme() == "dark"))
-                btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
+            if icon is not None and is_icon_available(icon):
+                qicon = get_themed_icon(icon, dark_mode=self._prefs.get_theme() == "dark")
+                if not qicon.isNull():
+                    btn.setIcon(qicon)
+                    btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
             return btn
 
         self._section_names = {
@@ -449,12 +453,24 @@ class DashboardWindow(QtWidgets.QMainWindow):
             # Collapse sidebar
             self._sidebar.setVisible(False)
             self._sidebar_expanded = False
-            self._toggle_sidebar_btn.setIcon(get_themed_icon(AppIcon.MENU, dark_mode=dark_mode))
+            icon = AppIcon.MENU
+            if is_icon_available(icon):
+                qicon = get_themed_icon(icon, dark_mode=dark_mode)
+                if not qicon.isNull():
+                    self._toggle_sidebar_btn.setIcon(qicon)
+                    return
+            self._toggle_sidebar_btn.setText("☰")
         else:
             # Expand sidebar
             self._sidebar.setVisible(True)
             self._sidebar_expanded = True
-            self._toggle_sidebar_btn.setIcon(get_themed_icon(AppIcon.CLOSE, dark_mode=dark_mode))
+            icon = AppIcon.CLOSE
+            if is_icon_available(icon):
+                qicon = get_themed_icon(icon, dark_mode=dark_mode)
+                if not qicon.isNull():
+                    self._toggle_sidebar_btn.setIcon(qicon)
+                    return
+            self._toggle_sidebar_btn.setText("✕")
 
     def _filter_pages(self, search_text: str) -> None:
         """Filter navigation pages based on search text."""
@@ -518,9 +534,15 @@ class DashboardWindow(QtWidgets.QMainWindow):
         dark_mode = cur == "dark"
         # Show sun icon in dark mode (to switch to light), moon in light mode (to switch to dark)
         icon = AppIcon.THEME_LIGHT if dark_mode else AppIcon.THEME_DARK
-        self._theme_btn.setIcon(get_themed_icon(icon, dark_mode=dark_mode))
-        self._theme_btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
-        self._theme_btn.setText("")
+        if is_icon_available(icon):
+            qicon = get_themed_icon(icon, dark_mode=dark_mode)
+            if not qicon.isNull():
+                self._theme_btn.setIcon(qicon)
+                self._theme_btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
+                self._theme_btn.setText("")
+                return
+        # Fallback to emoji if icons not available
+        self._theme_btn.setText("☀️" if dark_mode else "🌙")
 
     def _refresh_nav_icons(self) -> None:
         """Refresh navigation icons for current theme."""
@@ -528,13 +550,16 @@ class DashboardWindow(QtWidgets.QMainWindow):
         for btn in self._buttons:
             idx = self._btn_group.id(btn)
             icon = self._section_icons.get(idx)
-            if icon is not None:
-                btn.setIcon(get_themed_icon(icon, dark_mode=dark_mode))
+            if icon is not None and is_icon_available(icon):
+                qicon = get_themed_icon(icon, dark_mode=dark_mode)
+                if not qicon.isNull():
+                    btn.setIcon(qicon)
         # Update toggle sidebar icon
-        self._toggle_sidebar_btn.setIcon(get_themed_icon(
-            AppIcon.MENU if self._sidebar_expanded else AppIcon.CLOSE,
-            dark_mode=dark_mode
-        ))
+        toggle_icon = AppIcon.MENU if self._sidebar_expanded else AppIcon.CLOSE
+        if is_icon_available(toggle_icon):
+            qicon = get_themed_icon(toggle_icon, dark_mode=dark_mode)
+            if not qicon.isNull():
+                self._toggle_sidebar_btn.setIcon(qicon)
 
     def _navigate_to(self, index: int) -> None:
         """Navigate to a page by index and update subtitle/button states."""

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from PySide6 import QtWidgets, QtCore
 
-from budget_analyser.views.icons import AppIcon, get_icon_pixmap, ICON_SIZE_XLARGE
+from budget_analyser.views.icons import AppIcon, get_icon_pixmap, is_icon_available, ICON_SIZE_XLARGE
 
 
 class ModernPageMixin:
@@ -35,16 +35,18 @@ class ModernPageMixin:
 
         if icon:
             icon_label = QtWidgets.QLabel()
-            if isinstance(icon, AppIcon):
+            if isinstance(icon, AppIcon) and is_icon_available(icon):
                 # Use AppIcon - render as pixmap
                 pixmap = get_icon_pixmap(icon, color="#A78BFA", size=ICON_SIZE_XLARGE)
-                icon_label.setPixmap(pixmap)
-                icon_label.setFixedSize(ICON_SIZE_XLARGE, ICON_SIZE_XLARGE)
-            else:
+                if not pixmap.isNull():
+                    icon_label.setPixmap(pixmap)
+                    icon_label.setFixedSize(ICON_SIZE_XLARGE, ICON_SIZE_XLARGE)
+                    layout.addWidget(icon_label)
+            elif isinstance(icon, str) and icon:
                 # Use emoji string
                 icon_label.setText(icon)
                 icon_label.setStyleSheet("font-size: 28px;")
-            layout.addWidget(icon_label)
+                layout.addWidget(icon_label)
 
         title_container = QtWidgets.QWidget()
         title_layout = QtWidgets.QVBoxLayout(title_container)

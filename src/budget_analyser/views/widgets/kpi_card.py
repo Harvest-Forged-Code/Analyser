@@ -37,7 +37,7 @@ from budget_analyser.views.animations import (
     ShadowAnimator,
     DURATION_FAST,
 )
-from budget_analyser.views.icons import AppIcon, get_icon
+from budget_analyser.views.icons import AppIcon, get_icon, is_icon_available
 
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QWidget
@@ -243,15 +243,30 @@ class KPICard(QtWidgets.QWidget):
         if data.trend_value:
             self._trend_container.setVisible(True)
             trend_color = get_trend_color(data.trend_direction)
-            if data.trend_direction == "up":
-                icon = get_icon(AppIcon.TREND_UP, color=trend_color, size=16)
-            elif data.trend_direction == "down":
-                icon = get_icon(AppIcon.TREND_DOWN, color=trend_color, size=16)
-            else:
-                icon = get_icon(AppIcon.TREND_NEUTRAL, color=trend_color, size=16)
 
-            pixmap = icon.pixmap(QtCore.QSize(16, 16))
-            self._trend_arrow.setPixmap(pixmap)
+            # Try to use icons, fall back to text arrows
+            icon_map = {
+                "up": (AppIcon.TREND_UP, "▲"),
+                "down": (AppIcon.TREND_DOWN, "▼"),
+                "neutral": (AppIcon.TREND_NEUTRAL, ""),
+            }
+            app_icon, fallback_text = icon_map.get(
+                data.trend_direction, (AppIcon.TREND_NEUTRAL, "")
+            )
+
+            if is_icon_available(app_icon):
+                icon = get_icon(app_icon, color=trend_color, size=16)
+                if not icon.isNull():
+                    pixmap = icon.pixmap(QtCore.QSize(16, 16))
+                    if not pixmap.isNull():
+                        self._trend_arrow.setPixmap(pixmap)
+                    else:
+                        self._trend_arrow.setText(fallback_text)
+                else:
+                    self._trend_arrow.setText(fallback_text)
+            else:
+                self._trend_arrow.setText(fallback_text)
+
             self._trend_label.setText(data.trend_value)
         else:
             self._trend_container.setVisible(False)
