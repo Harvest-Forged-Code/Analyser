@@ -13,7 +13,7 @@ Helps users understand if they're on track with their budgets.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from calendar import monthrange
 from typing import Mapping
 
@@ -21,6 +21,7 @@ import pandas as pd
 
 
 @dataclass(frozen=True)
+# pylint: disable=too-many-instance-attributes
 class BurnRateMetrics:
     """Burn rate metrics for a budget period.
 
@@ -255,6 +256,7 @@ class BurnRateService:
         days_remaining: int,
     ) -> BurnRateMetrics:
         """Calculate all burn rate metrics."""
+        # pylint: disable=too-many-arguments
         total_days = days_elapsed + days_remaining
 
         # Daily burn rate
@@ -288,7 +290,9 @@ class BurnRateService:
             status = "over_budget"
         elif projected_total > budget_amount:
             status = "warning"
-        elif (spent_amount / budget_amount * 100) >= self._warning_threshold if budget_amount > 0 else False:
+        elif budget_amount > 0 and (
+            spent_amount / budget_amount * 100
+        ) >= self._warning_threshold:
             status = "warning"
         else:
             status = "on_track"

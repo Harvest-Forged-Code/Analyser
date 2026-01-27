@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Sequence
-
 import pandas as pd
 
 
@@ -48,6 +46,7 @@ class TrendDirection(Enum):
 
 
 @dataclass(frozen=True)
+# pylint: disable=too-many-instance-attributes
 class MonthlyTrend:
     """Trend data for a single month.
 
@@ -167,13 +166,14 @@ class TrendAnalysisService:
                 if yoy_period in data.index:
                     prev_value = data[yoy_period]
                     curr_value = data[period]
-                    yoy_changes[period] = curr_value - prev_value
+                    yoy_change = curr_value - prev_value
+                    yoy_changes[period] = yoy_change
                     if prev_value != 0:
-                        yoy_changes_pct[period] = ((curr_value - prev_value) / abs(prev_value)) * 100
+                        yoy_changes_pct[period] = (yoy_change / abs(prev_value)) * 100
                     else:
                         yoy_changes_pct[period] = None
-            except Exception:
-                pass
+            except (TypeError, ValueError):
+                continue
 
         # Build monthly trends
         monthly_trends = []
@@ -188,6 +188,10 @@ class TrendAnalysisService:
 
             direction = TrendDirection.from_change(mom_pct, self._stable_threshold)
 
+            ma_3m_value = ma_3m[period]
+            ma_6m_value = ma_6m[period]
+            ma_12m_value = ma_12m[period]
+
             trend = MonthlyTrend(
                 period=period,
                 value=float(data[period]),
@@ -195,9 +199,9 @@ class TrendAnalysisService:
                 mom_change_pct=float(mom_pct),
                 yoy_change=yoy_changes.get(period),
                 yoy_change_pct=yoy_changes_pct.get(period),
-                moving_avg_3m=float(ma_3m[period]) if not pd.isna(ma_3m[period]) else None,
-                moving_avg_6m=float(ma_6m[period]) if not pd.isna(ma_6m[period]) else None,
-                moving_avg_12m=float(ma_12m[period]) if not pd.isna(ma_12m[period]) else None,
+                moving_avg_3m=float(ma_3m_value) if not pd.isna(ma_3m_value) else None,
+                moving_avg_6m=float(ma_6m_value) if not pd.isna(ma_6m_value) else None,
+                moving_avg_12m=float(ma_12m_value) if not pd.isna(ma_12m_value) else None,
                 direction=direction,
             )
             monthly_trends.append(trend)
@@ -303,8 +307,11 @@ class TrendAnalysisService:
 
         prev_value = data[prev_period]
         absolute_change = current_value - prev_value
-        percent_change = ((current_value - prev_value) / abs(prev_value) * 100
-                          if prev_value != 0 else None)
+        percent_change = (
+            (current_value - prev_value) / abs(prev_value) * 100
+            if prev_value != 0
+            else None
+        )
 
         direction = TrendDirection.from_change(
             percent_change if percent_change is not None else 0,

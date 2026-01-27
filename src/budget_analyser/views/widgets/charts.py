@@ -24,6 +24,13 @@ try:
     PYQTGRAPH_AVAILABLE = True
 except ImportError:
     PYQTGRAPH_AVAILABLE = False
+    # Fallback to keep module importable when pyqtgraph isn't installed.
+    class _PGFallback:
+        class AxisItem:
+            def __init__(self, *args, **kwargs) -> None:
+                pass
+
+    pg = _PGFallback()
 
 from budget_analyser.views.constants import COLOR_PRIMARY, COLOR_TEXT_MUTED
 

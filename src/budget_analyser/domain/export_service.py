@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import csv
 import io
-import os
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -30,7 +29,6 @@ try:
         TableStyle,
         Paragraph,
         Spacer,
-        PageBreak,
     )
     HAS_REPORTLAB = True
 except ImportError:
@@ -264,10 +262,6 @@ class PdfExporter:
 
         if not data:
             return elements
-
-        # Calculate column widths based on content
-        num_cols = len(self._columns)
-        col_width = 7.5 * inch / num_cols  # Total width divided by columns
 
         # Build table data
         table_data = []

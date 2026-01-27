@@ -95,7 +95,7 @@ class MappingValidationService:
     """
 
     # Common typo patterns to detect
-    SUSPICIOUS_CHARS = {"'", "'", '"', '"', '"'}
+    SUSPICIOUS_CHARS = {"'", '"'}
 
     def __init__(
         self,

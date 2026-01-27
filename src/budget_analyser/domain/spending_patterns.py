@@ -14,10 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Sequence
-
 import pandas as pd
-import numpy as np
 
 
 class DayOfWeek(Enum):
@@ -273,7 +270,7 @@ class SpendingPatternService:
         for category, amount in grouped.items():
             percentage = (amount / total) * 100
             cumulative += percentage
-            is_top_80 = cumulative <= 80 or (cumulative > 80 and cumulative - percentage < 80)
+            is_top_80 = cumulative <= 80 or cumulative - percentage < 80
 
             items.append(ParetoItem(
                 category=str(category),
@@ -488,8 +485,8 @@ class SpendingPatternService:
             # Make expenses positive for summing
             df["abs_amount"] = df["amount"].abs()
             return df.groupby("period")["abs_amount"].sum().to_dict()
-        else:
-            return df.groupby("period")["amount"].sum().to_dict()
+
+        return df.groupby("period")["amount"].sum().to_dict()
 
 
 def analyze_spending_patterns(

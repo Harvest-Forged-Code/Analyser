@@ -13,8 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Sequence
-
 import pandas as pd
 import numpy as np
 
@@ -121,16 +119,14 @@ class ForecastingService:
         historical_data = historical_data.sort_index()
 
         # Choose forecasting method
-        if method == ForecastMethod.HISTORICAL_AVERAGE:
-            return self._forecast_historical_average(historical_data, periods)
-        elif method == ForecastMethod.WEIGHTED_AVERAGE:
-            return self._forecast_weighted_average(historical_data, periods)
-        elif method == ForecastMethod.TREND_EXTRAPOLATION:
-            return self._forecast_trend(historical_data, periods)
-        elif method == ForecastMethod.ENSEMBLE:
-            return self._forecast_ensemble(historical_data, periods)
-        else:
-            return self._forecast_weighted_average(historical_data, periods)
+        method_map = {
+            ForecastMethod.HISTORICAL_AVERAGE: self._forecast_historical_average,
+            ForecastMethod.WEIGHTED_AVERAGE: self._forecast_weighted_average,
+            ForecastMethod.TREND_EXTRAPOLATION: self._forecast_trend,
+            ForecastMethod.ENSEMBLE: self._forecast_ensemble,
+        }
+        forecast_func = method_map.get(method, self._forecast_weighted_average)
+        return forecast_func(historical_data, periods)
 
     def forecast_from_transactions(
         self,
@@ -406,10 +402,14 @@ class ForecastingService:
                 confidence=self._confidence_interval * 0.95,
             ))
 
+        avg_first = avg_result.forecasts[0].value if avg_result.forecasts else 0
+        weighted_first = weighted_result.forecasts[0].value if weighted_result.forecasts else 0
+        trend_first = trend_result.forecasts[0].value if trend_result.forecasts else 0
+
         metrics = {
-            "avg_method_value": avg_result.forecasts[0].value if avg_result.forecasts else 0,
-            "weighted_method_value": weighted_result.forecasts[0].value if weighted_result.forecasts else 0,
-            "trend_method_value": trend_result.forecasts[0].value if trend_result.forecasts else 0,
+            "avg_method_value": avg_first,
+            "weighted_method_value": weighted_first,
+            "trend_method_value": trend_first,
             "data_points": len(data),
         }
 

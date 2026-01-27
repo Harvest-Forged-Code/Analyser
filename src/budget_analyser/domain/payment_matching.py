@@ -12,8 +12,7 @@ unmatched payments that may need attention.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Sequence
+from datetime import datetime
 
 import pandas as pd
 
@@ -144,7 +143,7 @@ class PaymentMatchingService:
 
         # Ensure required columns exist
         required_cols = {"amount", "transaction_date"}
-        for df, name in [(payments_made, "payments"), (payment_confirmations, "confirmations")]:
+        for df in (payments_made, payment_confirmations):
             missing = required_cols - set(df.columns)
             if missing:
                 # Return unmatched if missing required columns
@@ -199,7 +198,7 @@ class PaymentMatchingService:
                 # Higher confidence for closer dates and exact amounts
                 date_score = 1.0 - (days_apart / (self._max_days_apart + 1))
                 amount_score = 1.0 - (amount_diff / (self._amount_tolerance + 0.001))
-                confidence = (date_score * 0.6 + amount_score * 0.4)
+                confidence = date_score * 0.6 + amount_score * 0.4
 
                 if confidence > best_score:
                     best_score = confidence
@@ -280,7 +279,7 @@ class PaymentMatchingService:
             # Calculate confidence
             date_score = 1.0 - (days_apart / (self._max_days_apart + 1))
             amount_score = 1.0 - (amount_diff / (self._amount_tolerance + 0.001))
-            confidence = (date_score * 0.6 + amount_score * 0.4)
+            confidence = date_score * 0.6 + amount_score * 0.4
 
             matches.append((idx, confidence))
 
