@@ -6,6 +6,7 @@ from typing import List
 from PySide6 import QtCore, QtWidgets
 
 from budget_analyser.controller import SubCategoryMapperController
+from budget_analyser.views.pages._page_base import ModernPageMixin
 
 
 class SubCategoryMapperPage(QtWidgets.QWidget):
@@ -21,90 +22,106 @@ class SubCategoryMapperPage(QtWidgets.QWidget):
         self._load_data()
 
     def _init_ui(self) -> None:
-        root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(12)
+        # Scroll area for content
+        scroll, container = ModernPageMixin.create_scroll_area()
 
-        title = QtWidgets.QLabel("Sub-category Mapping")
-        tf = title.font()
-        tf.setPointSize(16)
-        tf.setBold(True)
-        title.setFont(tf)
-        root.addWidget(title)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll)
 
-        helper = QtWidgets.QLabel(
-            "Move sub-categories between categories or add new ones. "
-            "Changes are saved to the sub_category_to_category mapping JSON."
+        root = QtWidgets.QVBoxLayout(container)
+        root.setContentsMargins(32, 32, 32, 32)
+        root.setSpacing(24)
+
+        # Page header
+        page_header = ModernPageMixin.create_page_header(
+            title="Sub-Category Mapping",
+            subtitle="Move sub-categories between categories or add new ones",
+            icon="🔀"
         )
-        helper.setWordWrap(True)
-        root.addWidget(helper)
+        root.addWidget(page_header)
 
+        # Three-column layout for source/target panels
         body = QtWidgets.QHBoxLayout()
-        body.setSpacing(10)
-        root.addLayout(body)
+        body.setSpacing(16)
 
-        self._source_card, self._source_combo, self._source_list = self._build_category_panel("Source Category")
-        self._target_card, self._target_combo, self._target_list = self._build_category_panel("Target Category")
+        self._source_card, self._source_combo, self._source_list = self._build_category_panel("SOURCE CATEGORY")
+        self._target_card, self._target_combo, self._target_list = self._build_category_panel("TARGET CATEGORY")
 
         body.addWidget(self._source_card, 1)
 
+        # Middle controls
         mid = QtWidgets.QVBoxLayout()
-        mid.setSpacing(8)
-        self._btn_to_target = QtWidgets.QPushButton("→ Move to target")
-        self._btn_to_target.clicked.connect(self._on_move_to_target)
-        self._btn_to_source = QtWidgets.QPushButton("← Move to source")
-        self._btn_to_source.clicked.connect(self._on_move_to_source)
+        mid.setSpacing(12)
         mid.addStretch(1)
+
+        self._btn_to_target = ModernPageMixin.create_action_button("→ Move to Target", primary=False)
+        self._btn_to_target.clicked.connect(self._on_move_to_target)
         mid.addWidget(self._btn_to_target)
+
+        self._btn_to_source = ModernPageMixin.create_action_button("← Move to Source", primary=False)
+        self._btn_to_source.clicked.connect(self._on_move_to_source)
         mid.addWidget(self._btn_to_source)
+
         mid.addStretch(1)
         body.addLayout(mid)
 
         body.addWidget(self._target_card, 1)
 
-        # Add sub-category
-        add_box = QtWidgets.QGroupBox("Add sub-category")
-        add_layout = QtWidgets.QFormLayout(add_box)
+        root.addLayout(body, 1)
+
+        # Add sub-category card
+        add_card, add_layout = ModernPageMixin.create_card("ADD NEW SUB-CATEGORY")
+
+        name_label = ModernPageMixin.create_control_label("Sub-category Name")
+        add_layout.addWidget(name_label)
+
         self._new_sub = QtWidgets.QLineEdit()
         self._new_sub.setPlaceholderText("e.g., coffee_shops")
+        self._new_sub.setMinimumHeight(34)
+        add_layout.addWidget(self._new_sub)
+
+        cat_label = ModernPageMixin.create_control_label("Category")
+        add_layout.addWidget(cat_label)
+
         self._add_combo = QtWidgets.QComboBox()
         self._add_combo.setEditable(True)
         self._add_combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
-        self._btn_add = QtWidgets.QPushButton("Add")
-        self._btn_add.clicked.connect(self._on_add)
-        add_layout.addRow("Name", self._new_sub)
-        add_layout.addRow("Category", self._add_combo)
-        add_layout.addRow("", self._btn_add)
-        root.addWidget(add_box)
+        ModernPageMixin.style_combo_box(self._add_combo)
+        add_layout.addWidget(self._add_combo)
 
-        # Save/reset actions
+        self._btn_add = ModernPageMixin.create_action_button("Add Sub-category", primary=True)
+        self._btn_add.clicked.connect(self._on_add)
+        add_layout.addWidget(self._btn_add)
+
+        root.addWidget(add_card)
+
+        # Action buttons
         actions = QtWidgets.QHBoxLayout()
         actions.addStretch(1)
-        self._btn_reset = QtWidgets.QPushButton("Reset")
+
+        self._btn_reset = ModernPageMixin.create_action_button("Reset", primary=False)
         self._btn_reset.clicked.connect(self._on_reset)
-        self._btn_save = QtWidgets.QPushButton("Save Changes")
-        self._btn_save.clicked.connect(self._on_save)
         actions.addWidget(self._btn_reset)
+
+        self._btn_save = ModernPageMixin.create_action_button("Save Changes", primary=True)
+        self._btn_save.setMinimumHeight(48)
+        self._btn_save.clicked.connect(self._on_save)
         actions.addWidget(self._btn_save)
+
         root.addLayout(actions)
 
     def _build_category_panel(self, title: str) -> tuple[QtWidgets.QWidget, QtWidgets.QComboBox, QtWidgets.QListWidget]:
-        card = QtWidgets.QWidget()
-        card.setObjectName("card")
-        layout = QtWidgets.QVBoxLayout(card)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
+        card, layout = ModernPageMixin.create_card(title)
 
-        lbl = QtWidgets.QLabel(title)
-        lf = lbl.font()
-        lf.setBold(True)
-        lbl.setFont(lf)
-        layout.addWidget(lbl)
+        cat_label = ModernPageMixin.create_control_label("Select Category")
+        layout.addWidget(cat_label)
 
         combo = QtWidgets.QComboBox()
         combo.setEditable(False)
         combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
         combo.currentIndexChanged.connect(self._on_combo_changed)
+        ModernPageMixin.style_combo_box(combo)
         layout.addWidget(combo)
 
         lst = QtWidgets.QListWidget()
@@ -113,9 +130,9 @@ class SubCategoryMapperPage(QtWidgets.QWidget):
         lst.setSpacing(2)
         layout.addWidget(lst, 1)
 
-        hint = QtWidgets.QLabel("Select a category to view and move its sub-categories.")
+        hint = QtWidgets.QLabel("Select a category to view and move its sub-categories")
         hint.setWordWrap(True)
-        hint.setStyleSheet("color: #94A3B8;")
+        hint.setStyleSheet("font-size: 11px; color: #9CA3AF; font-style: italic;")
         layout.addWidget(hint)
 
         return card, combo, lst

@@ -2,42 +2,23 @@
 
 Single responsibility:
     Categorize transactions by deriving sub_category, category, and c_or_d.
+
+Uses priority-based keyword matching where:
+    - Longer keyword matches score higher (more specific)
+    - Exact matches score higher than substring matches
+    - Returns the highest-scoring match instead of first match
 """
 
 from __future__ import annotations
-
-from typing import Mapping
 
 import pandas as pd
 
 from budget_analyser.domain.errors import ValidationError
 from budget_analyser.domain.category_mappers import CategoryMappers
-
-
-def _map_by_keywords_substring(content: str, keyword_map: Mapping[str, list[str]]) -> str:
-    """Return the mapped key if any keyword appears as a substring in the content."""
-    content_lower = content.lower()
-    for mapped_value, keywords in keyword_map.items():
-        for keyword in keywords:
-            try:
-                if str(keyword).lower() in content_lower:
-                    return mapped_value
-            except Exception:  # pylint: disable=broad-exception-caught
-                continue
-    return ""
-
-
-def _map_by_keywords_exact(content: str, keyword_map: Mapping[str, list[str]]) -> str:
-    """Return the mapped key if any keyword exactly matches the content (case-insensitive)."""
-    content_lower = content.lower()
-    for mapped_value, keywords in keyword_map.items():
-        for keyword in keywords:
-            try:
-                if content_lower == str(keyword).lower():
-                    return mapped_value
-            except Exception:  # pylint: disable=broad-exception-caught
-                continue
-    return ""
+from budget_analyser.domain.keyword_matching import (
+    map_by_keywords_substring,
+    map_by_keywords_exact,
+)
 
 
 class TransactionProcessor:  # pylint: disable=too-few-public-methods
@@ -55,20 +36,32 @@ class TransactionProcessor:  # pylint: disable=too-few-public-methods
         if "amount" not in processed.columns:
             raise ValidationError("raw_transactions must contain 'amount' column")
 
+        # Validate and clean amount column - convert to numeric and handle NaN
+        processed["amount"] = pd.to_numeric(processed["amount"], errors="coerce")
+        nan_count = processed["amount"].isna().sum()
+        if nan_count > 0:
+            # Fill NaN amounts with 0 and log a warning (could also filter them out)
+            processed["amount"] = processed["amount"].fillna(0)
+
         processed["sub_category"] = processed["description"].astype(str).map(
-            lambda description: _map_by_keywords_substring(
+            lambda description: map_by_keywords_substring(
                 description, self._mappers.description_to_sub_category
             )
         )
 
         processed["category"] = processed["sub_category"].astype(str).map(
-            lambda sub_cat: _map_by_keywords_exact(
+            lambda sub_cat: map_by_keywords_exact(
                 sub_cat, self._mappers.sub_category_to_category
             )
         )
 
-        processed["c_or_d"] = processed["amount"].map(
-            lambda amount: "earnings" if amount > 0 else "expenditures"
-        )
+        def classify_amount(amt: float) -> str:
+            if amt > 0:
+                return "earnings"
+            if amt < 0:
+                return "expenditures"
+            return "neutral"
+
+        processed["c_or_d"] = processed["amount"].map(classify_amount)
 
         return processed

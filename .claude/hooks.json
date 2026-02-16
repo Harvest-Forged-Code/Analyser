@@ -1,0 +1,43 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/sensitive-file-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/dependency-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-commit-lint.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/lint-reminder.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-reminder.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

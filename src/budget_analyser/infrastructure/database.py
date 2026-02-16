@@ -109,13 +109,18 @@ class TransactionDatabase:
         """
 
         inserted_count = 0
-        with self._get_connection() as conn:
+        conn = self._get_connection()
+        try:
             cursor = conn.cursor()
             for _, row in transactions.iterrows():
                 # Convert transaction_date to string for storage
-                date_str = str(row.get("transaction_date", ""))
-                if hasattr(row.get("transaction_date"), "strftime"):
-                    date_str = row["transaction_date"].strftime("%Y-%m-%d")
+                raw_date = row.get("transaction_date")
+                date_str = ""
+                if raw_date is not None and pd.notna(raw_date):
+                    if hasattr(raw_date, "strftime"):
+                        date_str = raw_date.strftime("%Y-%m-%d")
+                    else:
+                        date_str = str(raw_date) if str(raw_date).lower() != "none" else ""
 
                 cursor.execute(insert_sql, (
                     date_str,
@@ -130,6 +135,13 @@ class TransactionDatabase:
                     inserted_count += 1
 
             conn.commit()
+        except Exception:
+            # Rollback on any error to maintain database consistency
+            conn.rollback()
+            self._logger.exception("Error during transaction insert, rolling back")
+            raise
+        finally:
+            conn.close()
 
         self._logger.info(
             "Inserted %d new transactions (skipped %d duplicates)",
@@ -167,7 +179,8 @@ class TransactionDatabase:
         query = f"SELECT COUNT(*) FROM {self.TABLE_NAME}"
         with self._get_connection() as conn:
             cursor = conn.execute(query)
-            count = cursor.fetchone()[0]
+            row = cursor.fetchone()
+            count = row[0] if row is not None else 0
         return count
 
     def clear_all_transactions(self) -> None:

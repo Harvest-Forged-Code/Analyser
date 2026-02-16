@@ -1,23 +1,7 @@
 """MonthlyReports dataclass used by presentation layer.
 
-Single responsibility:
-    Describe the set of report tables for a given month.
+Backward-compatibility shim: re-exports from core.models.
+New code should import from budget_analyser.core.models directly.
 """
 
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-import pandas as pd
-
-
-@dataclass(frozen=True)
-class MonthlyReports:
-    """Report tables for a single month."""
-
-    month: pd.Period
-    earnings: pd.DataFrame
-    expenses: pd.DataFrame
-    expenses_category: pd.DataFrame
-    expenses_sub_category: pd.DataFrame
-    # Full per-month transactions used by specialized pages (e.g., reconciliation)
-    transactions: pd.DataFrame = field(default_factory=pd.DataFrame)
+from budget_analyser.core.models import MonthlyReports  # pylint: disable=unused-import  # noqa: F401

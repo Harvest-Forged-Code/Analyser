@@ -29,13 +29,25 @@ def _load_json(path: Path) -> dict:
         Parsed JSON data.
 
     Raises:
-        DataSourceError: If the file does not exist.
+        DataSourceError: If the file does not exist or contains invalid JSON.
     """
     # Validate file existence before reading.
     if not path.exists():
         raise DataSourceError(f"JSON mapping file not found: {path}")
-    # Read and parse.
-    return json.loads(path.read_text(encoding="utf-8"))
+    # Read and parse with proper error handling.
+    try:
+        content = path.read_text(encoding="utf-8")
+        return json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise DataSourceError(
+            f"Invalid JSON in mapping file {path}: {exc.msg} at line {exc.lineno}"
+        ) from exc
+    except UnicodeDecodeError as exc:
+        raise DataSourceError(
+            f"Encoding error reading mapping file {path}: {exc}"
+        ) from exc
+    except OSError as exc:
+        raise DataSourceError(f"Error reading mapping file {path}: {exc}") from exc
 
 
 @dataclass(frozen=True)

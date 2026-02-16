@@ -11,7 +11,6 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import List, Optional
 
 import pandas as pd
 
@@ -20,7 +19,7 @@ import pandas as pd
 class BudgetGoal:
     """A budget goal for a specific expense category."""
 
-    id: Optional[int]
+    id: int | None
     category: str
     monthly_limit: float
     year_month: str  # Format: "YYYY-MM" or "ALL" for all months
@@ -30,7 +29,7 @@ class BudgetGoal:
 class EarningsGoal:
     """An expected earnings goal for a specific sub-category."""
 
-    id: Optional[int]
+    id: int | None
     sub_category: str
     expected_amount: float
     year_month: str  # Format: "YYYY-MM" or "ALL" for all months
@@ -40,7 +39,7 @@ class EarningsGoal:
 class Account:
     """A financial account for net worth tracking."""
 
-    id: Optional[int]
+    id: int | None
     name: str
     account_type: str  # "checking", "savings", "credit_card", "investment", "loan", "other"
     balance: float
@@ -52,7 +51,7 @@ class Account:
 class RecurringTransaction:  # pylint: disable=too-many-instance-attributes
     """A detected or user-defined recurring transaction."""
 
-    id: Optional[int]
+    id: int | None
     description: str
     expected_amount: float
     frequency: str  # "monthly", "weekly", "yearly", "quarterly"
@@ -177,6 +176,9 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             row = cursor.fetchone()
             conn.commit()
 
+        if row is None:
+            raise RuntimeError(f"Failed to set budget goal for category: {category}")
+
         self._logger.info("Set budget goal: %s = $%.2f (%s)",
                          category, monthly_limit, year_month)
         return BudgetGoal(
@@ -186,7 +188,7 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             year_month=year_month
         )
 
-    def get_budget_goal(self, category: str, year_month: str = "ALL") -> Optional[BudgetGoal]:
+    def get_budget_goal(self, category: str, year_month: str = "ALL") -> BudgetGoal | None:
         """Get budget goal for a category.
 
         First checks for month-specific goal, then falls back to "ALL".
@@ -219,7 +221,7 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             year_month=row["year_month"]
         )
 
-    def get_all_budget_goals(self) -> List[BudgetGoal]:
+    def get_all_budget_goals(self) -> list[BudgetGoal]:
         """Get all budget goals."""
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
@@ -252,6 +254,31 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         if deleted:
             self._logger.info("Deleted budget goal: %s (%s)", category, year_month)
         return deleted
+
+    def set_budget_goals_for_year(
+        self, category: str, monthly_limit: float, year: int
+    ) -> list[BudgetGoal]:
+        """Create/update budget goals for all 12 months of a year.
+
+        Args:
+            category: The expense category name.
+            monthly_limit: The monthly spending limit.
+            year: The year to set goals for (e.g., 2025).
+
+        Returns:
+            List of 12 BudgetGoal objects, one for each month.
+        """
+        goals = []
+        for month in range(1, 13):
+            year_month = f"{year}-{month:02d}"
+            goal = self.set_budget_goal(category, monthly_limit, year_month)
+            goals.append(goal)
+
+        self._logger.info(
+            "Set budget goals for year %d: %s = $%.2f/month (12 entries)",
+            year, category, monthly_limit
+        )
+        return goals
 
     # ==================== Earnings Goals Methods ====================
 
@@ -288,6 +315,9 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             row = cursor.fetchone()
             conn.commit()
 
+        if row is None:
+            raise RuntimeError(f"Failed to set earnings goal for sub_category: {sub_category}")
+
         self._logger.info(
             "Set earnings goal: %s = $%.2f (%s)",
             sub_category,
@@ -303,7 +333,7 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
 
     def get_earnings_goal(
         self, sub_category: str, year_month: str = "ALL"
-    ) -> Optional[EarningsGoal]:
+    ) -> EarningsGoal | None:
         """Get earnings goal for a sub-category.
 
         First checks for month-specific goal, then falls back to "ALL".
@@ -336,7 +366,7 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             year_month=row["year_month"]
         )
 
-    def get_all_earnings_goals(self) -> List[EarningsGoal]:
+    def get_all_earnings_goals(self) -> list[EarningsGoal]:
         """Get all earnings goals."""
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
@@ -370,6 +400,31 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             self._logger.info("Deleted earnings goal: %s (%s)", sub_category, year_month)
         return deleted
 
+    def set_earnings_goals_for_year(
+        self, sub_category: str, expected_amount: float, year: int
+    ) -> list[EarningsGoal]:
+        """Create/update earnings goals for all 12 months of a year.
+
+        Args:
+            sub_category: The earnings sub-category name (e.g., "salary").
+            expected_amount: The expected monthly earnings amount.
+            year: The year to set goals for (e.g., 2025).
+
+        Returns:
+            List of 12 EarningsGoal objects, one for each month.
+        """
+        goals = []
+        for month in range(1, 13):
+            year_month = f"{year}-{month:02d}"
+            goal = self.set_earnings_goal(sub_category, expected_amount, year_month)
+            goals.append(goal)
+
+        self._logger.info(
+            "Set earnings goals for year %d: %s = $%.2f/month (12 entries)",
+            year, sub_category, expected_amount
+        )
+        return goals
+
     # ==================== Accounts Methods ====================
 
     def add_account(
@@ -390,6 +445,9 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             """, (name, account_type, balance, today, notes))
             row = cursor.fetchone()
             conn.commit()
+
+        if row is None:
+            raise RuntimeError(f"Failed to insert account: {name}")
 
         self._logger.info("Added account: %s (%s) = $%.2f", name, account_type, balance)
         return Account(
@@ -418,7 +476,7 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             self._logger.info("Updated account %d balance to $%.2f", account_id, balance)
         return updated
 
-    def get_all_accounts(self) -> List[Account]:
+    def get_all_accounts(self) -> list[Account]:
         """Get all financial accounts."""
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
@@ -506,6 +564,9 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             row = cursor.fetchone()
             conn.commit()
 
+        if row is None:
+            raise RuntimeError(f"Failed to insert recurring transaction: {description}")
+
         self._logger.info(
             "Added recurring transaction: %s ($%.2f %s)",
             description,
@@ -524,7 +585,7 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
 
     def get_all_recurring_transactions(
         self, active_only: bool = True
-    ) -> List[RecurringTransaction]:
+    ) -> list[RecurringTransaction]:
         """Get all recurring transactions."""
         query = f"""
             SELECT id, description, expected_amount, frequency, category,
@@ -592,7 +653,7 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         return deleted
 
     def detect_recurring_transactions(self, transactions_df: pd.DataFrame,
-                                       min_occurrences: int = 2) -> List[dict]:
+                                       min_occurrences: int = 2) -> list[dict]:
         """Detect potential recurring transactions from transaction history.
 
         Args:
@@ -661,6 +722,7 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
 
 __all__ = [
     "BudgetGoal",
+    "EarningsGoal",
     "Account",
     "RecurringTransaction",
     "BudgetDatabase",

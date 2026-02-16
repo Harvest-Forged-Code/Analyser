@@ -40,8 +40,13 @@ class IniAppConfig:
 
         Returns:
             List of account identifiers.
+
+        Raises:
+            configparser.NoSectionError: If the section does not exist.
         """
         parser = self._parser()
+        if not parser.has_section(section):
+            raise configparser.NoSectionError(section)
         return list(parser.options(section))
 
     def get_statement_filename(self, *, section: str, account: str) -> str:
@@ -53,8 +58,16 @@ class IniAppConfig:
 
         Returns:
             CSV filename.
+
+        Raises:
+            configparser.NoSectionError: If the section does not exist.
+            configparser.NoOptionError: If the account option does not exist.
         """
         parser = self._parser()
+        if not parser.has_section(section):
+            raise configparser.NoSectionError(section)
+        if not parser.has_option(section, account):
+            raise configparser.NoOptionError(account, section)
         return parser.get(section, account)
 
     def get_column_mapping(self, *, account_name: str) -> Mapping[str, str]:
@@ -65,9 +78,14 @@ class IniAppConfig:
 
         Returns:
             A mapping from source column names (from CSV) to desired canonical names.
+
+        Raises:
+            configparser.NoSectionError: If the mapping section does not exist.
         """
         parser = self._parser()
         section = f"{account_name}_map"
+        if not parser.has_section(section):
+            raise configparser.NoSectionError(section)
         # INI stores desired->source; invert to source->desired for pandas.rename.
         mapping_desired_to_source = dict(parser.items(section))
         return {source: desired for desired, source in mapping_desired_to_source.items()}

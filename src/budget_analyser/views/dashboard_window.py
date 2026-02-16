@@ -31,11 +31,19 @@ from budget_analyser.views.pages import (
     SubCategoryMapperPage,
     SettingsPage,
     BudgetGoalsPage,
+    RecurringPage,
+    CashflowDashboardPage,
+    UnifiedMapperPage,
     SavingsPage,
     NetWorthPage,
-    RecurringPage,
 )
 from budget_analyser.views.styles import app_stylesheet
+from budget_analyser.views.icons import (
+    AppIcon,
+    get_themed_icon,
+    is_icon_available,
+    ICON_SIZE_MEDIUM,
+)
 from budget_analyser.settings.preferences import AppPreferences
 from budget_analyser.controller import SettingsController
 from budget_analyser.controller import MapperController
@@ -43,7 +51,44 @@ from budget_analyser.controller import CashflowMapperController
 from budget_analyser.controller import SubCategoryMapperController
 from budget_analyser.controller import UploadController
 from budget_analyser.controller.budget_controller import BudgetController
+from budget_analyser.features.budget_goals import BudgetGoalsController
 from budget_analyser.version import get_version, APP_NAME
+
+
+class ReportRefreshWorker(QtCore.QThread):
+    """Background worker thread for refreshing reports."""
+
+    progress = QtCore.Signal(str, int)  # (message, step)
+    finished_with_result = QtCore.Signal(object)  # reports list or None
+    error_occurred = QtCore.Signal(str)  # error message
+
+    def __init__(
+        self,
+        mapper_controller: MapperController,
+        cashflow_mapper_controller: CashflowMapperController,
+        sub_category_mapper_controller: SubCategoryMapperController,
+        refresh_fn: Callable[[], List["MonthlyReports"]],
+    ):
+        super().__init__()
+        self._mapper_controller = mapper_controller
+        self._cashflow_mapper_controller = cashflow_mapper_controller
+        self._sub_category_mapper_controller = sub_category_mapper_controller
+        self._refresh_fn = refresh_fn
+
+    def run(self) -> None:
+        try:
+            self.progress.emit("Reloading latest mappings...", 1)
+            self._mapper_controller.reload()
+            self._cashflow_mapper_controller.reload()
+            self._sub_category_mapper_controller.reload()
+
+            self.progress.emit("Rebuilding reports...", 2)
+            reports = self._refresh_fn()
+
+            self.progress.emit("Finalizing...", 3)
+            self.finished_with_result.emit(reports)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            self.error_occurred.emit(str(exc))
 
 
 class DashboardWindow(QtWidgets.QMainWindow):
@@ -53,19 +98,18 @@ class DashboardWindow(QtWidgets.QMainWindow):
     reload_requested = QtCore.Signal()
 
     # Page indices
-    PAGE_YEARLY_SUMMARY = 0
-    PAGE_EARNINGS = 1
-    PAGE_EXPENSES = 2
-    PAGE_PAYMENTS = 3
-    PAGE_BUDGET_GOALS = 4
-    PAGE_SAVINGS = 5
-    PAGE_NET_WORTH = 6
-    PAGE_RECURRING = 7
-    PAGE_UPLOAD = 8
-    PAGE_MAPPER = 9
-    PAGE_CASHFLOW_MAPPER = 10
-    PAGE_SUB_CATEGORY_MAPPER = 11
-    PAGE_SETTINGS = 12
+    PAGE_CASHFLOW_DASHBOARD = 0
+    PAGE_YEARLY_SUMMARY = 1
+    PAGE_EARNINGS = 2
+    PAGE_EXPENSES = 3
+    PAGE_PAYMENTS = 4
+    PAGE_BUDGET_GOALS = 5
+    PAGE_SAVINGS = 6
+    PAGE_NET_WORTH = 7
+    PAGE_RECURRING = 8
+    PAGE_UPLOAD = 9
+    PAGE_MAPPER_HUB = 10
+    PAGE_SETTINGS = 11
 
     def __init__(
         self,
@@ -80,6 +124,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         *,
         refresh_reports_fn: Callable[[], List[MonthlyReports]] | None = None,
         csv_missing: bool = False,
+        budget_goals_controller: BudgetGoalsController | None = None,
     ):
         super().__init__()
         self._reports = reports
@@ -90,6 +135,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         self._cashflow_mapper_controller = cashflow_mapper_controller
         self._upload_controller = upload_controller
         self._budget_controller = budget_controller
+        self._budget_goals_controller = budget_goals_controller
         self._csv_missing = csv_missing
         self._refresh_reports_fn = refresh_reports_fn
         self._init_ui()
@@ -119,6 +165,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             action.triggered.connect(partial(self._navigate_to, index))
             menu.addAction(action)
 
+        add_nav_action(reports_menu, "Cashflow Dashboard", self.PAGE_CASHFLOW_DASHBOARD)
         add_nav_action(reports_menu, "Yearly Summary", self.PAGE_YEARLY_SUMMARY)
         add_nav_action(reports_menu, "Earnings", self.PAGE_EARNINGS)
         add_nav_action(reports_menu, "Expenses", self.PAGE_EXPENSES)
@@ -129,9 +176,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         add_nav_action(reports_menu, "Recurring", self.PAGE_RECURRING)
 
         add_nav_action(data_menu, "Upload", self.PAGE_UPLOAD)
-        add_nav_action(data_menu, "Mapper", self.PAGE_MAPPER)
-        add_nav_action(data_menu, "Cashflow Mapping", self.PAGE_CASHFLOW_MAPPER)
-        add_nav_action(data_menu, "Sub-category Mapping", self.PAGE_SUB_CATEGORY_MAPPER)
+        add_nav_action(data_menu, "Mapper Hub", self.PAGE_MAPPER_HUB)
 
         add_nav_action(settings_menu, "Open Settings", self.PAGE_SETTINGS)
 
@@ -159,12 +204,28 @@ class DashboardWindow(QtWidgets.QMainWindow):
 
         header_layout.addStretch(1)
 
-        self._subtitle = QtWidgets.QLabel("Yearly Summary")
+        self._subtitle = QtWidgets.QLabel("Cashflow Dashboard")
         self._subtitle.setObjectName("headerSubtitleLabel")
         header_layout.addWidget(self._subtitle)
 
-        # Theme toggle button on the right
+        # Right side controls
         header_layout.addStretch(1)
+
+        # Sidebar toggle button
+        self._toggle_sidebar_btn = QtWidgets.QPushButton()
+        self._toggle_sidebar_btn.setObjectName("toggleSidebar")
+        self._toggle_sidebar_btn.setToolTip("Toggle sidebar visibility")
+        if is_icon_available(AppIcon.MENU):
+            qicon = get_themed_icon(AppIcon.MENU, dark_mode=self._prefs.get_theme() == "dark")
+            if not qicon.isNull():
+                self._toggle_sidebar_btn.setIcon(qicon)
+                self._toggle_sidebar_btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
+        else:
+            self._toggle_sidebar_btn.setText("☰")
+        self._toggle_sidebar_btn.clicked.connect(self._toggle_sidebar)
+        header_layout.addWidget(self._toggle_sidebar_btn)
+
+        # Theme toggle button
         self._theme_btn = QtWidgets.QPushButton()
         self._theme_btn.setObjectName("themeToggle")
         self._update_theme_button()
@@ -184,45 +245,64 @@ class DashboardWindow(QtWidgets.QMainWindow):
         row.setSpacing(12)
 
         # Sidebar with navigation buttons
-        sidebar = QtWidgets.QWidget()
-        sidebar.setObjectName("sidebar")
-        sidebar_layout = QtWidgets.QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(14, 14, 14, 14)
-        sidebar_layout.setSpacing(10)
+        self._sidebar = QtWidgets.QWidget()
+        self._sidebar.setObjectName("sidebar")
+        sidebar_layout = QtWidgets.QVBoxLayout(self._sidebar)
+        sidebar_layout.setContentsMargins(16, 16, 16, 16)
+        sidebar_layout.setSpacing(12)
 
-        brand = QtWidgets.QLabel(APP_NAME)
-        brand.setObjectName("navBrand")
-        brand.setAlignment(QtCore.Qt.AlignCenter)
-        bf = brand.font()
-        bf.setPointSize(14)
-        bf.setBold(True)
-        brand.setFont(bf)
-        sidebar_layout.addWidget(brand)
+        # Search bar for filtering pages
+        self._search_bar = QtWidgets.QLineEdit()
+        self._search_bar.setObjectName("sidebarSearchBar")
+        self._search_bar.setPlaceholderText("🔍 Search pages...")
+        self._search_bar.textChanged.connect(self._filter_pages)
+        sidebar_layout.addWidget(self._search_bar)
+
+        sidebar_layout.addSpacing(8)
 
         self._btn_group = QtWidgets.QButtonGroup(self)
         self._btn_group.setExclusive(True)
 
-        def make_btn(text: str) -> QtWidgets.QPushButton:
+        def make_btn(text: str, icon: AppIcon | None = None) -> QtWidgets.QPushButton:
             btn = QtWidgets.QPushButton(text)
             btn.setCheckable(True)
             btn.setMinimumHeight(40)
             btn.setCursor(QtCore.Qt.PointingHandCursor)
+            if icon is not None and is_icon_available(icon):
+                qicon = get_themed_icon(icon, dark_mode=self._prefs.get_theme() == "dark")
+                if not qicon.isNull():
+                    btn.setIcon(qicon)
+                    btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
             return btn
 
         self._section_names = {
-            self.PAGE_YEARLY_SUMMARY: "🗓️ Yearly Summary",
-            self.PAGE_EARNINGS: "💰 Earnings",
-            self.PAGE_EXPENSES: "🧾 Expenses",
-            self.PAGE_PAYMENTS: "🔁 Payments",
-            self.PAGE_BUDGET_GOALS: "🎯 Budget Goals",
-            self.PAGE_SAVINGS: "💵 Savings",
-            self.PAGE_NET_WORTH: "📊 Net Worth",
-            self.PAGE_RECURRING: "🔄 Recurring",
-            self.PAGE_UPLOAD: "⬆️ Upload",
-            self.PAGE_MAPPER: "🧭 Mapper",
-            self.PAGE_CASHFLOW_MAPPER: "💹 Cashflow Mapping",
-            self.PAGE_SUB_CATEGORY_MAPPER: "🗂️ Sub-category Mapping",
-            self.PAGE_SETTINGS: "⚙️ Settings",
+            self.PAGE_CASHFLOW_DASHBOARD: "Cashflow Dashboard",
+            self.PAGE_YEARLY_SUMMARY: "Yearly Summary",
+            self.PAGE_EARNINGS: "Earnings",
+            self.PAGE_EXPENSES: "Expenses",
+            self.PAGE_PAYMENTS: "Payments",
+            self.PAGE_BUDGET_GOALS: "Budget Goals",
+            self.PAGE_SAVINGS: "Savings",
+            self.PAGE_NET_WORTH: "Net Worth",
+            self.PAGE_RECURRING: "Recurring",
+            self.PAGE_UPLOAD: "Upload",
+            self.PAGE_MAPPER_HUB: "Mapper Hub",
+            self.PAGE_SETTINGS: "Settings",
+        }
+
+        self._section_icons = {
+            self.PAGE_CASHFLOW_DASHBOARD: AppIcon.NAV_DASHBOARD,
+            self.PAGE_YEARLY_SUMMARY: AppIcon.NAV_CALENDAR,
+            self.PAGE_EARNINGS: AppIcon.NAV_EARNINGS,
+            self.PAGE_EXPENSES: AppIcon.NAV_EXPENSES,
+            self.PAGE_PAYMENTS: AppIcon.NAV_PAYMENTS,
+            self.PAGE_BUDGET_GOALS: AppIcon.NAV_GOALS,
+            self.PAGE_SAVINGS: AppIcon.NAV_SAVINGS,
+            self.PAGE_NET_WORTH: AppIcon.NAV_NET_WORTH,
+            self.PAGE_RECURRING: AppIcon.NAV_RECURRING,
+            self.PAGE_UPLOAD: AppIcon.NAV_UPLOAD,
+            self.PAGE_MAPPER_HUB: AppIcon.NAV_MAPPER,
+            self.PAGE_SETTINGS: AppIcon.NAV_SETTINGS,
         }
 
         self._buttons: list[QtWidgets.QPushButton] = []
@@ -231,6 +311,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             (
                 "Reports",
                 [
+                    (self._section_names[self.PAGE_CASHFLOW_DASHBOARD], self.PAGE_CASHFLOW_DASHBOARD),
                     (self._section_names[self.PAGE_YEARLY_SUMMARY], self.PAGE_YEARLY_SUMMARY),
                     (self._section_names[self.PAGE_EARNINGS], self.PAGE_EARNINGS),
                     (self._section_names[self.PAGE_EXPENSES], self.PAGE_EXPENSES),
@@ -255,9 +336,13 @@ class DashboardWindow(QtWidgets.QMainWindow):
                 "Data",
                 [
                     (self._section_names[self.PAGE_UPLOAD], self.PAGE_UPLOAD),
-                    (self._section_names[self.PAGE_MAPPER], self.PAGE_MAPPER),
-                    (self._section_names[self.PAGE_CASHFLOW_MAPPER], self.PAGE_CASHFLOW_MAPPER),
-                    (self._section_names[self.PAGE_SUB_CATEGORY_MAPPER], self.PAGE_SUB_CATEGORY_MAPPER),
+                    (self._section_names[self.PAGE_MAPPER_HUB], self.PAGE_MAPPER_HUB),
+                ],
+            ),
+            (
+                "Configuration",
+                [
+                    (self._section_names[self.PAGE_SETTINGS], self.PAGE_SETTINGS),
                 ],
             ),
         ]
@@ -269,20 +354,22 @@ class DashboardWindow(QtWidgets.QMainWindow):
             sidebar_layout.addWidget(group_label)
 
             for name, idx in items:
-                btn = make_btn(name)
+                icon = self._section_icons.get(idx)
+                btn = make_btn(name, icon)
                 self._btn_group.addButton(btn, idx)
                 sidebar_layout.addWidget(btn)
                 self._buttons.append(btn)
 
-            sidebar_layout.addSpacing(6)
+            sidebar_layout.addSpacing(8)
 
         sidebar_layout.addStretch(1)
-        sidebar.setFixedWidth(220)
+        self._sidebar.setFixedWidth(260)
+        self._sidebar_expanded = True
 
         # Shadow for sidebar
-        s_shadow = QtWidgets.QGraphicsDropShadowEffect(blurRadius=24, xOffset=0, yOffset=10)
-        s_shadow.setColor(QtGui.QColor(0, 0, 0, 160))
-        sidebar.setGraphicsEffect(s_shadow)
+        s_shadow = QtWidgets.QGraphicsDropShadowEffect(blurRadius=28, xOffset=0, yOffset=12)
+        s_shadow.setColor(QtGui.QColor(0, 0, 0, 180))
+        self._sidebar.setGraphicsEffect(s_shadow)
 
         # Content container with stacked pages
         content = QtWidgets.QWidget()
@@ -298,24 +385,40 @@ class DashboardWindow(QtWidgets.QMainWindow):
         settings_controller = SettingsController(self._logger, self._prefs)
 
         self._upload_page = UploadPage(self._logger, self._upload_controller)
+
+        # Create mapper pages for the Unified Mapper Hub
         self._mapper_page = MapperPage(self._logger, self._mapper_controller)
-        self._cashflow_mapper_page = CashflowMapperPage(self._logger, self._cashflow_mapper_controller)
         self._sub_category_mapper_page = SubCategoryMapperPage(
             self._logger, self._sub_category_mapper_controller
         )
+        self._cashflow_mapper_page = CashflowMapperPage(
+            self._logger, self._cashflow_mapper_controller
+        )
+
+        # Unified Mapper Hub with all mappers as tabs
+        self._mapper_hub_page = UnifiedMapperPage(
+            transaction_mapper_widget=self._mapper_page,
+            sub_category_mapper_widget=self._sub_category_mapper_page,
+            cashflow_mapper_widget=self._cashflow_mapper_page,
+            logger=self._logger,
+        )
+
+        # Use new BudgetGoalsController for BudgetGoalsPage if available,
+        # fall back to old BudgetController for backward compatibility
+        goals_ctrl = self._budget_goals_controller or self._budget_controller
+
         self._pages = [
+            CashflowDashboardPage(self._reports, self._logger),
             YearlySummaryPage(self._reports, self._logger),
             EarningsPage(self._reports, self._logger, self._budget_controller),
-            ExpensesPage(self._reports, self._logger),
+            ExpensesPage(self._reports, self._logger, self._budget_controller),
             PaymentsPage(self._reports, self._logger),
-            BudgetGoalsPage(self._reports, self._budget_controller, self._logger),
+            BudgetGoalsPage(self._reports, goals_ctrl, self._logger),
             SavingsPage(self._reports, self._budget_controller, self._logger),
             NetWorthPage(self._budget_controller, self._logger),
             RecurringPage(self._reports, self._budget_controller, self._logger),
             self._upload_page,
-            self._mapper_page,
-            self._cashflow_mapper_page,
-            self._sub_category_mapper_page,
+            self._mapper_hub_page,
             SettingsPage(self._logger, settings_controller),
         ]
         for page in self._pages:
@@ -325,7 +428,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         # Connect upload page success signal to dashboard reload signal
         self._upload_page.upload_successful.connect(self.reload_requested.emit)
 
-        # Connect mapping saves to refresh workflow
+        # Connect mapping saves to refresh workflow (from mappers inside Mapper Hub)
         self._mapper_page.refresh_requested.connect(self._on_mapping_saved)
         self._cashflow_mapper_page.refresh_requested.connect(self._on_mapping_saved)
         self._sub_category_mapper_page.refresh_requested.connect(self._on_mapping_saved)
@@ -336,7 +439,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         content.setGraphicsEffect(c_shadow)
 
         # Compose row
-        row.addWidget(sidebar)
+        row.addWidget(self._sidebar)
         row.addWidget(content, 1)
         vroot.addLayout(row)
 
@@ -347,8 +450,50 @@ class DashboardWindow(QtWidgets.QMainWindow):
         if self._csv_missing:
             self._apply_restricted_mode()
         else:
-            # Default selection: Yearly Summary
-            self._navigate_to(self.PAGE_YEARLY_SUMMARY)
+            # Default selection: Cashflow Dashboard
+            self._navigate_to(self.PAGE_CASHFLOW_DASHBOARD)
+
+    def _toggle_sidebar(self) -> None:
+        """Toggle sidebar visibility with smooth animation."""
+        dark_mode = self._prefs.get_theme() == "dark"
+        if self._sidebar_expanded:
+            # Collapse sidebar
+            self._sidebar.setVisible(False)
+            self._sidebar_expanded = False
+            icon = AppIcon.MENU
+            if is_icon_available(icon):
+                qicon = get_themed_icon(icon, dark_mode=dark_mode)
+                if not qicon.isNull():
+                    self._toggle_sidebar_btn.setIcon(qicon)
+                    return
+            self._toggle_sidebar_btn.setText("☰")
+        else:
+            # Expand sidebar
+            self._sidebar.setVisible(True)
+            self._sidebar_expanded = True
+            icon = AppIcon.CLOSE
+            if is_icon_available(icon):
+                qicon = get_themed_icon(icon, dark_mode=dark_mode)
+                if not qicon.isNull():
+                    self._toggle_sidebar_btn.setIcon(qicon)
+                    return
+            self._toggle_sidebar_btn.setText("✕")
+
+    def _filter_pages(self, search_text: str) -> None:
+        """Filter navigation pages based on search text."""
+        search_lower = search_text.lower().strip()
+
+        for btn in self._buttons:
+            idx = self._btn_group.id(btn)
+            page_name = self._section_names.get(idx, "")
+
+            # Remove emoji from page name for search
+            clean_name = "".join(c for c in page_name if not c.isdigit() and ord(c) < 0x1F600)
+
+            if not search_lower or search_lower in clean_name.lower():
+                btn.setVisible(True)
+            else:
+                btn.setVisible(False)
 
     def _apply_restricted_mode(self) -> None:
         """Apply restricted mode: disable all pages except Upload and Settings."""
@@ -388,11 +533,40 @@ class DashboardWindow(QtWidgets.QMainWindow):
         if app is not None:
             app.setStyleSheet(app_stylesheet(new_theme))
         self._update_theme_button()
+        self._refresh_nav_icons()
 
     def _update_theme_button(self) -> None:
         # Show icon that indicates target theme upon click
         cur = self._prefs.get_theme()
-        self._theme_btn.setText("☀️" if cur == "dark" else "🌙")
+        dark_mode = cur == "dark"
+        # Show sun icon in dark mode (to switch to light), moon in light mode (to switch to dark)
+        icon = AppIcon.THEME_LIGHT if dark_mode else AppIcon.THEME_DARK
+        if is_icon_available(icon):
+            qicon = get_themed_icon(icon, dark_mode=dark_mode)
+            if not qicon.isNull():
+                self._theme_btn.setIcon(qicon)
+                self._theme_btn.setIconSize(QtCore.QSize(ICON_SIZE_MEDIUM, ICON_SIZE_MEDIUM))
+                self._theme_btn.setText("")
+                return
+        # Fallback to emoji if icons not available
+        self._theme_btn.setText("☀️" if dark_mode else "🌙")
+
+    def _refresh_nav_icons(self) -> None:
+        """Refresh navigation icons for current theme."""
+        dark_mode = self._prefs.get_theme() == "dark"
+        for btn in self._buttons:
+            idx = self._btn_group.id(btn)
+            icon = self._section_icons.get(idx)
+            if icon is not None and is_icon_available(icon):
+                qicon = get_themed_icon(icon, dark_mode=dark_mode)
+                if not qicon.isNull():
+                    btn.setIcon(qicon)
+        # Update toggle sidebar icon
+        toggle_icon = AppIcon.MENU if self._sidebar_expanded else AppIcon.CLOSE
+        if is_icon_available(toggle_icon):
+            qicon = get_themed_icon(toggle_icon, dark_mode=dark_mode)
+            if not qicon.isNull():
+                self._toggle_sidebar_btn.setIcon(qicon)
 
     def _navigate_to(self, index: int) -> None:
         """Navigate to a page by index and update subtitle/button states."""
@@ -415,56 +589,83 @@ class DashboardWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.information(
                 self,
                 "Refresh unavailable",
-                "Reports refresh is not configured for this session. Please restart the app to see the latest mappings.",
+                "Reports refresh is not configured for this session. "
+                "Please restart the app to see the latest mappings.",
             )
             return
 
-        dlg = QtWidgets.QProgressDialog("Refreshing reports...", None, 0, 3, self)
-        dlg.setWindowTitle("Refreshing Reports")
-        dlg.setWindowModality(QtCore.Qt.ApplicationModal)
-        dlg.setCancelButton(None)
-        dlg.setMinimumDuration(0)
-        dlg.show()
+        # Create progress dialog
+        self._refresh_dlg = QtWidgets.QProgressDialog(
+            "Refreshing reports...", None, 0, 3, self
+        )
+        self._refresh_dlg.setWindowTitle("Refreshing Reports")
+        self._refresh_dlg.setWindowModality(QtCore.Qt.ApplicationModal)
+        self._refresh_dlg.setCancelButton(None)
+        self._refresh_dlg.setMinimumDuration(0)
+        self._refresh_dlg.show()
 
-        try:
-            dlg.setLabelText("Reloading latest mappings...")
-            dlg.setValue(1)
-            QtWidgets.QApplication.processEvents()
-            self._mapper_controller.reload()
-            self._cashflow_mapper_controller.reload()
-            self._sub_category_mapper_controller.reload()
+        # Create and start worker thread
+        self._refresh_worker = ReportRefreshWorker(
+            self._mapper_controller,
+            self._cashflow_mapper_controller,
+            self._sub_category_mapper_controller,
+            self._refresh_reports_fn,
+        )
+        self._refresh_worker.progress.connect(self._on_refresh_progress)
+        self._refresh_worker.finished_with_result.connect(self._on_refresh_finished)
+        self._refresh_worker.error_occurred.connect(self._on_refresh_error)
+        self._refresh_worker.start()
 
-            dlg.setLabelText("Rebuilding reports...")
-            dlg.setValue(2)
-            QtWidgets.QApplication.processEvents()
-            reports = self._refresh_reports_fn()
+    def _on_refresh_progress(self, message: str, step: int) -> None:
+        """Handle progress updates from the worker thread."""
+        if hasattr(self, "_refresh_dlg") and self._refresh_dlg is not None:
+            self._refresh_dlg.setLabelText(message)
+            self._refresh_dlg.setValue(step)
 
-            dlg.setLabelText("Updating pages...")
-            dlg.setValue(3)
-            QtWidgets.QApplication.processEvents()
-            self._rebuild_pages(reports)
+    def _on_refresh_finished(self, reports: List[MonthlyReports]) -> None:
+        """Handle successful completion of report refresh."""
+        if hasattr(self, "_refresh_dlg") and self._refresh_dlg is not None:
+            self._refresh_dlg.close()
+            self._refresh_dlg = None
 
-            QtWidgets.QMessageBox.information(
-                self,
-                "Reports refreshed",
-                "Reports were regenerated using the latest mappings.",
-            )
-        except Exception as exc:  # pragma: no cover
-            dlg.close()
-            QtWidgets.QMessageBox.critical(
-                self,
-                "Refresh failed",
-                f"Failed to refresh reports:\n{exc}",
-            )
-            return
+        self._rebuild_pages(reports)
+        QtWidgets.QMessageBox.information(
+            self,
+            "Reports refreshed",
+            "Reports were regenerated using the latest mappings.",
+        )
 
-        dlg.close()
+        # Clean up worker
+        if hasattr(self, "_refresh_worker"):
+            self._refresh_worker = None
+
+    def _on_refresh_error(self, error_msg: str) -> None:
+        """Handle errors from the worker thread."""
+        if hasattr(self, "_refresh_dlg") and self._refresh_dlg is not None:
+            self._refresh_dlg.close()
+            self._refresh_dlg = None
+
+        QtWidgets.QMessageBox.critical(
+            self,
+            "Refresh failed",
+            f"Failed to refresh reports:\n{error_msg}",
+        )
+
+        # Clean up worker
+        if hasattr(self, "_refresh_worker"):
+            self._refresh_worker = None
 
     def _rebuild_pages(self, reports: List[MonthlyReports]) -> None:
         self._reports = reports or []
         current_index = self._stack.currentIndex()
 
+        goals_ctrl = self._budget_goals_controller or self._budget_controller
+
         replacements = [
+            (
+                self.PAGE_CASHFLOW_DASHBOARD,
+                CashflowDashboardPage(self._reports, self._logger),
+            ),
             (
                 self.PAGE_YEARLY_SUMMARY,
                 YearlySummaryPage(self._reports, self._logger),
@@ -475,7 +676,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             ),
             (
                 self.PAGE_EXPENSES,
-                ExpensesPage(self._reports, self._logger),
+                ExpensesPage(self._reports, self._logger, self._budget_controller),
             ),
             (
                 self.PAGE_PAYMENTS,
@@ -483,7 +684,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             ),
             (
                 self.PAGE_BUDGET_GOALS,
-                BudgetGoalsPage(self._reports, self._budget_controller, self._logger),
+                BudgetGoalsPage(self._reports, goals_ctrl, self._logger),
             ),
             (
                 self.PAGE_SAVINGS,
@@ -505,12 +706,20 @@ class DashboardWindow(QtWidgets.QMainWindow):
         if 0 <= current_index < self._stack.count():
             self._navigate_to(current_index)
         else:
-            self._navigate_to(self.PAGE_YEARLY_SUMMARY)
+            self._navigate_to(self.PAGE_CASHFLOW_DASHBOARD)
 
     def _replace_page(self, index: int, widget: QtWidgets.QWidget) -> None:
         old_widget = self._stack.widget(index)
         if old_widget is not None:
+            # Clear reference from _pages list before deletion to avoid memory leak
+            if len(self._pages) > index:
+                self._pages[index] = None  # type: ignore[assignment]
             self._stack.removeWidget(old_widget)
+            # Disconnect any signals from the old widget to prevent dangling connections
+            try:
+                old_widget.disconnect()
+            except (TypeError, RuntimeError):
+                pass  # No connections or already disconnected
             old_widget.deleteLater()
         self._stack.insertWidget(index, widget)
         if len(self._pages) > index:
