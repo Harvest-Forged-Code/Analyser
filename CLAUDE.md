@@ -2,11 +2,35 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## [IDENTITY] Project Overview
 
-Budget Analyser is a cross-platform desktop GUI application for personal finance tracking built with PySide6 (Qt) and pandas. It processes bank statements (CSV), categorizes transactions using JSON keyword mappings, stores them in SQLite, and presents reports in a GUI with light/dark themes.
+- **Project:** Budget Analyser
+- **Tech stack:** Python 3.10+, PySide6 (Qt), pandas, SQLite, pytest
+- **Type:** Cross-platform desktop GUI application for personal finance tracking
+- **Goals:** Process bank statements (CSV), categorize transactions using JSON mappings, store in SQLite, present reports in GUI with light/dark theme support
 
-## Development Commands
+Budget Analyser is a personal finance tracking application that:
+- Imports bank statements in CSV format (supports Citi, Discover, and custom formats)
+- Categorizes transactions using keyword-based JSON mappings
+- Stores transaction data in SQLite database
+- Generates monthly reports with spending analysis, trends, forecasting, and budget tracking
+- Provides dashboard with earnings, expenses, net worth, recurring transactions, and budget goals
+- Supports payment reconciliation and transaction export (CSV, Excel, PDF)
+
+## [WORKFLOW] Development Process
+
+### Core Principle
+**Vertical Slices First** — When adding features, create self-contained feature modules that own all layers (models, repository, service, controller, page). Do not scatter logic across horizontal layers.
+
+### Mandatory Workflow
+
+1. **Understand the existing code** — Budget Analyser uses a hybrid architecture. Most features are migrated to vertical slices under `features/`. Check if your feature already exists.
+2. **For new features:** Follow the vertical slice pattern (see "When Adding New Features" section below)
+3. **For migrations:** Extract horizontal layer code into vertical slices incrementally, use backward-compat shims
+4. **Test everything:** All unit tests must pass before committing (`pytest tests/unit/ -q`)
+5. **Verify imports:** Ensure no circular dependencies between features or with core
+
+### Development Commands
 
 ```bash
 # Install dependencies
@@ -15,31 +39,48 @@ pip install -r requirements.txt
 # Run the application
 python -m budget_analyser
 
-# Run tests
-pytest -q
+# Run tests (REQUIRED before committing)
+pytest tests/unit/ -q
+
+# Run with coverage
+pytest --cov=src/budget_analyser
 
 # Run linting
 pylint src/budget_analyser
 ```
 
-## Architecture
+## [ARCHITECTURE] System Design
 
-**Hybrid architecture**: horizontal layered foundation + **vertical feature slices**. Migrated features (starting with `budget_goals`) own all layers in a single directory. Unmigrated features still span the traditional horizontal layers.
+### Architecture Overview
+
+**Vertical feature slices architecture** — All 11 core features are now organized as self-contained vertical slices. Each feature owns all its layers: models, repository, service, controller, and view. Shared infrastructure lives in `core/`.
 
 ```
 src/budget_analyser/
 ├── core/            # Shared foundation (protocols, errors, DB utils, shared DTOs)
+│   ├── __init__.py
 │   ├── protocols.py     # Domain interfaces (StatementRepository, etc.)
 │   ├── errors.py        # Domain exception hierarchy
 │   ├── database.py      # Shared SQLite connection factory
 │   └── models.py        # Cross-feature DTOs (MonthlyReports)
-├── features/        # Vertical feature slices (self-contained modules)
-│   └── budget_goals/    # PILOT: complete vertical slice
-│       ├── models.py        # BudgetGoal, EarningsGoal, BudgetProgress DTOs
-│       ├── repository.py    # SQLite CRUD (uses core.database)
-│       ├── service.py       # Pure business logic functions
-│       ├── controller.py    # Thin facade → repo + service
-│       └── page.py          # BudgetGoalsPage Qt widget
+├── features/        # Vertical feature slices (11 complete modules)
+│   ├── budget_goals/    # Budget and earnings goals management
+│   │   ├── models.py
+│   │   ├── repository.py
+│   │   ├── service.py
+│   │   ├── controller.py
+│   │   └── page.py
+│   ├── net_worth/       # Financial accounts and net worth tracking
+│   ├── recurring/       # Recurring transaction management
+│   ├── savings/         # Savings metrics and tracking
+│   ├── forecasting/     # Expense forecasting service
+│   ├── trends/          # Spending trends and burn rate analysis
+│   ├── export/          # CSV/Excel/PDF export service
+│   ├── payments/        # Payment reconciliation
+│   ├── reporting/       # Monthly report generation
+│   ├── mappers/         # Category and cashflow mapping
+│   ├── ingestion/       # CSV ingestion pipeline
+│   └── settings/        # Settings management
 ├── views/           # GUI layer (PySide6 widgets) - exempted from pylint
 │   ├── app_gui.py   # Composition root, logging setup, flow control
 │   ├── dashboard_window.py  # Main shell (menu, header, nav, stacked pages)
@@ -82,7 +123,21 @@ src/budget_analyser/
 
 **Entry point:** `python -m budget_analyser` → `views/app_gui.py::run_app()` → LoginWindow → DashboardWindow
 
-**Migration pattern:** Features are incrementally extracted from horizontal layers into `features/<name>/` vertical slices. Old files become backward-compat shims (re-exports) until all consumers migrate.
+**Migration status:** Phase 3 complete — all 11 features migrated to vertical slices.
+- ✅ 11 feature modules with complete stack (models, repo, service, controller, page)
+- ✅ 17 backward-compat shims for old locations (9 domain + 8 controller files)
+- ✅ Shared core layer with protocols, errors, database utilities
+- ✅ 453 unit tests passing (64 new tests added for Phase 3)
+- ⏳ Remaining: Decompose BudgetController/BudgetDatabase facades after all consumers migrate
+
+**Backward compatibility:** Old imports still work via re-export shims. Example:
+```python
+# OLD WAY (still works, via shim)
+from budget_analyser.domain.budget_goals import create_budget
+
+# NEW WAY (preferred)
+from budget_analyser.features.budget_goals.service import create_budget
+```
 
 ## Code Style & Linting
 
@@ -248,27 +303,38 @@ Author: Prabhukumar Sivamorthy
 
 ### When Adding New Features
 
-**Prefer vertical slices** for new features (follow the `budget_goals` pilot pattern):
+**ALWAYS use vertical slices** — This is the standard pattern in this codebase. See `features/budget_goals/`, `features/net_worth/`, etc. for examples.
 
-1. Create `features/<name>/` with: `models.py`, `repository.py`, `service.py`, `controller.py`, `page.py`
-2. DTOs in `models.py` — simple dataclasses
-3. Database access in `repository.py` — uses `core.database.get_connection()`
-4. Pure business logic in `service.py` — no PySide6 or infrastructure dependencies
-5. Thin controller in `controller.py` — delegates to repository + service
-6. Page view in `page.py` — receives controller via constructor
-7. Wire in `app_gui.py` composition root
-8. Add unit tests: `tests/unit/test_<feature>_{service,repository,controller}.py`
-9. Keep backward-compat shims in old locations during migration
+1. Create `features/<name>/` directory with all required files
+2. **models.py** — DTOs (frozen dataclasses) for data transfer between layers
+3. **repository.py** — Database access using `core.database.get_connection()`
+4. **service.py** — Pure business logic functions (no Qt/PySide6, no infrastructure)
+5. **controller.py** — Thin facade that coordinates repository + service
+6. **page.py** — Qt widget (view) that receives controller in `__init__`
+7. **__init__.py** — Export public interfaces (controller, repository, models)
+8. Wire controller in `app_gui.py` composition root at `run_app()`
+9. Add unit tests: `tests/unit/test_<feature>_{models,repository,service,controller}.py`
+10. Update `BudgetController` facade if feature interacts with reports/dashboards
 
-**For changes to legacy (unmigrated) features:**
+**Pattern example (net_worth):**
+```
+features/net_worth/
+├── __init__.py              # Export NetWorthRepository, NetWorthController
+├── models.py                # Account, NetWorthSummary (frozen dataclasses)
+├── repository.py            # CRUD operations on accounts table
+├── service.py               # calculate_net_worth_summary(), etc.
+├── controller.py            # NetWorthController (aggregates repo + service)
+└── (no page.py if no UI)
+```
 
-1. Identify which layer(s) the feature touches
-2. Define protocols/interfaces first if crossing layers
-3. Implement in infrastructure, consume in domain/controller
-4. Keep business logic in domain layer, not in views or infrastructure
-5. Use dependency injection to wire components together
-6. Write Google-style docstrings for all public APIs
-7. Add type hints to all signatures
+**For changes to legacy (unmigrated) domain code:**
+
+Legacy code still exists in `domain/` and `controller/` as backward-compat shims. If you must modify it:
+1. First, check if a vertical slice feature already exists for this domain
+2. If yes: Move the logic into the feature module
+3. If no: Extract the feature into a new vertical slice
+4. Keep shims in old locations for backward compatibility
+5. Never add new code to legacy horizontal layers
 
 ## Diagrams (Hybrid Approach)
 
@@ -376,7 +442,32 @@ tests/
 - Keep GUI tests minimal - focus on user-facing critical paths
 - Mock heavy dependencies (DB, file system) even in GUI tests when possible
 
+## [RECENT-CHANGES] Latest Updates (Phase 3 Complete)
+
+### Architecture Migration (Commit 647e2d2)
+**All 11 features successfully migrated to vertical slices:**
+- `budget_goals`, `net_worth`, `recurring`, `savings`, `forecasting`, `trends`, `export`, `payments`, `reporting`, `mappers`, `ingestion`, `settings`
+- Core layer created with shared protocols, errors, database utilities
+- 17 backward-compat shims in place for existing consumers
+- 64 new tests added; all 453 unit tests passing
+
+**Migration impact:**
+- `app_gui.py` now creates feature repositories and wires BudgetController facade
+- New code should import directly from feature modules, not facade
+- Old imports via shims continue to work for backward compatibility
+
+### Bug Fixes (Commit a44d457)
+1. **Pandas deprecation fix** — Updated `pd.date_range(..., freq="M")` to `freq="ME"`
+   - DatetimeIndex frequency changed in newer pandas versions
+   - Period frequency still uses `freq="M"` (different system)
+2. **BudgetController initialization** — Updated app_gui.py composition root
+   - Changed from `BudgetController(budget_db=...)` to feature repository parameters
+   - Wire `budget_goals_repo`, `net_worth_repo`, `recurring_repo` separately
+
 ## Skills
 
 ### PySide6 UI Designer (`.claude/skills/pyside6-ui-designer.md`)
 Automatically applied when designing, building, or modifying any UI component. Enforces the project's design system: centralized tokens from `constants.py`, dual theme support, page structure via `ModernPageMixin`, icon system with fallbacks, and financial UI best practices. Always reference this skill for any views-layer work.
+
+### Vertical Slices Pattern
+When creating a new feature, follow the vertical slice structure already established in `features/budget_goals/`, `features/net_worth/`, etc. Each feature is self-contained with models, repository, service, controller, and optionally a view page.
