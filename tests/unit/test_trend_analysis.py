@@ -286,7 +286,7 @@ class TestConvenienceFunctions:
 
     def test_analyze_income_trends(self):
         df = pd.DataFrame({
-            "transaction_date": pd.date_range("2024-01-01", periods=3, freq="M"),
+            "transaction_date": pd.date_range("2024-01-01", periods=3, freq="ME"),
             "amount": [5000.0, 5100.0, 5200.0],
         })
 

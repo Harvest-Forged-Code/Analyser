@@ -48,7 +48,12 @@ from budget_analyser.controller import CashflowMapperController
 from budget_analyser.controller import SubCategoryMapperController
 from budget_analyser.controller import UploadController
 from budget_analyser.controller.budget_controller import BudgetController
-from budget_analyser.infrastructure.budget_database import BudgetDatabase
+from budget_analyser.features.budget_goals import (
+    BudgetGoalsController,
+    BudgetGoalsRepository,
+)
+from budget_analyser.features.net_worth import NetWorthRepository
+from budget_analyser.features.recurring import RecurringRepository
 
 def _package_data_dir() -> Path:
     """Return the package data directory (src/budget_analyser/data)."""
@@ -189,10 +194,26 @@ def run_app() -> int:
     # Create database and ingestion service for processing uploaded CSVs
     transaction_db = TransactionDatabase(db_path=settings.database_path, logger=logger)
 
-    # Create budget database and controller for budget tracking features
+    # Create budget database and controllers for budget tracking features
     budget_db_path = settings.database_path.parent / "budget_goals.db"
-    budget_db = BudgetDatabase(db_path=budget_db_path, logger=logger)
-    budget_controller = BudgetController(budget_db=budget_db, logger=logger)
+
+    # Create feature repositories
+    budget_goals_repo = BudgetGoalsRepository(db_path=budget_db_path, logger=logger)
+    net_worth_repo = NetWorthRepository(db_path=budget_db_path, logger=logger)
+    recurring_repo = RecurringRepository(db_path=budget_db_path, logger=logger)
+
+    # Wire facade controller
+    budget_controller = BudgetController(
+        budget_goals_repo=budget_goals_repo,
+        net_worth_repo=net_worth_repo,
+        recurring_repo=recurring_repo,
+        logger=logger,
+    )
+
+    # New vertical-slice controller for budget goals feature
+    budget_goals_controller = BudgetGoalsController(
+        repository=budget_goals_repo, logger=logger,
+    )
 
     category_mapping_provider = JsonCategoryMappingProvider(
         description_to_sub_category_path=settings.description_to_sub_category_path,
@@ -249,6 +270,7 @@ def run_app() -> int:
             budget_controller,
             refresh_reports_fn=_refresh_reports,
             csv_missing=csv_missing,
+            budget_goals_controller=budget_goals_controller,
         )
 
         # Connect reload signal to handle CSV upload completion
