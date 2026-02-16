@@ -24,26 +24,48 @@ pylint src/budget_analyser
 
 ## Architecture
 
-**Layered architecture** with one behavior class per file:
+**Hybrid architecture**: horizontal layered foundation + **vertical feature slices**. Migrated features (starting with `budget_goals`) own all layers in a single directory. Unmigrated features still span the traditional horizontal layers.
 
 ```
 src/budget_analyser/
+├── core/            # Shared foundation (protocols, errors, DB utils, shared DTOs)
+│   ├── protocols.py     # Domain interfaces (StatementRepository, etc.)
+│   ├── errors.py        # Domain exception hierarchy
+│   ├── database.py      # Shared SQLite connection factory
+│   └── models.py        # Cross-feature DTOs (MonthlyReports)
+├── features/        # Vertical feature slices (self-contained modules)
+│   └── budget_goals/    # PILOT: complete vertical slice
+│       ├── models.py        # BudgetGoal, EarningsGoal, BudgetProgress DTOs
+│       ├── repository.py    # SQLite CRUD (uses core.database)
+│       ├── service.py       # Pure business logic functions
+│       ├── controller.py    # Thin facade → repo + service
+│       └── page.py          # BudgetGoalsPage Qt widget
 ├── views/           # GUI layer (PySide6 widgets) - exempted from pylint
 │   ├── app_gui.py   # Composition root, logging setup, flow control
 │   ├── dashboard_window.py  # Main shell (menu, header, nav, stacked pages)
 │   ├── pages/       # Dashboard pages (earnings, expenses, mapper, etc.)
 │   └── widgets/     # Reusable Qt widgets
-├── controller/      # Presentation layer (pure Python)
+├── controller/      # Legacy presentation layer (being migrated to features/)
 │   ├── backend_controller.py  # Orchestrates end-to-end workflow
+│   ├── budget_controller.py   # Facade: delegates goals to features/budget_goals
 │   └── *_controller.py        # Page-specific controllers
-├── domain/          # Business logic
-│   ├── statement_formatter.py      # Factory for bank-specific formatters
-│   ├── statement_formatters/       # Bank-specific CSV parsers (Citi, Discover, etc.)
-│   ├── transaction_processor.py    # Categorization logic
-│   ├── transaction_ingestion.py    # CSV → DB pipeline
-│   └── reporting.py                # Report generation service
+├── domain/          # Legacy business logic (being migrated to features/)
+│   ├── protocols.py             # Backward-compat shim → core.protocols
+│   ├── errors.py                # Backward-compat shim → core.errors
+│   ├── statement_formatter.py   # Factory for bank-specific formatters
+│   ├── statement_formatters/    # Bank-specific CSV parsers
+│   ├── transaction_processor.py # Categorization logic
+│   ├── transaction_ingestion.py # CSV → DB pipeline
+│   ├── reporting.py             # Report generation service
+│   ├── forecasting.py           # Expense forecasting
+│   ├── trend_analysis.py        # MoM/YoY trend analysis
+│   ├── burn_rate.py             # Budget burn rate calculations
+│   ├── spending_patterns.py     # Pareto, anomaly detection
+│   ├── payment_matching.py      # Payment reconciliation
+│   ├── categorization_suggestions.py  # Auto-suggest categories
+│   └── export_service.py        # CSV/Excel/PDF export
 ├── infrastructure/  # Persistence & external systems
-│   ├── database.py, budget_database.py  # SQLite adapters
+│   ├── database.py, budget_database.py  # SQLite adapters (budget_goals migrated)
 │   ├── json_mappings.py                 # JSON mapper loader/saver
 │   └── ini_config.py                    # INI config parsing
 ├── settings/        # Configuration (settings.py, preferences.py)
@@ -60,9 +82,11 @@ src/budget_analyser/
 
 **Entry point:** `python -m budget_analyser` → `views/app_gui.py::run_app()` → LoginWindow → DashboardWindow
 
+**Migration pattern:** Features are incrementally extracted from horizontal layers into `features/<name>/` vertical slices. Old files become backward-compat shims (re-exports) until all consumers migrate.
+
 ## Code Style & Linting
 
-**Always follow pylint coding standards.** Run `pylint src/budget_analyser` before committing.
+**All code must comply with PEP 8 and pylint.** Run `pylint src/budget_analyser` before committing.
 
 Pylint configuration (`.pylintrc`):
 - Max line length: 100 characters
@@ -71,14 +95,90 @@ Pylint configuration (`.pylintrc`):
 - Max branches: 12
 - Max statements per function: 50
 - Views layer (`src/budget_analyser/views/`) is exempted from linting
-- Docstrings are not enforced
 
-**Coding guidelines:**
-- Use `from __future__ import annotations` for forward references
+### Type Hints (Mandatory)
+
+Type hints are **required** on all function and method signatures (parameters and return types).
+
+```python
+from __future__ import annotations  # Required in every module
+
+# Use modern type syntax (Python 3.10+):
+def process(self, *, raw_transactions: pd.DataFrame) -> pd.DataFrame: ...
+def get_budget(self, category: str, year_month: str = "ALL") -> BudgetGoal | None: ...
+def get_accounts(self) -> list[Account]: ...
+def get_mappings(self) -> dict[str, list[str]]: ...
+
+# Use collections.abc for abstract types:
+from collections.abc import Callable, Mapping, Sequence
+def run(self, *, formatter: Callable[[str], str]) -> Sequence[dict[str, float]]: ...
+```
+
+**Rules:**
+- `from __future__ import annotations` in every module
+- Use `X | None` instead of `Optional[X]`
+- Use `list[x]`, `dict[k, v]`, `tuple[a, b]` instead of `List`, `Dict`, `Tuple` from `typing`
+- Use `collections.abc` for `Callable`, `Mapping`, `Sequence`, `Iterable`
+- Only import from `typing` when needed: `Any`, `Protocol`, `ClassVar`, `TypeVar`
+
+### Coding Guidelines
+
 - Prefer keyword-only arguments (`def foo(*, arg1, arg2)`) for clarity
-- Use type hints on all function signatures
 - Keep functions focused and single-purpose
 - Extract complex conditions into well-named boolean variables
+- No magic numbers — use named constants
+- Meaningful names over comments (code should be self-documenting)
+- Functions should operate at one level of abstraction
+
+## Documentation Standards
+
+**All public classes, methods, and functions must have Google-style docstrings.**
+
+```python
+def calculate_burn_rate(
+    *,
+    transactions: pd.DataFrame,
+    budget_limit: float,
+    as_of_date: date | None = None,
+) -> BurnRateMetrics:
+    """Calculate daily spending velocity and project monthly total.
+
+    Computes how fast the budget is being consumed based on
+    spending patterns up to the given date.
+
+    Args:
+        transactions: DataFrame with 'amount' and 'transaction_date' columns.
+        budget_limit: Monthly budget ceiling for the category.
+        as_of_date: Date to calculate burn rate as of. Defaults to today.
+
+    Returns:
+        BurnRateMetrics with daily rate, projection, and remaining budget.
+
+    Raises:
+        ValidationError: If transactions DataFrame is missing required columns.
+    """
+```
+
+**When to write docstrings:**
+
+| Scope | Required | Notes |
+|-------|----------|-------|
+| Public classes | Yes | Describe purpose and usage |
+| Public methods/functions | Yes | Args, Returns, Raises sections |
+| Private methods (`_helper`) | Only if logic is non-obvious | Keep brief |
+| Module-level | Optional | Only for complex modules |
+| Test functions | No | Test name should be self-documenting |
+| Views layer | No | GUI code is exempted |
+
+**Google-style sections to use:**
+
+| Section | When |
+|---------|------|
+| `Args:` | Function takes parameters |
+| `Returns:` | Function returns a value |
+| `Raises:` | Function raises exceptions |
+| `Note:` | Important caveats or context |
+| `Example:` | Complex or non-obvious usage |
 
 ## Versioning
 
@@ -101,7 +201,7 @@ git commit -S -m "type: description"
 
 [optional body with more details]
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Author: Prabhukumar Sivamorthy
 ```
 
 **Commit types:**
@@ -121,27 +221,54 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 
 | Pattern | When to Use | Example in Codebase |
 |---------|-------------|---------------------|
+| **Vertical Slice** | Self-contained feature owning all layers | `features/budget_goals/` (models, repo, service, controller, page) |
 | **Strategy** | Multiple algorithms for same task | `StatementFormatters` (Citi, Discover, Default) |
 | **Factory** | Object creation with selection logic | `create_statement_formatter()` |
-| **Repository** | Abstract data access | `TransactionDatabase`, `CsvStatementRepository` |
-| **Protocol/Interface** | Decouple layers, enable testing | `StatementRepository`, `ColumnMappingProvider` |
-| **Service** | Encapsulate business logic | `ReportService`, `TransactionProcessor` |
+| **Template Method** | Define algorithm skeleton, let subclasses override steps | `BaseStatementFormatter._bank_specific_formatting()` |
+| **Repository** | Abstract data access | `BudgetGoalsRepository`, `TransactionDatabase`, `CsvStatementRepository` |
+| **Protocol/Interface** | Decouple layers, enable testing | `core.protocols`: `StatementRepository`, `ColumnMappingProvider` |
+| **Service** | Pure business logic functions | `budget_goals.service`, `ReportService`, `TransactionProcessor` |
 | **Dependency Injection** | Loose coupling, testability | Controllers receive dependencies via constructor |
+| **Observer** | Event-driven communication | Qt Signal/Slot (`upload_successful`, `refresh_requested`) |
+| **Composition Root** | Single wiring location for all dependencies | `app_gui.py::_build_controller()` |
+| **Data Transfer Object** | Pass data across layers immutably | `MonthlyReports`, `BudgetGoal` (frozen dataclasses) |
 
-**Modularity principles:**
-- **One class per file** - each module has a single responsibility
-- **Layered architecture** - views → controllers → domain → infrastructure
-- **Domain independence** - domain layer has no dependencies on infrastructure
-- **Protocol-based abstractions** - define interfaces in domain, implement in infrastructure
+### Clean Code Principles
+
+- **Single Responsibility Principle (SRP)** — every class and function does one thing
+- **One class per file** — each module has a single public class or cohesive set of functions
+- **DRY (Don't Repeat Yourself)** — extract duplicated logic into helpers or shared utilities
+- **Layered architecture** — views → controllers → domain → infrastructure (no skipping layers)
+- **Domain independence** — domain layer has no dependencies on infrastructure (use protocols)
+- **Protocol-based abstractions** — define interfaces in domain, implement in infrastructure
 - **Frozen dataclasses** for immutable configuration and DTOs
 - **Pure functions** in domain where possible (no side effects)
+- **Composition over inheritance** — prefer injecting collaborators over deep class hierarchies
+- **Fail fast** — validate inputs at boundaries, raise domain exceptions early
 
-**When adding new features:**
+### When Adding New Features
+
+**Prefer vertical slices** for new features (follow the `budget_goals` pilot pattern):
+
+1. Create `features/<name>/` with: `models.py`, `repository.py`, `service.py`, `controller.py`, `page.py`
+2. DTOs in `models.py` — simple dataclasses
+3. Database access in `repository.py` — uses `core.database.get_connection()`
+4. Pure business logic in `service.py` — no PySide6 or infrastructure dependencies
+5. Thin controller in `controller.py` — delegates to repository + service
+6. Page view in `page.py` — receives controller via constructor
+7. Wire in `app_gui.py` composition root
+8. Add unit tests: `tests/unit/test_<feature>_{service,repository,controller}.py`
+9. Keep backward-compat shims in old locations during migration
+
+**For changes to legacy (unmigrated) features:**
+
 1. Identify which layer(s) the feature touches
 2. Define protocols/interfaces first if crossing layers
 3. Implement in infrastructure, consume in domain/controller
 4. Keep business logic in domain layer, not in views or infrastructure
 5. Use dependency injection to wire components together
+6. Write Google-style docstrings for all public APIs
+7. Add type hints to all signatures
 
 ## Diagrams (Hybrid Approach)
 
@@ -213,9 +340,12 @@ pytest --cov=src/budget_analyser
 ```
 tests/
 ├── unit/           # Fast, isolated tests (mock external dependencies)
-│   ├── domain/     # Business logic tests
-│   ├── controller/ # Controller tests
-│   └── infrastructure/  # Repository/adapter tests
+│   ├── test_budget_goals_service.py      # Feature slice: service pure functions
+│   ├── test_budget_goals_repository.py   # Feature slice: SQLite CRUD (tmp_path)
+│   ├── test_budget_goals_controller.py   # Feature slice: controller integration
+│   ├── test_budget_controller.py         # Legacy facade backward compat
+│   ├── test_keyword_matching.py          # Domain business logic
+│   ├── ... (other domain/controller tests)
 ├── integration/    # Component interaction tests (real DB, file I/O)
 └── system/         # End-to-end workflow tests (full app scenarios)
 ```
@@ -245,3 +375,8 @@ tests/
 - Use `pytest-qt` for GUI tests only when necessary (critical UI flows)
 - Keep GUI tests minimal - focus on user-facing critical paths
 - Mock heavy dependencies (DB, file system) even in GUI tests when possible
+
+## Skills
+
+### PySide6 UI Designer (`.claude/skills/pyside6-ui-designer.md`)
+Automatically applied when designing, building, or modifying any UI component. Enforces the project's design system: centralized tokens from `constants.py`, dual theme support, page structure via `ModernPageMixin`, icon system with fallbacks, and financial UI best practices. Always reference this skill for any views-layer work.

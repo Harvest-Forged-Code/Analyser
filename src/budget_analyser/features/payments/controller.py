@@ -1,0 +1,136 @@
+"""Payments reconciliation controller.
+
+Compares payments made vs payment confirmations per month.
+"""
+
+from __future__ import annotations
+
+import logging
+
+import pandas as pd
+
+from budget_analyser.core.models import MonthlyReports
+from budget_analyser.features.payments.models import (
+    PaymentsReconciliationSummary,
+)
+
+MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November",
+    "December",
+]
+
+
+class PaymentsReconciliationController:
+    """Controller to compare payments made vs confirmations.
+
+    UI-only consumers should render the returned DataFrames
+    and summary values. All computations are done here.
+    """
+
+    SUB_PAYMENTS = "payments_made"
+    SUB_CONFIRM = "payment_confirmations"
+
+    def __init__(
+        self,
+        reports: list[MonthlyReports],
+        logger: logging.Logger,
+    ) -> None:
+        self._reports = reports
+        self._logger = logger
+        self._by_period: dict[pd.Period, MonthlyReports] = {
+            mr.month: mr for mr in self._reports
+        }
+
+    def available_months(self) -> list[pd.Period]:
+        """Return sorted list of available months."""
+        return sorted(self._by_period.keys())
+
+    @staticmethod
+    def month_label(period: pd.Period) -> str:
+        """Return human-readable month label."""
+        return (
+            f"{MONTH_NAMES[int(period.month) - 1]} "
+            f"{int(period.year)}"
+        )
+
+    def data(
+        self,
+        period: pd.Period,
+    ) -> PaymentsReconciliationSummary:
+        """Return reconciliation data for a given month.
+
+        Totals are absolute sums for robust matching.
+        Difference = confirmations - payments.
+        """
+        mr = self._by_period.get(period)
+        if (mr is None or mr.transactions is None
+                or mr.transactions.empty):
+            empty = pd.DataFrame(columns=[
+                "transaction_date", "description", "amount",
+                "from_account", "category", "sub_category",
+            ])
+            return PaymentsReconciliationSummary(
+                period=period,
+                payments_made=empty,
+                payment_confirmations=empty,
+                total_payments_made=0.0,
+                total_payment_confirmations=0.0,
+                difference=0.0,
+            )
+
+        df = mr.transactions
+        if "sub_category" not in df.columns:
+            self._logger.warning(
+                "PaymentsReconciliation: sub_category column "
+                "missing for %s", period,
+            )
+            return PaymentsReconciliationSummary(
+                period=period,
+                payments_made=pd.DataFrame(columns=df.columns),
+                payment_confirmations=pd.DataFrame(
+                    columns=df.columns,
+                ),
+                total_payments_made=0.0,
+                total_payment_confirmations=0.0,
+                difference=0.0,
+            )
+
+        pm = df[
+            df["sub_category"].fillna("") == self.SUB_PAYMENTS
+        ].copy()
+        pc = df[
+            df["sub_category"].fillna("") == self.SUB_CONFIRM
+        ].copy()
+
+        for sub_df in (pm, pc):
+            if "transaction_date" in sub_df.columns:
+                try:
+                    sub_df.sort_values(
+                        by="transaction_date",
+                        ascending=False,
+                        inplace=True,
+                    )
+                except Exception:  # pylint: disable=broad-exception-caught
+                    pass
+
+        total_pm = (
+            float(pm["amount"].abs().sum())
+            if not pm.empty and "amount" in pm.columns
+            else 0.0
+        )
+        total_pc = (
+            float(pc["amount"].abs().sum())
+            if not pc.empty and "amount" in pc.columns
+            else 0.0
+        )
+        diff = float(total_pc - total_pm)
+
+        return PaymentsReconciliationSummary(
+            period=period,
+            payments_made=pm,
+            payment_confirmations=pc,
+            total_payments_made=total_pm,
+            total_payment_confirmations=total_pc,
+            difference=diff,
+        )

@@ -1,25 +1,12 @@
 """Domain exceptions.
 
-Purpose:
-    Define domain-specific exceptions that represent business/data constraints.
-
-Goal:
-    Allow the presentation layer to translate domain failures into user-facing messages
-    without leaking infrastructure implementation details.
+Backward-compatibility shim: re-exports from core.errors.
+New code should import from budget_analyser.core.errors directly.
 """
 
-
-class DomainError(Exception):
-    """Base class for all domain-level errors."""
-
-
-class ValidationError(DomainError):
-    """Raised when user input or provided data is invalid."""
-
-
-class MappingNotFoundError(DomainError):
-    """Raised when a required mapping is missing."""
-
-
-class DataSourceError(DomainError):
-    """Raised when a required external data source cannot be loaded."""
+from budget_analyser.core.errors import (  # pylint: disable=unused-import  # noqa: F401
+    DomainError,
+    ValidationError,
+    MappingNotFoundError,
+    DataSourceError,
+)

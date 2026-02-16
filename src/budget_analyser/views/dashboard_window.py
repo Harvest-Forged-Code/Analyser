@@ -51,6 +51,7 @@ from budget_analyser.controller import CashflowMapperController
 from budget_analyser.controller import SubCategoryMapperController
 from budget_analyser.controller import UploadController
 from budget_analyser.controller.budget_controller import BudgetController
+from budget_analyser.features.budget_goals import BudgetGoalsController
 from budget_analyser.version import get_version, APP_NAME
 
 
@@ -123,6 +124,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         *,
         refresh_reports_fn: Callable[[], List[MonthlyReports]] | None = None,
         csv_missing: bool = False,
+        budget_goals_controller: BudgetGoalsController | None = None,
     ):
         super().__init__()
         self._reports = reports
@@ -133,6 +135,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
         self._cashflow_mapper_controller = cashflow_mapper_controller
         self._upload_controller = upload_controller
         self._budget_controller = budget_controller
+        self._budget_goals_controller = budget_goals_controller
         self._csv_missing = csv_missing
         self._refresh_reports_fn = refresh_reports_fn
         self._init_ui()
@@ -400,13 +403,17 @@ class DashboardWindow(QtWidgets.QMainWindow):
             logger=self._logger,
         )
 
+        # Use new BudgetGoalsController for BudgetGoalsPage if available,
+        # fall back to old BudgetController for backward compatibility
+        goals_ctrl = self._budget_goals_controller or self._budget_controller
+
         self._pages = [
             CashflowDashboardPage(self._reports, self._logger),
             YearlySummaryPage(self._reports, self._logger),
             EarningsPage(self._reports, self._logger, self._budget_controller),
             ExpensesPage(self._reports, self._logger, self._budget_controller),
             PaymentsPage(self._reports, self._logger),
-            BudgetGoalsPage(self._reports, self._budget_controller, self._logger),
+            BudgetGoalsPage(self._reports, goals_ctrl, self._logger),
             SavingsPage(self._reports, self._budget_controller, self._logger),
             NetWorthPage(self._budget_controller, self._logger),
             RecurringPage(self._reports, self._budget_controller, self._logger),
@@ -652,6 +659,8 @@ class DashboardWindow(QtWidgets.QMainWindow):
         self._reports = reports or []
         current_index = self._stack.currentIndex()
 
+        goals_ctrl = self._budget_goals_controller or self._budget_controller
+
         replacements = [
             (
                 self.PAGE_CASHFLOW_DASHBOARD,
@@ -675,7 +684,7 @@ class DashboardWindow(QtWidgets.QMainWindow):
             ),
             (
                 self.PAGE_BUDGET_GOALS,
-                BudgetGoalsPage(self._reports, self._budget_controller, self._logger),
+                BudgetGoalsPage(self._reports, goals_ctrl, self._logger),
             ),
             (
                 self.PAGE_SAVINGS,
