@@ -4,6 +4,10 @@ import type {
   BudgetGoal,
   EarningsGoal,
   BudgetProgress,
+  BudgetGoalsSummary,
+  EarningsGoalsSummary,
+  ProgressSummary,
+  CategoryProgressPoint,
   SetBudgetRequest,
   SetEarningsGoalRequest,
 } from "../types";
@@ -25,6 +29,7 @@ export function useSetBudget() {
       apiClient.post("/budget-goals", data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["budget-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-goals", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
@@ -37,6 +42,7 @@ export function useDeleteBudget() {
       apiClient.delete(`/budget-goals/${category}`).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["budget-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-goals", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
@@ -72,6 +78,7 @@ export function useSetEarningsGoal() {
       apiClient.post("/earnings-goals", data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["earnings-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings-goals", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
@@ -84,7 +91,58 @@ export function useDeleteEarningsGoal() {
       apiClient.delete(`/earnings-goals/${subCategory}`).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["earnings-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings-goals", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
+  });
+}
+
+export function useBudgetGoalsSummary() {
+  return useQuery({
+    queryKey: ["budget-goals", "summary"],
+    queryFn: async () => {
+      const response = await apiClient.get<BudgetGoalsSummary>(
+        "/budget-goals/summary"
+      );
+      return response.data;
+    },
+  });
+}
+
+export function useEarningsGoalsSummary() {
+  return useQuery({
+    queryKey: ["earnings-goals", "summary"],
+    queryFn: async () => {
+      const response = await apiClient.get<EarningsGoalsSummary>(
+        "/budget-goals/earnings/summary"
+      );
+      return response.data;
+    },
+  });
+}
+
+export function useProgressSummary(yearMonth: string | undefined) {
+  return useQuery({
+    queryKey: ["budget-goals", "progress", "summary", yearMonth],
+    queryFn: async () => {
+      const response = await apiClient.get<ProgressSummary>(
+        `/budget-goals/progress/${yearMonth}/summary`
+      );
+      return response.data;
+    },
+    enabled: !!yearMonth,
+  });
+}
+
+export function useCategoryProgressHistory(category: string | undefined) {
+  return useQuery({
+    queryKey: ["budget-goals", "progress", "history", category],
+    queryFn: async () => {
+      const response = await apiClient.get<CategoryProgressPoint[]>(
+        `/budget-goals/progress/history/${category}`
+      );
+      return response.data;
+    },
+    enabled: !!category,
   });
 }

@@ -32,6 +32,35 @@ export interface BudgetProgress {
   status: string;
 }
 
+export interface BudgetGoalsSummary {
+  total_monthly_budget: number;
+  categories_tracked: number;
+  month_overrides: number;
+}
+
+export interface EarningsGoalsSummary {
+  total_expected_earnings: number;
+  sub_categories_tracked: number;
+  month_overrides: number;
+}
+
+export interface ProgressSummary {
+  on_track_count: number;
+  warning_count: number;
+  over_budget_count: number;
+  total_spent: number;
+  total_budget: number;
+}
+
+export interface CategoryProgressPoint {
+  year_month: string;
+  budget_limit: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
+  status: string;
+}
+
 // Net Worth
 export interface Account {
   id: number | null;
