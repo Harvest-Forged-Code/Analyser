@@ -8,7 +8,7 @@ from typing import List, TYPE_CHECKING
 from PySide6 import QtWidgets, QtCore, QtGui
 
 if TYPE_CHECKING:
-    from budget_analyser.controller.budget_controller import BudgetController
+    from budget_analyser.features.recurring.controller import RecurringController
     from budget_analyser.controller.controllers import MonthlyReports
 
 
@@ -25,12 +25,12 @@ class RecurringPage(QtWidgets.QWidget):
     def __init__(
         self,
         reports: List["MonthlyReports"],
-        budget_controller: "BudgetController",
+        controller: "RecurringController",
         logger: logging.Logger
     ) -> None:
         super().__init__()
         self._reports = reports
-        self._budget_controller = budget_controller
+        self._controller = controller
         self._logger = logger
         self._init_ui()
         self._load_data()
@@ -237,7 +237,7 @@ class RecurringPage(QtWidgets.QWidget):
 
     def _refresh_table(self) -> None:
         """Refresh the recurring transactions table."""
-        recurring = self._budget_controller.get_all_recurring_transactions(active_only=True)
+        recurring = self._controller.get_all_recurring_transactions(active_only=True)
         self._recurring_table.setRowCount(len(recurring))
 
         freq_names = dict(self.FREQUENCIES)
@@ -276,7 +276,7 @@ class RecurringPage(QtWidgets.QWidget):
     def _refresh_summary(self) -> None:
         """Refresh the summary cards."""
         expenses_df = self._get_all_expenses()
-        summary = self._budget_controller.get_recurring_summary(expenses_df)
+        summary = self._controller.get_recurring_summary(expenses_df)
 
         # Update monthly card
         monthly_label = self._monthly_card.findChild(QtWidgets.QLabel, "value_label")
@@ -298,7 +298,7 @@ class RecurringPage(QtWidgets.QWidget):
         self._anomalies_list.clear()
 
         expenses_df = self._get_all_expenses()
-        anomalies = self._budget_controller.check_recurring_anomalies(expenses_df)
+        anomalies = self._controller.check_recurring_anomalies(expenses_df)
 
         if not anomalies:
             item = QtWidgets.QListWidgetItem("✓ No anomalies detected")
@@ -342,7 +342,7 @@ class RecurringPage(QtWidgets.QWidget):
             )
             return
 
-        detected = self._budget_controller.detect_recurring_transactions(expenses_df)
+        detected = self._controller.detect_recurring_transactions(expenses_df)
 
         if not detected:
             QtWidgets.QMessageBox.information(
@@ -372,7 +372,7 @@ class RecurringPage(QtWidgets.QWidget):
         for item in selected:
             data = item.data(QtCore.Qt.UserRole)
             if data:
-                self._budget_controller.add_recurring_transaction(
+                self._controller.add_recurring_transaction(
                     description=data['description'],
                     expected_amount=data['avg_amount'],
                     frequency="monthly",
@@ -408,7 +408,7 @@ class RecurringPage(QtWidgets.QWidget):
         frequency = self._freq_combo.currentData()
         category = self._category_edit.text().strip()
 
-        self._budget_controller.add_recurring_transaction(
+        self._controller.add_recurring_transaction(
             description=description,
             expected_amount=amount,
             frequency=frequency,
@@ -438,7 +438,7 @@ class RecurringPage(QtWidgets.QWidget):
         )
 
         if reply == QtWidgets.QMessageBox.Yes:
-            if self._budget_controller.delete_recurring_transaction(recurring_id):
+            if self._controller.delete_recurring_transaction(recurring_id):
                 self._logger.info("Deleted recurring: %s", description)
                 self._load_data()
             else:

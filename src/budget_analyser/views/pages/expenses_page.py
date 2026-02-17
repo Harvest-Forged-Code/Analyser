@@ -12,7 +12,7 @@ from PySide6 import QtCore, QtWidgets
 
 from budget_analyser.controller.controllers import MonthlyReports
 from budget_analyser.controller import ExpensesStatsController
-from budget_analyser.controller.budget_controller import BudgetController
+from budget_analyser.features.budget_goals import BudgetGoalsController
 from budget_analyser.views.pages._page_base import ModernPageMixin
 from budget_analyser.views.widgets.kpi_card import KPICard, KPICardData
 from budget_analyser.views.widgets.charts import PieChartWidget
@@ -57,7 +57,7 @@ class ExpensesPage(QtWidgets.QWidget):
         self,
         reports: List[MonthlyReports],
         logger: logging.Logger,
-        budget_controller: BudgetController | None = None
+        budget_controller: BudgetGoalsController | None = None
     ):
         super().__init__()
         self._reports = reports

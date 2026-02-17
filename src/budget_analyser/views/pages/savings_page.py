@@ -8,7 +8,8 @@ from typing import List, TYPE_CHECKING
 from PySide6 import QtWidgets, QtCore, QtGui
 
 if TYPE_CHECKING:
-    from budget_analyser.controller.budget_controller import BudgetController, SavingsMetrics
+    from budget_analyser.features.savings.controller import SavingsController
+    from budget_analyser.features.savings.models import SavingsMetrics
     from budget_analyser.controller.controllers import MonthlyReports
 
 
@@ -18,12 +19,12 @@ class SavingsPage(QtWidgets.QWidget):
     def __init__(
         self,
         reports: List["MonthlyReports"],
-        budget_controller: "BudgetController",
+        controller: "SavingsController",
         logger: logging.Logger
     ) -> None:
         super().__init__()
         self._reports = reports
-        self._budget_controller = budget_controller
+        self._controller = controller
         self._logger = logger
         self._init_ui()
         self._load_data()
@@ -237,8 +238,8 @@ class SavingsPage(QtWidgets.QWidget):
         expenses_df = pd.concat(all_expenses, ignore_index=True) if all_expenses else pd.DataFrame()
 
         # Calculate metrics
-        metrics = self._budget_controller.calculate_savings_metrics(earnings_df, expenses_df, year)
-        monthly_data = self._budget_controller.calculate_monthly_savings(earnings_df, expenses_df, year)
+        metrics = self._controller.calculate_savings_metrics(earnings_df, expenses_df, year)
+        monthly_data = self._controller.calculate_monthly_savings(earnings_df, expenses_df, year)
 
         # Update summary cards
         self._update_card(self._earnings_card, f"${metrics.total_earnings:,.2f}")

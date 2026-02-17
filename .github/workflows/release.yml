@@ -19,25 +19,22 @@ jobs:
         with:
           fetch-depth: 0  # Need full history for tags and changelog
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.11'
-
-      - name: Install toml parser
-        run: pip install toml
 
       - name: Calculate Version from Tags
         id: version
         run: |
-          python << 'EOF'
-          import toml
+          uv run --no-project python << 'EOF'
+          import tomllib
           import subprocess
           import os
 
           # Read eng_ver from pyproject.toml
-          with open("pyproject.toml", "r") as f:
-              config = toml.load(f)
+          with open("pyproject.toml", "rb") as f:
+              config = tomllib.load(f)
 
           eng_ver = config.get("tool", {}).get("budget-analyser", {}).get("eng_ver", 1)
           print(f"EngVer flag: {eng_ver}")
@@ -87,31 +84,31 @@ jobs:
           # Get previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           VERSION="${{ steps.version.outputs.version }}"
-          
+
           echo "Generating changelog from $PREV_TAG to HEAD"
-          
+
           if [ -n "$PREV_TAG" ]; then
             # Get commits since last tag
             COMMITS=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
-            
+
             # Build changelog
             CHANGELOG="## What's Changed in v$VERSION"$'\n\n'
-            
+
             if [ -n "$COMMITS" ]; then
               CHANGELOG+="$COMMITS"$'\n\n'
             else
               CHANGELOG+="- Minor updates and improvements"$'\n\n'
             fi
-            
+
             CHANGELOG+="**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...v$VERSION"
           else
             CHANGELOG="## Initial Release v$VERSION"$'\n\n'"First release of Budget Analyser!"
           fi
-          
+
           # Save changelog to file for multi-line output
           echo "$CHANGELOG" > changelog.md
           cat changelog.md
-          
+
           # Set output using delimiter for multiline
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           cat changelog.md >> $GITHUB_OUTPUT
@@ -135,15 +132,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
+        run: uv sync --extra build
 
       - name: Update version in pyproject.toml and create VERSION file
         run: |
@@ -160,7 +155,7 @@ jobs:
 
       - name: Build Windows executable
         run: |
-          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.ico --add-data "src/budget_analyser/data;budget_analyser/data" --add-data "VERSION;." src/budget_analyser/__main__.py
+          uv run pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.ico --add-data "src/budget_analyser/data;budget_analyser/data" --add-data "VERSION;." src/budget_analyser/__main__.py
 
       - name: Rename artifact
         run: |
@@ -181,15 +176,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
+        run: uv sync --extra build
 
       - name: Update version in pyproject.toml and create VERSION file
         run: |
@@ -203,7 +196,7 @@ jobs:
 
       - name: Build macOS Intel app
         run: |
-          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" --add-data "VERSION:." src/budget_analyser/__main__.py
+          uv run pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" --add-data "VERSION:." src/budget_analyser/__main__.py
 
       - name: Create ZIP of app
         run: |
@@ -225,15 +218,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
+        run: uv sync --extra build
 
       - name: Update version in pyproject.toml and create VERSION file
         run: |
@@ -247,7 +238,7 @@ jobs:
 
       - name: Build macOS ARM app
         run: |
-          pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" --add-data "VERSION:." src/budget_analyser/__main__.py
+          uv run pyinstaller --name "Budget Analyser" --onefile --windowed --icon=assets/icon.icns --add-data "src/budget_analyser/data:budget_analyser/data" --add-data "VERSION:." src/budget_analyser/__main__.py
 
       - name: Create ZIP of app
         run: |
@@ -326,21 +317,21 @@ jobs:
                - **Option A**: **Right-click** (or Control-click) on the app → Select **"Open"** → Click **"Open"** in the dialog
                - **Option B**: Download and run `open_macos_app.sh` helper script (see below)
                - This only needs to be done once
-            
+
             **Using the Helper Script:**
             ```bash
             # Download open_macos_app.sh from this release, then:
             chmod +x open_macos_app.sh
             ./open_macos_app.sh "/Applications/Budget Analyser.app"
             ```
-            
+
             **Alternative (Manual Terminal):**
             ```
             xattr -d com.apple.quarantine "/Applications/Budget Analyser.app"
             ```
-            
+
             > **Tip**: To check your Mac type, click  → About This Mac → look for "Chip" (Apple Silicon) or "Processor" (Intel)
-            
+
             > **Why the warning?** The app is not signed with an Apple Developer certificate. It's safe to use - verify by checking the [source code](https://github.com/Harvest-Forged-Code/Analyser).
           files: |
             ./artifacts/*

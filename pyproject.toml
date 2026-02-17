@@ -7,16 +7,33 @@ name = "budget-analyser"
 version = "1.0.0"
 description = "Budget Analyser - Personal finance tracking and analysis tool"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
+dependencies = [
+    "PySide6~=6.8.2.1",
+    "qtawesome~=1.3.0",
+    "pandas~=2.3.3",
+    "pyqtgraph~=0.13.7",
+    "numpy~=2.2.3",
+]
 
 [project.optional-dependencies]
 build = ["pyinstaller>=6.0"]
+
+[dependency-groups]
+dev = [
+    "pytest~=8.3.4",
+    "pylint>=3.0",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
 
 # Custom metadata for version management
 # EngVer:1 = auto-increment patch on CI, EngVer:0 = developer mode (no auto-increment)
