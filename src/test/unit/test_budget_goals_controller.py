@@ -83,3 +83,75 @@ def test_get_categories_over_budget(
     over = controller.get_categories_over_budget(expenses, "2025-01")
     assert len(over) == 1
     assert over[0].category == "Food"
+
+
+# ==================== Summary and History Methods ====================
+
+
+def test_get_budget_goals_summary(tmp_path: Path) -> None:
+    """Summary returns correct totals and counts."""
+    repo = BudgetGoalsRepository(db_path=tmp_path / "test.db")
+    ctrl = BudgetGoalsController(repository=repo)
+    ctrl.set_budget("Food", 500, "ALL")
+    ctrl.set_budget("Transport", 200, "ALL")
+    ctrl.set_budget("Food", 600, "2025-12")
+
+    summary = ctrl.get_budget_goals_summary()
+    assert summary.total_monthly_budget == 700.0
+    assert summary.categories_tracked == 2
+    assert summary.month_overrides == 1
+
+
+def test_get_earnings_goals_summary(tmp_path: Path) -> None:
+    """Summary returns correct totals and counts."""
+    repo = BudgetGoalsRepository(db_path=tmp_path / "test.db")
+    ctrl = BudgetGoalsController(repository=repo)
+    ctrl.set_earnings_goal("Salary", 5000, "ALL")
+    ctrl.set_earnings_goal("Bonus", 1000, "ALL")
+    ctrl.set_earnings_goal("Salary", 5500, "2025-12")
+
+    summary = ctrl.get_earnings_goals_summary()
+    assert summary.total_expected_earnings == 6000.0
+    assert summary.sub_categories_tracked == 2
+    assert summary.month_overrides == 1
+
+
+def test_get_progress_summary(tmp_path: Path) -> None:
+    """Progress summary returns correct status counts."""
+    repo = BudgetGoalsRepository(db_path=tmp_path / "test.db")
+    ctrl = BudgetGoalsController(repository=repo)
+    ctrl.set_budget("Food", 500, "ALL")
+    ctrl.set_budget("Transport", 200, "ALL")
+
+    expenses = pd.DataFrame({
+        "transaction_date": ["2025-01-15", "2025-01-15"],
+        "amount": [-200, -180],
+        "category": ["Food", "Transport"],
+    })
+    summary = ctrl.get_progress_summary(
+        expenses_df=expenses, year_month="2025-01",
+    )
+    assert summary.on_track_count == 1  # Food at 40%
+    assert summary.warning_count == 1   # Transport at 90%
+    assert summary.over_budget_count == 0
+
+
+def test_get_category_progress_history(tmp_path: Path) -> None:
+    """History returns progress for each month."""
+    repo = BudgetGoalsRepository(db_path=tmp_path / "test.db")
+    ctrl = BudgetGoalsController(repository=repo)
+    ctrl.set_budget("Food", 500, "ALL")
+
+    expenses = pd.DataFrame({
+        "transaction_date": ["2025-01-15", "2025-02-10"],
+        "amount": [-200, -450],
+        "category": ["Food", "Food"],
+    })
+    history = ctrl.get_category_progress_history(
+        category="Food",
+        expenses_df=expenses,
+        months=["2025-01", "2025-02"],
+    )
+    assert len(history) == 2
+    assert history[0].spent == 200.0
+    assert history[1].spent == 450.0

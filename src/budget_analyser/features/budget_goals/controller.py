@@ -12,15 +12,23 @@ import pandas as pd
 
 from budget_analyser.features.budget_goals.models import (
     BudgetGoal,
+    BudgetGoalsSummary,
     BudgetProgress,
+    CategoryProgressPoint,
     EarningsGoal,
+    EarningsGoalsSummary,
+    ProgressSummary,
 )
 from budget_analyser.features.budget_goals.repository import (
     BudgetGoalsRepository,
 )
 from budget_analyser.features.budget_goals.service import (
     build_earnings_goal_map,
+    calculate_budget_goals_summary,
     calculate_budget_progress,
+    calculate_category_progress_history,
+    calculate_earnings_goals_summary,
+    calculate_progress_summary,
 )
 
 
@@ -320,6 +328,68 @@ class BudgetGoalsController:
             budgets=budgets,
             expenses_df=expenses_df,
             year_month=year_month,
+        )
+
+    # ==================== Summaries ====================
+
+    def get_budget_goals_summary(self) -> BudgetGoalsSummary:
+        """Get aggregate summary of all budget goals.
+
+        Returns:
+            BudgetGoalsSummary with totals and counts.
+        """
+        goals = self._repo.get_all_budget_goals()
+        return calculate_budget_goals_summary(goals=goals)
+
+    def get_earnings_goals_summary(self) -> EarningsGoalsSummary:
+        """Get aggregate summary of all earnings goals.
+
+        Returns:
+            EarningsGoalsSummary with totals and counts.
+        """
+        goals = self._repo.get_all_earnings_goals()
+        return calculate_earnings_goals_summary(goals=goals)
+
+    def get_progress_summary(
+        self,
+        expenses_df: pd.DataFrame,
+        year_month: str,
+    ) -> ProgressSummary:
+        """Get aggregate progress summary for a month.
+
+        Args:
+            expenses_df: DataFrame with expense transactions.
+            year_month: Month to calculate for (format: "YYYY-MM").
+
+        Returns:
+            ProgressSummary with status counts and totals.
+        """
+        progress = self.calculate_budget_progress(expenses_df, year_month)
+        return calculate_progress_summary(progress_list=progress)
+
+    def get_category_progress_history(
+        self,
+        *,
+        category: str,
+        expenses_df: pd.DataFrame,
+        months: list[str],
+    ) -> list[CategoryProgressPoint]:
+        """Get historical progress for a single category.
+
+        Args:
+            category: The expense category to track.
+            expenses_df: DataFrame with all expense transactions.
+            months: List of year-month strings to compute history for.
+
+        Returns:
+            List of CategoryProgressPoint, one per month.
+        """
+        budgets = self._repo.get_all_budget_goals()
+        return calculate_category_progress_history(
+            category=category,
+            budgets=budgets,
+            expenses_df=expenses_df,
+            months=months,
         )
 
     def get_categories_over_budget(
