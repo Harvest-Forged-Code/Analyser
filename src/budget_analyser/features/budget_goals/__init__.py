@@ -9,8 +9,12 @@ from budget_analyser.features.budget_goals.controller import (
 )
 from budget_analyser.features.budget_goals.models import (
     BudgetGoal,
+    BudgetGoalsSummary,
     BudgetProgress,
+    CategoryProgressPoint,
     EarningsGoal,
+    EarningsGoalsSummary,
+    ProgressSummary,
 )
 from budget_analyser.features.budget_goals.repository import (
     BudgetGoalsRepository,
@@ -22,4 +26,8 @@ __all__ = [
     "BudgetGoal",
     "BudgetProgress",
     "EarningsGoal",
+    "BudgetGoalsSummary",
+    "EarningsGoalsSummary",
+    "ProgressSummary",
+    "CategoryProgressPoint",
 ]
