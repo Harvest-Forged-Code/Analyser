@@ -1,17 +1,21 @@
-"""Application composition root.
+"""Application entry point.
 
-Default behavior:
-    Launch the PySide6 GUI application (fullscreen login -> dashboard).
+Launches the FastAPI server via uvicorn on port 8741.
 """
 
 from __future__ import annotations
 
-from budget_analyser.views.app_gui import run_app as run_gui
+import uvicorn
 
 
 def main() -> None:
-    """Run the PySide6 GUI application by default."""
-    run_gui()
+    """Run the FastAPI application via uvicorn."""
+    uvicorn.run(
+        "budget_analyser.api.main:app",
+        host="127.0.0.1",
+        port=8741,
+        reload=False,
+    )
 
 
 if __name__ == "__main__":

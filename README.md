@@ -209,6 +209,3 @@ eng_ver = 0  # Developer mode - no auto-increment
 
 Set back to `eng_ver = 1` for production releases.
 
-—
-
-For a deeper dive (architecture diagrams, flows), see `docs/` and the LaTeX PDF.

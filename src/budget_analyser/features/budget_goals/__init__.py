@@ -1,7 +1,7 @@
 """Budget goals feature module.
 
 Vertical slice owning all layers for budget goal management:
-models, repository, service, controller, and page.
+models, repository, service, and controller.
 """
 
 from budget_analyser.features.budget_goals.controller import (
