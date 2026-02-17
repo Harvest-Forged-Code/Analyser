@@ -47,13 +47,13 @@ from budget_analyser.controller import MapperController
 from budget_analyser.controller import CashflowMapperController
 from budget_analyser.controller import SubCategoryMapperController
 from budget_analyser.controller import UploadController
-from budget_analyser.controller.budget_controller import BudgetController
 from budget_analyser.features.budget_goals import (
     BudgetGoalsController,
     BudgetGoalsRepository,
 )
-from budget_analyser.features.net_worth import NetWorthRepository
-from budget_analyser.features.recurring import RecurringRepository
+from budget_analyser.features.net_worth import NetWorthRepository, NetWorthController
+from budget_analyser.features.recurring import RecurringRepository, RecurringController
+from budget_analyser.features.savings import SavingsController
 
 def _package_data_dir() -> Path:
     """Return the package data directory (src/budget_analyser/data)."""
@@ -202,18 +202,13 @@ def run_app() -> int:
     net_worth_repo = NetWorthRepository(db_path=budget_db_path, logger=logger)
     recurring_repo = RecurringRepository(db_path=budget_db_path, logger=logger)
 
-    # Wire facade controller
-    budget_controller = BudgetController(
-        budget_goals_repo=budget_goals_repo,
-        net_worth_repo=net_worth_repo,
-        recurring_repo=recurring_repo,
-        logger=logger,
-    )
-
-    # New vertical-slice controller for budget goals feature
+    # Create feature controllers
     budget_goals_controller = BudgetGoalsController(
         repository=budget_goals_repo, logger=logger,
     )
+    net_worth_controller = NetWorthController(repository=net_worth_repo)
+    recurring_controller = RecurringController(repository=recurring_repo)
+    savings_controller = SavingsController()
 
     category_mapping_provider = JsonCategoryMappingProvider(
         description_to_sub_category_path=settings.description_to_sub_category_path,
@@ -267,10 +262,12 @@ def run_app() -> int:
             sub_category_mapper_controller,
             cashflow_mapper_controller,
             upload_controller,
-            budget_controller,
             refresh_reports_fn=_refresh_reports,
             csv_missing=csv_missing,
             budget_goals_controller=budget_goals_controller,
+            net_worth_controller=net_worth_controller,
+            recurring_controller=recurring_controller,
+            savings_controller=savings_controller,
         )
 
         # Connect reload signal to handle CSV upload completion

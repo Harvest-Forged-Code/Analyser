@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from PySide6 import QtWidgets, QtCore, QtGui
 
 if TYPE_CHECKING:
-    from budget_analyser.controller.budget_controller import BudgetController
+    from budget_analyser.features.net_worth.controller import NetWorthController
 
 
 class NetWorthPage(QtWidgets.QWidget):
@@ -25,11 +25,11 @@ class NetWorthPage(QtWidgets.QWidget):
 
     def __init__(
         self,
-        budget_controller: "BudgetController",
+        controller: "NetWorthController",
         logger: logging.Logger
     ) -> None:
         super().__init__()
-        self._budget_controller = budget_controller
+        self._controller = controller
         self._logger = logger
         self._init_ui()
         self._load_data()
@@ -225,7 +225,7 @@ class NetWorthPage(QtWidgets.QWidget):
 
     def _refresh_tables(self) -> None:
         """Refresh the assets and liabilities tables."""
-        accounts = self._budget_controller.get_all_accounts()
+        accounts = self._controller.get_all_accounts()
         
         asset_types = {"checking", "savings", "investment", "other"}
         liability_types = {"credit_card", "loan"}
@@ -268,7 +268,7 @@ class NetWorthPage(QtWidgets.QWidget):
 
     def _refresh_summary(self) -> None:
         """Refresh the net worth summary cards."""
-        summary = self._budget_controller.get_net_worth_summary()
+        summary = self._controller.get_net_worth_summary()
         
         # Update assets card
         assets_label = self._assets_card.findChild(QtWidgets.QLabel, "value_label")
@@ -288,7 +288,7 @@ class NetWorthPage(QtWidgets.QWidget):
     def _refresh_account_combo(self) -> None:
         """Refresh the account dropdown for quick updates."""
         self._update_account_combo.clear()
-        accounts = self._budget_controller.get_all_accounts()
+        accounts = self._controller.get_all_accounts()
         
         for account in accounts:
             self._update_account_combo.addItem(
@@ -317,7 +317,7 @@ class NetWorthPage(QtWidgets.QWidget):
         notes = self._notes_edit.toPlainText().strip()
         
         try:
-            self._budget_controller.add_account(name, account_type, balance, notes)
+            self._controller.add_account(name, account_type, balance, notes)
             self._logger.info("Added account: %s (%s) = $%.2f", name, account_type, balance)
             
             self._clear_form()
@@ -343,7 +343,7 @@ class NetWorthPage(QtWidgets.QWidget):
         
         new_balance = self._update_balance_spin.value()
         
-        if self._budget_controller.update_account_balance(account_id, new_balance):
+        if self._controller.update_account_balance(account_id, new_balance):
             self._logger.info("Updated account %d balance to $%.2f", account_id, new_balance)
             self._load_data()
             QtWidgets.QMessageBox.information(
@@ -364,7 +364,7 @@ class NetWorthPage(QtWidgets.QWidget):
         )
         
         if reply == QtWidgets.QMessageBox.Yes:
-            if self._budget_controller.delete_account(account_id):
+            if self._controller.delete_account(account_id):
                 self._logger.info("Deleted account: %s", account_name)
                 self._load_data()
             else:
