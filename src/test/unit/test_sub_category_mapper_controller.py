@@ -19,17 +19,17 @@ class _StubStore:
 
 
 def test_move_between_categories_and_dedup() -> None:
-    store = _StubStore({"Needs": ["Groceries", "Rent"], "Flexible": ["Travel", "Groceries"]})
+    store = _StubStore({"Needs": ["Groceries", "Rent"], "Wants": ["Travel", "Groceries"]})
     controller = SubCategoryMapperController(store, logging.getLogger(__name__))
 
-    controller.move_sub_categories(["Travel", "Groceries"], "Flexible", "Needs")
+    controller.move_sub_categories(["Travel", "Groceries"], "Wants", "Needs")
 
     assert controller.sub_categories("Needs") == ["Groceries", "Rent", "Travel"]
-    assert controller.sub_categories("Flexible") == []
+    assert controller.sub_categories("Wants") == []
 
 
 def test_add_creates_category_and_removes_from_others() -> None:
-    store = _StubStore({"Luxuries": ["Travel"], "Flexible": ["Travel"]})
+    store = _StubStore({"Luxury": ["Travel"], "Wants": ["Travel"]})
     controller = SubCategoryMapperController(store, logging.getLogger(__name__))
 
     controller.add_sub_category("Coffee", "Needs")
@@ -38,8 +38,8 @@ def test_add_creates_category_and_removes_from_others() -> None:
     assert "Needs" in controller.categories()
     assert controller.sub_categories("Needs") == ["Coffee", "Travel"]
     # Travel removed from other categories
-    assert controller.sub_categories("Luxuries") == []
-    assert controller.sub_categories("Flexible") == []
+    assert controller.sub_categories("Luxury") == []
+    assert controller.sub_categories("Wants") == []
 
 
 def test_save_persists_mapping() -> None:

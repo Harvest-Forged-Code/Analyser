@@ -87,7 +87,7 @@ class TestHistoricalLearning:
         engine = CategorizationSuggestionEngine(min_confidence=0.3)
         historical = pd.DataFrame({
             "description": ["STARBUCKS COFFEE", "MCDONALDS #1234"],
-            "sub_category": ["Restaurants", "Restaurants"],
+            "sub_category": ["Dining", "Dining"],
         })
         engine.learn_from_history(transactions=historical)
 
@@ -112,7 +112,7 @@ class TestKeywordMatching:
     def test_matches_keyword_in_description(self):
         engine = CategorizationSuggestionEngine(min_confidence=0.1)
         keyword_map = {
-            "Restaurants": ["starbucks", "coffee"],
+            "Dining": ["starbucks", "coffee"],
             "Groceries": ["walmart", "costco"],
         }
 
@@ -121,7 +121,7 @@ class TestKeywordMatching:
             keyword_map=keyword_map,
         )
         assert result.has_suggestions()
-        assert any(s.sub_category == "Restaurants" for s in result.suggestions)
+        assert any(s.sub_category == "Dining" for s in result.suggestions)
 
     def test_partial_keyword_match(self):
         engine = CategorizationSuggestionEngine(min_confidence=0.1)
@@ -146,13 +146,13 @@ class TestSuggestionDeduplication:
         # Create historical data with same category appearing multiple times
         historical = pd.DataFrame({
             "description": ["STARBUCKS #1", "STARBUCKS #2", "STARBUCKS #3"],
-            "sub_category": ["Restaurants", "Restaurants", "Restaurants"],
+            "sub_category": ["Dining", "Dining", "Dining"],
         })
         engine.learn_from_history(transactions=historical)
 
         result = engine.suggest(description="STARBUCKS #1")
-        # Should only have one Restaurants suggestion
-        restaurants = [s for s in result.suggestions if s.sub_category == "Restaurants"]
+        # Should only have one Dining suggestion
+        restaurants = [s for s in result.suggestions if s.sub_category == "Dining"]
         assert len(restaurants) <= 1
 
 
@@ -198,7 +198,7 @@ class TestBatchSuggestions:
 
     def test_batch_with_keyword_map(self):
         engine = CategorizationSuggestionEngine(min_confidence=0.1)
-        keyword_map = {"Restaurants": ["starbucks"]}
+        keyword_map = {"Dining": ["starbucks"]}
         descriptions = ["STARBUCKS", "WALMART"]
 
         results = engine.suggest_batch(
@@ -243,7 +243,7 @@ class TestRealWorldScenarios:
                 "CHIPOTLE MEXICAN GRILL",
                 "TST*OLIVE GARDEN",
             ],
-            "sub_category": ["Restaurants", "Restaurants", "Restaurants"],
+            "sub_category": ["Dining", "Dining", "Dining"],
         })
         engine.learn_from_history(transactions=historical)
 
@@ -252,12 +252,12 @@ class TestRealWorldScenarios:
         assert result.has_suggestions()
         top = result.top_suggestion()
         assert top is not None
-        assert top.sub_category == "Restaurants"
+        assert top.sub_category == "Dining"
 
     def test_square_merchant_detection(self):
         engine = CategorizationSuggestionEngine(min_confidence=0.1)
         keyword_map = {
-            "Restaurants": ["restaurant", "cafe", "coffee"],
+            "Dining": ["restaurant", "cafe", "coffee"],
             "Farmers_Markets": ["farm", "market"],
         }
 

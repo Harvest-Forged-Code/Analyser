@@ -6,16 +6,16 @@ from budget_analyser.domain.category_mappers import CategoryMappers
 from budget_analyser.domain.transaction_processing import TransactionProcessor
 
 
-def test_rental_trip_maps_to_luxuries_not_needs() -> None:
+def test_rental_trip_maps_to_luxury_not_needs() -> None:
     # Sub-category mapping contains a substring collision: "Rent" inside "Rental_trip".
-    # Ensure we map exactly to the intended category (Luxuries) and not Needs.
+    # Ensure we map exactly to the intended category (Luxury) and not Needs.
     mappers = CategoryMappers(
         description_to_sub_category={
             "Rental_trip": ["SFO PARKING"],
         },
         sub_category_to_category={
             "Needs": ["Rent"],
-            "Luxuries": ["Rental_trip"],
+            "Luxury": ["Rental_trip"],
         },
     )
 
@@ -33,4 +33,4 @@ def test_rental_trip_maps_to_luxuries_not_needs() -> None:
     processed = processor.process(raw_transactions=df)
 
     assert list(processed["sub_category"]) == ["Rental_trip"]
-    assert list(processed["category"]) == ["Luxuries"]
+    assert list(processed["category"]) == ["Luxury"]

@@ -246,6 +246,75 @@ class TransactionDatabase:
 
         return df
 
+    def update_categorization_batch(
+        self, *, updates: pd.DataFrame,
+    ) -> int:
+        """Batch-update sub_category and category for existing rows.
+
+        Matches rows by (transaction_date, description, amount,
+        from_account) and overwrites their sub_category and category.
+
+        Args:
+            updates: DataFrame with columns transaction_date,
+                description, amount, from_account, sub_category,
+                category.
+
+        Returns:
+            Number of rows actually updated.
+        """
+        if updates.empty:
+            return 0
+
+        update_sql = f"""
+        UPDATE {self.TABLE_NAME}
+        SET sub_category = ?, category = ?
+        WHERE transaction_date = ?
+          AND description = ?
+          AND amount = ?
+          AND from_account = ?
+        """
+
+        updated_count = 0
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            for _, row in updates.iterrows():
+                raw_date = row.get("transaction_date")
+                if raw_date is not None and pd.notna(raw_date):
+                    if hasattr(raw_date, "strftime"):
+                        date_str = raw_date.strftime("%Y-%m-%d")
+                    else:
+                        date_str = str(raw_date)
+                else:
+                    date_str = ""
+
+                cursor.execute(update_sql, (
+                    str(row.get("sub_category", "")),
+                    str(row.get("category", "")),
+                    date_str,
+                    str(row.get("description", "")),
+                    float(row.get("amount", 0)),
+                    str(row.get("from_account", "")),
+                ))
+                updated_count += cursor.rowcount
+
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            self._logger.exception(
+                "Error during categorization update, "
+                "rolling back",
+            )
+            raise
+        finally:
+            conn.close()
+
+        self._logger.info(
+            "Updated categorization for %d transactions",
+            updated_count,
+        )
+        return updated_count
+
     def has_transactions(self) -> bool:
         """Check if the database has any transactions.
 

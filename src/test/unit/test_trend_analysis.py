@@ -266,7 +266,7 @@ class TestConvenienceFunctions:
         df = pd.DataFrame({
             "transaction_date": pd.date_range("2024-01-01", periods=5, freq="D"),
             "amount": [-100.0, -50.0, -75.0, -100.0, -80.0],
-            "category": ["Luxuries"] * 5,
+            "category": ["Luxury"] * 5,
         })
 
         result = analyze_spending_trends(transactions=df)
@@ -277,11 +277,11 @@ class TestConvenienceFunctions:
         df = pd.DataFrame({
             "transaction_date": pd.date_range("2024-01-01", periods=4, freq="D"),
             "amount": [-100.0, -50.0, -75.0, -100.0],
-            "category": ["Luxuries", "Needs", "Luxuries", "Needs"],
+            "category": ["Luxury", "Needs", "Luxury", "Needs"],
         })
 
-        result = analyze_spending_trends(transactions=df, category="Luxuries")
-        # Should only include Luxuries expenses
+        result = analyze_spending_trends(transactions=df, category="Luxury")
+        # Should only include Luxury expenses
         assert result is not None
 
     def test_analyze_income_trends(self):

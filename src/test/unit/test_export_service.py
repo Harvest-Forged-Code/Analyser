@@ -206,7 +206,7 @@ class TestExportService:
                 "date": date(2024, 6, 1),
                 "description": "Paycheck",
                 "amount": 3000.00,
-                "category": "Income",
+                "category": "Primary_Income",
                 "sub_category": "Salary",
                 "account": "Checking",
             },

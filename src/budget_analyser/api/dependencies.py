@@ -76,6 +76,12 @@ from budget_analyser.features.reporting.expenses_controller import (
 from budget_analyser.features.payments.controller import (
     PaymentsReconciliationController,
 )
+from budget_analyser.features.recategorize.service import (
+    RecategorizeService,
+)
+from budget_analyser.features.recategorize.controller import (
+    RecategorizeController,
+)
 from budget_analyser.domain.category_mappers import CategoryMappers
 
 # ---------------------------------------------------------------------------
@@ -100,6 +106,7 @@ _settings_controller: SettingsController | None = None
 _mapper_controller: MapperController | None = None
 _sub_category_mapper_controller: SubCategoryMapperController | None = None
 _cashflow_mapper_controller: CashflowMapperController | None = None
+_recategorize_controller: RecategorizeController | None = None
 
 _reports_cache: list[MonthlyReports] | None = None
 
@@ -159,7 +166,8 @@ def initialize() -> None:
         _expenses_stats_controller, _payments_controller, \
         _settings_controller, _mapper_controller, \
         _sub_category_mapper_controller, \
-        _cashflow_mapper_controller, _reports_cache  # noqa: PLW0603
+        _cashflow_mapper_controller, \
+        _recategorize_controller, _reports_cache  # noqa: PLW0603
 
     # Logger
     _logger = _ensure_logger()
@@ -243,6 +251,16 @@ def initialize() -> None:
         ini_config=config,
         statements_dir=settings.statement_dir,
         ingestion_service=ingestion_service,
+    )
+
+    # Recategorize controller
+    recategorize_service = RecategorizeService(
+        category_mappers=category_mappers, logger=_logger,
+    )
+    _recategorize_controller = RecategorizeController(
+        database=transaction_db,
+        service=recategorize_service,
+        logger=_logger,
     )
 
     # Feature repositories
@@ -465,3 +483,11 @@ def get_cashflow_mapper_controller() -> CashflowMapperController:
         "Call initialize() first"
     )
     return _cashflow_mapper_controller
+
+
+def get_recategorize_controller() -> RecategorizeController:
+    """Return the RecategorizeController."""
+    assert _recategorize_controller is not None, (
+        "Call initialize() first"
+    )
+    return _recategorize_controller

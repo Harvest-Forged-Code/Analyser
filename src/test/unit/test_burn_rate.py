@@ -290,13 +290,13 @@ class TestCalculateByCategory:
 
         transactions = pd.DataFrame({
             "amount": [-100.0, -200.0, -150.0, -50.0],
-            "category": ["Needs", "Luxuries", "Needs", "Luxuries"],
+            "category": ["Needs", "Luxury", "Needs", "Luxury"],
             "transaction_date": ["2024-01-05", "2024-01-10", "2024-01-14", "2024-01-15"],
         })
 
         budgets = {
             "Needs": 500.0,
-            "Luxuries": 300.0,
+            "Luxury": 300.0,
         }
 
         results = service.calculate_by_category(
@@ -311,7 +311,7 @@ class TestCalculateByCategory:
 
         # Find each category
         needs = next(r for r in results if r.category == "Needs")
-        luxuries = next(r for r in results if r.category == "Luxuries")
+        luxuries = next(r for r in results if r.category == "Luxury")
 
         assert needs.metrics.spent_amount == 250.0
         assert luxuries.metrics.spent_amount == 250.0
@@ -321,13 +321,13 @@ class TestCalculateByCategory:
 
         transactions = pd.DataFrame({
             "amount": [-100.0, -400.0],
-            "category": ["Needs", "Luxuries"],
+            "category": ["Needs", "Luxury"],
             "transaction_date": ["2024-01-10", "2024-01-10"],
         })
 
         budgets = {
             "Needs": 500.0,  # 20% spent
-            "Luxuries": 500.0,  # 80% spent
+            "Luxury": 500.0,  # 80% spent
         }
 
         results = service.calculate_by_category(
@@ -338,8 +338,8 @@ class TestCalculateByCategory:
             as_of_date=date(2024, 1, 15),
         )
 
-        # Luxuries should be first (higher burn rate)
-        assert results[0].category == "Luxuries"
+        # Luxury should be first (higher burn rate)
+        assert results[0].category == "Luxury"
 
 
 class TestConvenienceFunction:

@@ -52,20 +52,20 @@ def test_report_service_limits_earnings_and_offsets_refunds() -> None:
                 "Groceries",
                 "Refund",
                 "Gift",
-                "Payment Confirmation",
+                "Subscription",
             ],
             "amount": [100.0, -50.0, -40.0, 30.0, 60.0, 25.0],
             "from_account": ["acc"] * 6,
             "category": [
-                "Income",
+                "Primary_Income",
                 "Remittance",
                 "Groceries",
                 "Refunded_money",
-                "Unplanned_income",
-                "payment_confirmations",
+                "Secondary_Income",
+                "Wants",
             ],
             "sub_category": [
-                "salary",
+                "Salary",
                 "",
                 "Groceries",
                 "",
@@ -78,8 +78,8 @@ def test_report_service_limits_earnings_and_offsets_refunds() -> None:
     earn = rs.earnings(statement=df)
     exp = rs.expenses(statement=df)
 
-    # Only Income and Unplanned_income should be treated as earnings
-    assert set(earn["category"]) == {"Income", "Unplanned_income"}
+    # Only Primary_Income and Secondary_Income should be treated as earnings
+    assert set(earn["category"]) == {"Primary_Income", "Secondary_Income"}
     assert list(earn["amount"]) == [100.0, 60.0]
 
     # Expenses include negatives, mapped expense categories, and refund credits to offset totals

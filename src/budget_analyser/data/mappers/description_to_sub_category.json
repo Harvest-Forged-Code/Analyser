@@ -38,9 +38,11 @@
     "PG&E/EZ-PAY OAKLAND CA",
     "COMCAST-XFINITY  CABLE SVCS"
   ],
-  "Medical": [
+  "Healthcare": [
     "CVS/PHARMACY",
-    "PAMF 3200 KEARNEY ST MF FREMONT CA"
+    "PAMF 3200 KEARNEY ST MF FREMONT CA",
+    "ACUPUNCTURE",
+    "HARMONY THERAPY"
   ],
   "Groceries": [
     "INDIA METRO HYPERMARKET",
@@ -68,7 +70,8 @@
   "Maintenance": [
     "SUBARU",
     "AUTO SPA",
-    "PREMIERCANORTH"
+    "PREMIERCANORTH",
+    "BLOSSOM VALLEY COLLISION"
   ],
   "Insurance": [
     "AAA MILPITAS"
@@ -78,10 +81,11 @@
     "INDIANS BARBER INC",
     "MM BARBAR SHOP AND HAIR"
   ],
-  "Growth": [
+  "Education": [
     "UDEMY",
     "LEETCODE",
-    "COURSERA"
+    "COURSERA",
+    "TWO WHEEL SAFETY TRAINING"
   ],
   "Subscriptions": [
     "MICROSOFT*MICROSOFT",
@@ -96,7 +100,7 @@
     "CLEAR  *clearme.com",
     "CALIFORNIA PURE WATER"
   ],
-  "Restaurants": [
+  "Dining": [
     "RESTAURANT",
     "cafe",
     "COFFEE",
@@ -159,7 +163,8 @@
     "MILAN SWEET CENTER",
     "OBU RAMEN HOUSE SAN JOSE CA",
     "TST*ANJAPAR",
-    "TORTAS Y TACOS MI PEQU"
+    "TORTAS Y TACOS MI PEQU",
+    "MANCINIS - MIL37 MILPITAS CAAPPLE PAY ENDING IN 2876"
   ],
   "Travel": [
     "LYFT",
@@ -170,7 +175,7 @@
     "SINGAPOREAIR",
     "FASTRAK CSC"
   ],
-  "Additional_charges": [
+  "Fees": [
     "Interest",
     "NAYAX AIR "
   ],
@@ -178,10 +183,6 @@
     "Zelle payment to",
     "ATM WITHDRAWAL",
     "PAYPAL *SCIEDUPRESS"
-  ],
-  "Mistake": [
-    "ACUPUNCTURE",
-    "HARMONY THERAPY"
   ],
   "Shopping": [
     "LENSCRAFTERS",
@@ -195,7 +196,11 @@
     "IKEA",
     "MACYS VALLEY FAIR",
     "MARSHALLS ",
-    "MICRO CENTER"
+    "MICRO CENTER",
+    "FEDEX",
+    "PETSMART # 0070",
+    "HCM*US CRICKET STORE",
+    "KHOOBSURAT SAREE PALACE"
   ],
   "Salary": [
     "Western Digital  PAYROLL",
@@ -217,7 +222,35 @@
     "MSPBNA           ACH TRNSFR                 PPD ID: 1391321258",
     "REMOTE ONLINE DEPOSIT #          1"
   ],
-  "Trip-Rental": [
+  "Vacation": [
+    "ALCATRAZ CRUISES",
+    "HOOVER DAM PARK/TOUR",
+    "SEATTLE GREAT WHEEL",
+    "SHRINE DRIVE THRU TREE",
+    "HUMBOLDT REDWOODS STATE ",
+    "BOSS LIQUOR",
+    "BONANZA GIFT SHOP",
+    "BRAVO-ROBINSON PITTSBURGH PA",
+    "B SQUARED FLOWERS LLC",
+    "IN *FRUIT BARN",
+    "HUDSON ST1807",
+    "559- RIVER NORTH NEWS",
+    "TST* SANKALP - CRANBERRY",
+    "EL CAMPESINO",
+    "CTLP*EAS Systems",
+    "76 - GRANTS PASS UNION",
+    "SQ *J&J RAMOS FARMS",
+    "PIKE PLACE MARKET PDA",
+    "DUNKIN T1 D26 NORTH LA",
+    "HUBS FIVE & TEN FREMONT CA",
+    "TJMAXX #0404 FREMONT CA",
+    "TCB*MTA METER MTA MCK",
+    "Store",
+    "PY *BEACH BREAK BY MARIAN",
+    "TST* SAWASDEE SOQUEL CA",
+    "CITY OF CAPITOLA 8314757300 CA",
+    "GDP*21BC",
+    "PIKE&PINE ST2275",
     "SFO PARKING",
     "AIRBNB",
     "ALAMO RENT-A-CAR",
@@ -238,54 +271,11 @@
     "BOWLERO",
     "DAVE &amp; BUSTERS "
   ],
-  "Vacation": [
-    "ALCATRAZ CRUISES",
-    "HOOVER DAM PARK/TOUR",
-    "SEATTLE GREAT WHEEL",
-    "SHRINE DRIVE THRU TREE",
-    "HUMBOLDT REDWOODS STATE ",
-    "BOSS LIQUOR",
-    "BONANZA GIFT SHOP",
-    "BRAVO-ROBINSON PITTSBURGH PA",
-    "B SQUARED FLOWERS LLC",
-    "IN *FRUIT BARN",
-    "HUDSON ST1807",
-    "559- RIVER NORTH NEWS",
-    "TST* SANKALP - CRANBERRY",
-    "EL CAMPESINO",
-    "CTLP*EAS Systems",
-    "76 - GRANTS PASS UNION",
-    "SQ *J&amp;J RAMOS FARMS",
-    "PIKE PLACE MARKET PDA",
-    "DUNKIN T1 D26 NORTH LA",
-    "HUBS FIVE & TEN FREMONT CA",
-    "TJMAXX #0404 FREMONT CA",
-    "TCB*MTA METER MTA MCK",
-    "Store",
-    "PY *BEACH BREAK BY MARIAN",
-    "TST* SAWASDEE SOQUEL CA",
-    "CITY OF CAPITOLA 8314757300 CA",
-    "GDP*21BC",
-    "PIKE&amp;PINE ST2275"
-  ],
-  "OTP": [
-    "USCIS PHOENIX LOCKBOX",
-    "FEDEX",
-    "FD *CA DMV",
-    "BLOSSOM VALLEY COLLISION",
-    "HCM*US CRICKET STORE",
-    "HRBLOCK RETAIL",
-    "KHOOBSURAT SAREE PALACE",
-    "TWO WHEEL SAFETY TRAINING",
-    "ROBINHOOD        DEBITS     563498831       WEB ID: 5326394001",
-    "Online RealTime payment to Robinhood Securities transaction#: 6325457 REFERENCE#:7006325457RX 05/23",
-    "MANCINIS - MIL37 MILPITAS CAAPPLE PAY ENDING IN 2876",
-    "PETSMART # 0070"
-  ],
-  "TAX_Payments": [
+  "Taxes": [
     "IRS",
     "USATAXPYMT",
-    "FRANCHISE TAX BO PAYMENTS                   PPD ID: 1282532045"
+    "FRANCHISE TAX BO PAYMENTS                   PPD ID: 1282532045",
+    "HRBLOCK RETAIL"
   ],
   "Farmers_Markets": [
     "SQ *LUJANFARM",
@@ -293,5 +283,13 @@
     "SQ *SF GOURMET FOOD LLC",
     "SQ *BECKMANN'S OLD WORLD",
     "SQ *MAGOWAN'S INFINITE MI"
+  ],
+  "Government": [
+    "USCIS PHOENIX LOCKBOX",
+    "FD *CA DMV"
+  ],
+  "Investments": [
+    "ROBINHOOD        DEBITS     563498831       WEB ID: 5326394001",
+    "Online RealTime payment to Robinhood Securities transaction#: 6325457 REFERENCE#:7006325457RX 05/23"
   ]
 }

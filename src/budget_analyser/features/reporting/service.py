@@ -14,13 +14,13 @@ import pandas as pd
 class ReportService:
     """Service that creates report DataFrames from transactions."""
 
-    DEFAULT_EARNINGS_CATEGORIES = {"Income", "Unplanned_income"}
+    DEFAULT_EARNINGS_CATEGORIES = {
+        "Primary_Income", "Secondary_Income",
+    }
     DEFAULT_EXPENSE_CATEGORIES = {
         "Needs",
-        "Flexible",
-        "Luxuries",
-        "payments_made",
-        "payment_confirmations",
+        "Wants",
+        "Luxury",
         "Remittance",
         "Unplanned_Spending's",
         "Refunded_money",
@@ -49,8 +49,8 @@ class ReportService:
         Example:
             >>> svc = ReportService(
             ...     cashflow_mapping={
-            ...         "earnings": ["Income", "Bonus"],
-            ...         "expenses": ["Needs", "Luxuries"],
+            ...         "earnings": ["Primary_Income", "Bonus"],
+            ...         "expenses": ["Needs", "Luxury"],
             ...     },
             ... )
         """
@@ -151,7 +151,7 @@ class ReportService:
             >>> svc = ReportService()
             >>> df = pd.DataFrame({
             ...     "amount": [1000, -50],
-            ...     "category": ["Income", "Needs"],
+            ...     "category": ["Primary_Income", "Needs"],
             ... })
             >>> result = svc.earnings(statement=df)
             >>> len(result)

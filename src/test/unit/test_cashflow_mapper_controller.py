@@ -19,13 +19,13 @@ class _StubStore:
 
 
 def test_set_mapping_dedup_and_expenses_win() -> None:
-    store = _StubStore({"Earnings": ["Income", "Bonus"], "Expenses": ["Flexible"]})
+    store = _StubStore({"Earnings": ["Income", "Bonus"], "Expenses": ["Wants"]})
     controller = CashflowMapperController(store, logging.getLogger(__name__))
 
-    controller.set_mapping(["Income", "Flexible", "Bonus", "Bonus"], ["Flexible", "Needs"])
+    controller.set_mapping(["Income", "Wants", "Bonus", "Bonus"], ["Wants", "Needs"])
 
     assert controller.earnings_categories() == ["Income", "Bonus"]
-    assert controller.expense_categories() == ["Flexible", "Needs"]
+    assert controller.expense_categories() == ["Wants", "Needs"]
 
 
 def test_move_and_save_persists_changes() -> None:

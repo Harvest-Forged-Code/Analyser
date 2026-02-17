@@ -15,7 +15,7 @@ class TestReportService:
             "description": ["Salary", "Groceries", "Gas", "Refund"],
             "amount": [5000.0, -200.0, -50.0, 30.0],
             "category": [
-                "Income", "Needs", "Needs", "Refunded_money",
+                "Primary_Income", "Needs", "Needs", "Refunded_money",
             ],
             "sub_category": ["Wages", "Food", "Fuel", "Refund"],
             "year_month": ["2024-01", "2024-01", "2024-01", "2024-01"],
@@ -35,7 +35,7 @@ class TestReportService:
     def test_earnings_custom_mapping(self) -> None:
         svc = ReportService(
             cashflow_mapping={
-                "Earnings": ["Income"],
+                "Earnings": ["Primary_Income"],
                 "Expenses": ["Needs"],
             },
         )

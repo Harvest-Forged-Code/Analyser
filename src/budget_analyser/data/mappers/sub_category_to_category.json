@@ -6,31 +6,29 @@
     "Utilities",
     "Gas",
     "Insurance",
-    "TAX_Payments"
+    "Healthcare",
+    "Taxes",
+    "Government",
+    "Fees"
   ],
-  "Flexible": [
+  "Wants": [
     "Transportation",
     "Cash_out",
     "Farmers_Markets",
     "Grooming",
-    "Growth",
-    "Medical",
-    "Maintenance"
+    "Education",
+    "Dining",
+    "Subscriptions",
+    "Shopping",
+    "Maintenance",
+    "Investments"
   ],
-  "Luxuries": [
+  "Luxury": [
     "Travel",
     "Vacation",
-    "Shopping",
-    "Restaurants",
     "Entertainment",
-    "Additional_charges",
-    "Mistake",
-    "Trips",
-    "Donation",
-    "Subscriptions",
-    "OTP",
     "Electronics",
-    "Trip-Rental"
+    "Donation"
   ],
   "payments_made": [
     "payments_made"
@@ -38,13 +36,13 @@
   "payment_confirmations": [
     "payment_confirmations"
   ],
-  "Income": [
-    "salary"
+  "Primary_Income": [
+    "Salary"
   ],
   "Remittance": [
     "Remittance"
   ],
-  "Unplanned_income": [
+  "Secondary_Income": [
     "Others_income"
   ],
   "Unplanned_Spending's": [

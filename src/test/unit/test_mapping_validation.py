@@ -76,7 +76,7 @@ class TestKeywordCollisionDetection:
             "Groceries": ["walmart", "costco"],
         }
         sub_to_cat = {
-            "Luxuries": ["Restaurants"],
+            "Luxury": ["Restaurants"],
             "Needs": ["Groceries"],
         }
 
@@ -90,7 +90,7 @@ class TestKeywordCollisionDetection:
             "Groceries": ["coffee", "walmart"],  # "coffee" collision
         }
         sub_to_cat = {
-            "Luxuries": ["Restaurants"],
+            "Luxury": ["Restaurants"],
             "Needs": ["Groceries"],
         }
 
@@ -105,7 +105,7 @@ class TestKeywordCollisionDetection:
             "Restaurants": ["COFFEE"],
             "Groceries": ["coffee"],
         }
-        sub_to_cat = {"Luxuries": ["Restaurants", "Groceries"]}
+        sub_to_cat = {"Luxury": ["Restaurants", "Groceries"]}
 
         report = validate_mappings(desc_to_sub=desc_to_sub, sub_to_cat=sub_to_cat)
         collisions = [i for i in report.issues if i.issue_type == "keyword_collision"]
@@ -121,7 +121,7 @@ class TestOrphanSubCategoryDetection:
             "Groceries": ["walmart"],
         }
         sub_to_cat = {
-            "Luxuries": ["Restaurants"],
+            "Luxury": ["Restaurants"],
             "Needs": ["Groceries"],
         }
 
@@ -136,7 +136,7 @@ class TestOrphanSubCategoryDetection:
             "OrphanCategory": ["something"],  # Not in sub_to_cat
         }
         sub_to_cat = {
-            "Luxuries": ["Restaurants"],
+            "Luxury": ["Restaurants"],
             "Needs": ["Groceries"],
         }
 
@@ -184,7 +184,7 @@ class TestEmptyMappingDetection:
             "EmptyCategory": [],  # Empty list
         }
         sub_to_cat = {
-            "Luxuries": ["Restaurants", "EmptyCategory"],
+            "Luxury": ["Restaurants", "EmptyCategory"],
         }
 
         report = validate_mappings(desc_to_sub=desc_to_sub, sub_to_cat=sub_to_cat)
@@ -197,7 +197,7 @@ class TestEmptyMappingDetection:
             "Restaurants": ["starbucks"],
         }
         sub_to_cat = {
-            "Luxuries": ["Restaurants"],
+            "Luxury": ["Restaurants"],
             "EmptyParent": [],  # Empty list
         }
 
@@ -213,7 +213,7 @@ class TestDuplicateKeywordDetection:
         desc_to_sub = {
             "Restaurants": ["starbucks", "STARBUCKS", "coffee"],  # Duplicate
         }
-        sub_to_cat = {"Luxuries": ["Restaurants"]}
+        sub_to_cat = {"Luxury": ["Restaurants"]}
 
         report = validate_mappings(desc_to_sub=desc_to_sub, sub_to_cat=sub_to_cat)
         dupes = [i for i in report.issues if i.issue_type == "duplicate_keyword"]
@@ -249,11 +249,11 @@ class TestCashflowCoverageDetection:
             "Restaurants": ["starbucks"],
         }
         sub_to_cat = {
-            "Luxuries": ["Restaurants"],
+            "Luxury": ["Restaurants"],
             "UnclassifiedCategory": ["something"],
         }
         cashflow_to_cat = {
-            "Expenses": ["Luxuries"],
+            "Expenses": ["Luxury"],
             # UnclassifiedCategory not listed
         }
 
@@ -271,10 +271,10 @@ class TestCashflowCoverageDetection:
             "Restaurants": ["starbucks"],
         }
         sub_to_cat = {
-            "Luxuries": ["Restaurants"],
+            "Luxury": ["Restaurants"],
         }
         cashflow_to_cat = {
-            "Expenses": ["Luxuries"],
+            "Expenses": ["Luxury"],
         }
 
         report = validate_mappings(
@@ -298,11 +298,11 @@ class TestRealWorldValidation:
         }
         sub_to_cat = {
             "payments_made": ["payments_made"],
-            "Luxuries": ["Restaurants"],
+            "Luxury": ["Restaurants"],
             "Needs": ["Groceries", "Gas"],
         }
         cashflow_to_cat = {
-            "Expenses": ["Luxuries", "Needs", "payments_made"],
+            "Expenses": ["Luxury", "Needs", "payments_made"],
         }
 
         report = validate_mappings(

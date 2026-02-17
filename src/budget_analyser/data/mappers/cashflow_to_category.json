@@ -1,12 +1,12 @@
 {
   "Earnings": [
-    "Income",
-    "Unplanned_income"
+    "Primary_Income",
+    "Secondary_Income"
   ],
   "Expenses": [
     "Needs",
-    "Flexible",
-    "Luxuries",
+    "Wants",
+    "Luxury",
     "Remittance",
     "Unplanned_Spending's",
     "Refunded_money"
