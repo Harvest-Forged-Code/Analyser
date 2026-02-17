@@ -6,12 +6,20 @@ import pytest
 
 from budget_analyser.features.budget_goals.models import (
     BudgetGoal,
+    BudgetGoalsSummary,
     BudgetProgress,
+    CategoryProgressPoint,
     EarningsGoal,
+    EarningsGoalsSummary,
+    ProgressSummary,
 )
 from budget_analyser.features.budget_goals.service import (
     build_earnings_goal_map,
+    calculate_budget_goals_summary,
     calculate_budget_progress,
+    calculate_category_progress_history,
+    calculate_earnings_goals_summary,
+    calculate_progress_summary,
 )
 
 
@@ -190,3 +198,155 @@ def test_earnings_map_unmatched_month_falls_back_to_all() -> None:
 def test_earnings_map_empty_goals() -> None:
     result = build_earnings_goal_map(goals=[])
     assert result == {}
+
+
+# ==================== calculate_budget_goals_summary ====================
+
+
+def test_budget_summary_empty_goals() -> None:
+    result = calculate_budget_goals_summary(goals=[])
+    assert result.total_monthly_budget == 0.0
+    assert result.categories_tracked == 0
+    assert result.month_overrides == 0
+
+
+def test_budget_summary_all_defaults_only() -> None:
+    goals = [
+        BudgetGoal(id=1, category="Food", monthly_limit=500, year_month="ALL"),
+        BudgetGoal(id=2, category="Transport", monthly_limit=200, year_month="ALL"),
+    ]
+    result = calculate_budget_goals_summary(goals=goals)
+    assert result.total_monthly_budget == 700.0
+    assert result.categories_tracked == 2
+    assert result.month_overrides == 0
+
+
+def test_budget_summary_with_overrides() -> None:
+    goals = [
+        BudgetGoal(id=1, category="Food", monthly_limit=500, year_month="ALL"),
+        BudgetGoal(id=2, category="Food", monthly_limit=600, year_month="2025-12"),
+        BudgetGoal(id=3, category="Transport", monthly_limit=200, year_month="ALL"),
+        BudgetGoal(id=4, category="Transport", monthly_limit=250, year_month="2025-01"),
+    ]
+    result = calculate_budget_goals_summary(goals=goals)
+    assert result.total_monthly_budget == 700.0  # Only "ALL" goals
+    assert result.categories_tracked == 2
+    assert result.month_overrides == 2
+
+
+# ==================== calculate_earnings_goals_summary ====================
+
+
+def test_earnings_summary_empty_goals() -> None:
+    result = calculate_earnings_goals_summary(goals=[])
+    assert result.total_expected_earnings == 0.0
+    assert result.sub_categories_tracked == 0
+    assert result.month_overrides == 0
+
+
+def test_earnings_summary_with_overrides() -> None:
+    goals = [
+        EarningsGoal(id=1, sub_category="Salary", expected_amount=5000, year_month="ALL"),
+        EarningsGoal(id=2, sub_category="Salary", expected_amount=5500, year_month="2025-12"),
+        EarningsGoal(id=3, sub_category="Bonus", expected_amount=1000, year_month="ALL"),
+    ]
+    result = calculate_earnings_goals_summary(goals=goals)
+    assert result.total_expected_earnings == 6000.0
+    assert result.sub_categories_tracked == 2
+    assert result.month_overrides == 1
+
+
+# ==================== calculate_progress_summary ====================
+
+
+def test_progress_summary_empty() -> None:
+    result = calculate_progress_summary(progress_list=[])
+    assert result.on_track_count == 0
+    assert result.warning_count == 0
+    assert result.over_budget_count == 0
+    assert result.total_spent == 0.0
+    assert result.total_budget == 0.0
+
+
+def test_progress_summary_mixed_statuses() -> None:
+    progress_list = [
+        BudgetProgress(
+            category="Food", budget_limit=500, spent=200,
+            remaining=300, percentage=40, status="under",
+        ),
+        BudgetProgress(
+            category="Transport", budget_limit=200, spent=180,
+            remaining=20, percentage=90, status="warning",
+        ),
+        BudgetProgress(
+            category="Dining", budget_limit=300, spent=350,
+            remaining=-50, percentage=116.7, status="over",
+        ),
+    ]
+    result = calculate_progress_summary(progress_list=progress_list)
+    assert result.on_track_count == 1
+    assert result.warning_count == 1
+    assert result.over_budget_count == 1
+    assert result.total_spent == 730.0
+    assert result.total_budget == 1000.0
+
+
+# ==================== calculate_category_progress_history ====================
+
+
+def test_category_history_empty_expenses() -> None:
+    budgets = [
+        BudgetGoal(id=1, category="Food", monthly_limit=500, year_month="ALL"),
+    ]
+    result = calculate_category_progress_history(
+        category="Food",
+        budgets=budgets,
+        expenses_df=pd.DataFrame(),
+        months=["2025-01", "2025-02"],
+    )
+    assert len(result) == 2
+    assert result[0].year_month == "2025-01"
+    assert result[0].spent == 0.0
+    assert result[0].budget_limit == 500.0
+
+
+def test_category_history_with_spending() -> None:
+    budgets = [
+        BudgetGoal(id=1, category="Food", monthly_limit=500, year_month="ALL"),
+    ]
+    expenses = pd.DataFrame({
+        "transaction_date": ["2025-01-15", "2025-02-10"],
+        "amount": [-200, -450],
+        "category": ["Food", "Food"],
+    })
+    result = calculate_category_progress_history(
+        category="Food",
+        budgets=budgets,
+        expenses_df=expenses,
+        months=["2025-01", "2025-02"],
+    )
+    assert len(result) == 2
+    assert result[0].spent == 200.0
+    assert result[0].status == "under"
+    assert result[1].spent == 450.0
+    assert result[1].status == "warning"
+
+
+def test_category_history_month_specific_override() -> None:
+    budgets = [
+        BudgetGoal(id=1, category="Food", monthly_limit=500, year_month="ALL"),
+        BudgetGoal(id=2, category="Food", monthly_limit=700, year_month="2025-02"),
+    ]
+    expenses = pd.DataFrame({
+        "transaction_date": ["2025-01-15", "2025-02-10"],
+        "amount": [-200, -450],
+        "category": ["Food", "Food"],
+    })
+    result = calculate_category_progress_history(
+        category="Food",
+        budgets=budgets,
+        expenses_df=expenses,
+        months=["2025-01", "2025-02"],
+    )
+    assert result[0].budget_limit == 500.0  # ALL default
+    assert result[1].budget_limit == 700.0  # Month override
