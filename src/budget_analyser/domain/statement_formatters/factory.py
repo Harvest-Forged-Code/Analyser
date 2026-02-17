@@ -26,7 +26,16 @@ def create_statement_formatter(
         column_mapping: Source->desired column mapping.
 
     Returns:
-        A `BaseStatementFormatter` implementation.
+        A `BaseStatementFormatter` implementation for the account.
+
+    Example:
+        >>> formatter = create_statement_formatter(
+        ...     account_name="citi",
+        ...     statement=raw_df,
+        ...     column_mapping={"Date": "transaction_date"},
+        ... )
+        >>> type(formatter).__name__
+        'CitiStatementFormatter'
     """
     if account_name == "citi":
         return CitiStatementFormatter(

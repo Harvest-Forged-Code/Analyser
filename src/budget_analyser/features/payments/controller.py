@@ -36,6 +36,13 @@ class PaymentsReconciliationController:
         reports: list[MonthlyReports],
         logger: logging.Logger,
     ) -> None:
+        """Initialize the payments reconciliation controller.
+
+        Args:
+            reports: List of monthly report objects containing
+                transaction DataFrames.
+            logger: Logger for diagnostic messages.
+        """
         self._reports = reports
         self._logger = logger
         self._by_period: dict[pd.Period, MonthlyReports] = {
@@ -43,12 +50,35 @@ class PaymentsReconciliationController:
         }
 
     def available_months(self) -> list[pd.Period]:
-        """Return sorted list of available months."""
+        """Return sorted list of available months.
+
+        Returns:
+            Periods sorted in ascending chronological order.
+
+        Example:
+            >>> controller.available_months()
+            [Period('2025-01', 'M'), Period('2025-02', 'M')]
+        """
         return sorted(self._by_period.keys())
 
     @staticmethod
     def month_label(period: pd.Period) -> str:
-        """Return human-readable month label."""
+        """Return human-readable month label.
+
+        Args:
+            period: A pandas ``Period`` with monthly frequency.
+
+        Returns:
+            String in ``"MonthName Year"`` format
+            (e.g. ``"January 2025"``).
+
+        Example:
+            >>> import pandas as pd
+            >>> PaymentsReconciliationController.month_label(
+            ...     pd.Period("2025-01", freq="M"),
+            ... )
+            'January 2025'
+        """
         return (
             f"{MONTH_NAMES[int(period.month) - 1]} "
             f"{int(period.year)}"
@@ -60,8 +90,26 @@ class PaymentsReconciliationController:
     ) -> PaymentsReconciliationSummary:
         """Return reconciliation data for a given month.
 
+        Filters the month's transactions by sub-category to
+        separate payments made from payment confirmations.
         Totals are absolute sums for robust matching.
         Difference = confirmations - payments.
+
+        Args:
+            period: The month period to retrieve data for.
+
+        Returns:
+            PaymentsReconciliationSummary containing
+            separated DataFrames and computed totals. Returns
+            empty DataFrames if the period has no data.
+
+        Example:
+            >>> import pandas as pd
+            >>> summary = controller.data(
+            ...     pd.Period("2025-01", freq="M"),
+            ... )
+            >>> summary.difference
+            0.0
         """
         mr = self._by_period.get(period)
         if (mr is None or mr.transactions is None

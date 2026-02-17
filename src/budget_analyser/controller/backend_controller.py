@@ -56,6 +56,24 @@ class BackendController:  # pylint: disable=too-few-public-methods
 
         Returns:
             A list of `MonthlyReports` objects (one per month).
+
+        Raises:
+            MappingNotFoundError: If column or category mappings are
+                missing or misconfigured.
+            DataSourceError: If statement CSV files cannot be read.
+            ValidationError: If transaction data is malformed.
+
+        Example:
+            >>> controller = BackendController(
+            ...     statement_repository=repo,
+            ...     column_mappings=col_map,
+            ...     category_mappings=cat_map,
+            ...     report_service=report_svc,
+            ...     logger=logger,
+            ... )
+            >>> reports = controller.run()
+            >>> len(reports)
+            3
         """
         # 1) Load raw statement data.
         t0 = time.perf_counter()
@@ -223,6 +241,14 @@ class BackendController:  # pylint: disable=too-few-public-methods
 
         Returns:
             A list of `MonthlyReports` objects (one per month).
+
+        Raises:
+            KeyError: If required columns are missing from the DataFrame.
+
+        Example:
+            >>> reports = controller.run_from_database(transactions_df)
+            >>> len(reports)
+            3
         """
         t0 = time.perf_counter()
         tx_count = len(processed_transactions)

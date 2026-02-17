@@ -20,7 +20,16 @@ from typing import Mapping
 
 @dataclass(frozen=True)
 class IniAppConfig:
-    """INI-backed configuration reader."""
+    """INI-backed configuration reader.
+
+    Example:
+        >>> config = IniAppConfig(path=Path("config/budget_analyser.ini"))
+        >>> accounts = config.list_accounts(section="credit_cards")
+        >>> config.get_statement_filename(
+        ...     section="credit_cards", account="citi"
+        ... )
+        'citi_statement.csv'
+    """
 
     path: Path
 

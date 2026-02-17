@@ -45,6 +45,19 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
         reports: list[MonthlyReports],
         logger: logging.Logger,
     ) -> None:
+        """Initialize the expenses statistics controller.
+
+        Args:
+            reports: List of monthly report objects containing
+                expenses DataFrames and period metadata.
+            logger: Logger instance for diagnostic messages.
+
+        Example:
+            >>> ctrl = ExpensesStatsController(
+            ...     reports=reports,
+            ...     logger=logging.getLogger(__name__),
+            ... )
+        """
         self._reports = reports
         self._logger = logger
         self._by_period: dict[pd.Period, MonthlyReports] = {
@@ -57,18 +70,48 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
         self._year_cache: dict[int, _YearSummary] = {}
 
     def available_months(self) -> list[pd.Period]:
-        """Return sorted list of available months."""
+        """Return sorted list of available months.
+
+        Returns:
+            Periods sorted in chronological order.
+
+        Example:
+            >>> months = ctrl.available_months()
+            >>> months[0]
+            Period('2024-01', 'M')
+        """
         return sorted(self._by_period.keys())
 
     def available_years(self) -> list[int]:
-        """Return sorted list of years that have data."""
+        """Return sorted list of years that have data.
+
+        Returns:
+            Distinct years in ascending order.
+
+        Example:
+            >>> ctrl.available_years()
+            [2023, 2024]
+        """
         return sorted(
             {int(p.year) for p in self._by_period.keys()},
         )
 
     @staticmethod
     def month_label(period: pd.Period) -> str:
-        """Return short month label."""
+        """Return short month label (e.g., ``'Jan 2025'``).
+
+        Args:
+            period: A monthly pandas Period.
+
+        Returns:
+            Formatted string like ``"Jan 2025"``.
+
+        Example:
+            >>> ExpensesStatsController.month_label(
+            ...     pd.Period("2025-01", freq="M"),
+            ... )
+            'Jan 2025'
+        """
         short_names = [
             "Jan", "Feb", "Mar", "Apr", "May", "Jun",
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -79,7 +122,21 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
         )
 
     def total_for_month(self, period: pd.Period) -> float:
-        """Return total expenses (positive) for a month."""
+        """Return total expenses as a positive value for a month.
+
+        Results are cached after the first computation.
+
+        Args:
+            period: The month to query.
+
+        Returns:
+            Sum of all expense amounts (negated to positive)
+            for the period. Returns ``0.0`` when no data exists.
+
+        Example:
+            >>> ctrl.total_for_month(pd.Period("2024-01", "M"))
+            3200.0
+        """
         cached = self._month_total_cache.get(period)
         if cached is not None:
             return cached
@@ -98,7 +155,33 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
     def category_breakdown(
         self, period: pd.Period,
     ) -> list[tuple[str, float, list[tuple[str, float]]]]:
-        """Return category breakdown for a month."""
+        """Return hierarchical category breakdown for a month.
+
+        Computes expense totals grouped by category, each with
+        its sub-category breakdown. Results are cached.
+
+        Args:
+            period: The month to query.
+
+        Returns:
+            List of 3-tuples, one per category:
+                - category_name: The expense category
+                  (e.g. ``"Needs"``).
+                - category_total: Total expenses (positive)
+                  for this category.
+                - subcats: List of ``(sub_category, amount)``
+                  tuples sorted by amount descending.
+
+        Example:
+            >>> breakdown = ctrl.category_breakdown(
+            ...     pd.Period("2024-01", "M"),
+            ... )
+            >>> cat, total, subcats = breakdown[0]
+            >>> cat
+            'Needs'
+            >>> subcats[0]
+            ('Rent', 1500.0)
+        """
         cached = self._category_cache.get(period)
         if cached is None:
             cached = self._compute_category_nodes(period)
@@ -115,7 +198,32 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
         category: str | None = None,
         sub_category: str | None = None,
     ) -> pd.DataFrame:
-        """Return transactions for a month."""
+        """Return expense transactions for a month.
+
+        Optionally filters to a specific category and/or
+        sub-category.
+
+        Args:
+            period: The month to query.
+            category: If provided, only return transactions
+                matching this category.
+            sub_category: If provided, only return transactions
+                matching this sub-category.
+
+        Returns:
+            DataFrame with columns ``transaction_date``,
+            ``description``, ``amount``, ``from_account``,
+            ``category``, and ``sub_category``. Empty DataFrame
+            when no data exists.
+
+        Example:
+            >>> df = ctrl.transactions(
+            ...     pd.Period("2024-01", "M"),
+            ...     category="Needs",
+            ... )
+            >>> list(df.columns)[:3]
+            ['transaction_date', 'description', 'amount']
+        """
         mr = self._by_period.get(period)
         if mr is None:
             return pd.DataFrame()
@@ -144,7 +252,18 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
         return out.copy()
 
     def total_for_year(self, year: int) -> float:
-        """Return total expenses (positive) for a year."""
+        """Return total expenses as a positive value for a year.
+
+        Args:
+            year: Calendar year (e.g. ``2024``).
+
+        Returns:
+            Sum of all monthly expense totals for the year.
+
+        Example:
+            >>> ctrl.total_for_year(2024)
+            38400.0
+        """
         return self._get_year_summary(year).total
 
     def year_breakdown(
@@ -156,7 +275,26 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
             list[tuple[str, float, list[tuple[str, float]]]],
         ]
     ]:
-        """Return breakdown by month for a year."""
+        """Return month-by-month breakdown for a year.
+
+        Args:
+            year: Calendar year (e.g. ``2024``).
+
+        Returns:
+            List of 3-tuples, one per month:
+                - period: The pandas Period for the month.
+                - total: Total expenses (positive) for the
+                  month.
+                - categories: List of category 3-tuples
+                  matching the structure returned by
+                  :meth:`category_breakdown`.
+
+        Example:
+            >>> breakdown = ctrl.year_breakdown(2024)
+            >>> period, total, cats = breakdown[0]
+            >>> total
+            3200.0
+        """
         return list(self._get_year_summary(year).months)
 
     def transactions_for_year(
@@ -167,7 +305,30 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
         category: str | None = None,
         sub_category: str | None = None,
     ) -> pd.DataFrame:
-        """Return transactions for a year."""
+        """Return expense transactions for a year.
+
+        Optionally restricts to a specific month, category,
+        and/or sub-category.
+
+        Args:
+            year: Calendar year (e.g. ``2024``).
+            month: If provided, only include this month.
+            category: If provided, filter to this category.
+            sub_category: If provided, filter to this
+                sub-category.
+
+        Returns:
+            DataFrame of matching transactions. Empty
+            DataFrame with standard columns when no data
+            exists.
+
+        Example:
+            >>> df = ctrl.transactions_for_year(
+            ...     2024, category="Needs",
+            ... )
+            >>> len(df) > 0
+            True
+        """
         frames = []
         for period in self._by_period:
             if int(period.year) != year:
@@ -201,7 +362,26 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
     def total_for_range(
         self, start_date: date, end_date: date,
     ) -> float:
-        """Return total expenses (positive) for a date range."""
+        """Return total expenses as positive for a date range.
+
+        Sums negated expense amounts across all months for
+        transactions whose date falls within the range.
+
+        Args:
+            start_date: Start of the range (inclusive).
+            end_date: End of the range (inclusive).
+
+        Returns:
+            Total expenses as a positive number. Returns
+            ``0.0`` when no transactions match.
+
+        Example:
+            >>> from datetime import date
+            >>> ctrl.total_for_range(
+            ...     date(2024, 1, 1), date(2024, 6, 30),
+            ... )
+            19200.0
+        """
         total = 0.0
         for mr in self._reports:
             if mr.expenses is None or mr.expenses.empty:
@@ -219,7 +399,30 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
     def category_breakdown_for_range(
         self, start_date: date, end_date: date,
     ) -> list[tuple[str, float, list[tuple[str, float]]]]:
-        """Return category breakdown for a date range."""
+        """Return hierarchical category breakdown for a range.
+
+        Aggregates expenses by category and sub-category for
+        transactions within the specified date range.
+
+        Args:
+            start_date: Start of the range (inclusive).
+            end_date: End of the range (inclusive).
+
+        Returns:
+            List of 3-tuples, one per category:
+                - category_name: The expense category.
+                - category_total: Total expenses (positive).
+                - subcats: List of ``(sub_category, amount)``
+                  tuples sorted by amount descending.
+            Empty list when no data matches.
+
+        Example:
+            >>> from datetime import date
+            >>> breakdown = ctrl.category_breakdown_for_range(
+            ...     date(2024, 1, 1), date(2024, 6, 30),
+            ... )
+            >>> cat, total, subcats = breakdown[0]
+        """
         frames = []
         for mr in self._reports:
             if mr.expenses is None or mr.expenses.empty:
@@ -284,7 +487,32 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
         category: str | None = None,
         sub_category: str | None = None,
     ) -> pd.DataFrame:
-        """Return transactions within a date range."""
+        """Return expense transactions within a date range.
+
+        Collects transactions across all monthly reports whose
+        transaction date falls within the range, optionally
+        filtered by category and/or sub-category.
+
+        Args:
+            start_date: Start of the range (inclusive).
+            end_date: End of the range (inclusive).
+            category: If provided, filter to this category.
+            sub_category: If provided, filter to this
+                sub-category.
+
+        Returns:
+            DataFrame with columns ``transaction_date``,
+            ``description``, ``amount``, ``from_account``,
+            ``category``, and ``sub_category``. Empty
+            DataFrame when no data matches.
+
+        Example:
+            >>> from datetime import date
+            >>> df = ctrl.transactions_for_range(
+            ...     date(2024, 1, 1), date(2024, 6, 30),
+            ...     category="Needs",
+            ... )
+        """
         frames = []
         for mr in self._reports:
             if mr.expenses is None or mr.expenses.empty:
@@ -323,7 +551,24 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
         data: pd.DataFrame,
         cat_name: str,
     ) -> list[tuple[str, float]]:
-        """Build subcategory breakdown for a category."""
+        """Build subcategory breakdown for a single category.
+
+        Filters the DataFrame to the given category, groups by
+        sub-category, and returns positive totals sorted
+        descending.
+
+        Args:
+            data: Expenses DataFrame with ``category``,
+                ``sub_category``, and ``amount`` columns.
+            cat_name: Category name to filter on. Use
+                ``"(Uncategorized)"`` for rows with empty
+                category.
+
+        Returns:
+            List of ``(sub_category, amount)`` tuples sorted
+            by amount descending. Empty list when no
+            sub-category data is available.
+        """
         dcat = data
         if "category" in data.columns:
             cat_filter = (
@@ -357,7 +602,20 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
     def _compute_category_nodes(
         self, period: pd.Period,
     ) -> list[_CategoryNode]:
-        """Compute category nodes for a month."""
+        """Compute category nodes with sub-category detail.
+
+        Groups the month's expenses by category, then builds
+        a ``_CategoryNode`` for each containing sub-category
+        breakdowns sorted by amount descending.
+
+        Args:
+            period: The month to compute nodes for.
+
+        Returns:
+            List of ``_CategoryNode`` instances sorted by
+            total descending. Empty list when no expense data
+            exists for the period.
+        """
         mr = self._by_period.get(period)
         if (mr is None or mr.expenses is None
                 or mr.expenses.empty):
@@ -400,7 +658,18 @@ class ExpensesStatsController:  # pylint: disable=too-many-public-methods
         return nodes
 
     def _get_year_summary(self, year: int) -> _YearSummary:
-        """Compute and cache yearly summary."""
+        """Compute and cache yearly expense summary.
+
+        Iterates months for the year, accumulates totals and
+        category breakdowns, and caches the result.
+
+        Args:
+            year: Calendar year (e.g. ``2024``).
+
+        Returns:
+            Cached or freshly computed ``_YearSummary`` with
+            aggregate total and per-month category breakdown.
+        """
         cached = self._year_cache.get(year)
         if cached is not None:
             return cached

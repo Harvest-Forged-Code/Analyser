@@ -35,6 +35,18 @@ class UploadController:
             TransactionIngestionService | None
         ) = None,
     ) -> None:
+        """Initialize the upload controller.
+
+        Args:
+            logger: Logger for diagnostic messages.
+            ini_config: Application INI configuration providing
+                account names, column mappings, and filenames.
+            statements_dir: Directory where uploaded statement
+                CSV files are stored.
+            ingestion_service: Optional ingestion service for
+                automatic processing after upload. When
+                ``None``, uploads are copied but not ingested.
+        """
         self._logger = logger
         self._ini_config = ini_config
         self._statements_dir = statements_dir
@@ -50,10 +62,15 @@ class UploadController:
         """Return available bank names for the given account type.
 
         Args:
-            account_type: Either 'credit' or 'debit'.
+            account_type: Either ``'credit'`` or ``'debit'``.
 
         Returns:
             List of bank/account names from INI config.
+            Returns an empty list on configuration errors.
+
+        Example:
+            >>> controller.get_available_banks("credit")
+            ['citi', 'discover']
         """
         section = (
             "credit_cards"
@@ -178,12 +195,24 @@ class UploadController:
     ) -> tuple[bool, str, list[str]]:
         """Validate a CSV file against the expected bank format.
 
+        Checks file existence, extension, readability, and
+        that all required columns are present.
+
         Args:
             file_path: Path to the CSV file.
             bank_name: The bank/account identifier.
 
         Returns:
-            Tuple of (is_valid, message, missing_columns).
+            Tuple of ``(is_valid, message, missing_columns)``.
+            ``missing_columns`` is empty when valid.
+
+        Example:
+            >>> from pathlib import Path
+            >>> ok, msg, missing = controller.validate_csv(
+            ...     Path("citi.csv"), "citi",
+            ... )
+            >>> ok
+            True
         """
         if not file_path.exists():
             return False, f"File not found: {file_path}", []
@@ -233,13 +262,28 @@ class UploadController:
     ) -> UploadResult:
         """Validate and copy a statement file to statements dir.
 
+        Validates the CSV format, copies it to the configured
+        statements directory, and optionally runs the ingestion
+        pipeline if an ingestion service is available.
+
         Args:
             source_path: Path to the source CSV file.
             bank_name: The bank/account identifier.
-            account_type: Either 'credit' or 'debit'.
+            account_type: Either ``'credit'`` or ``'debit'``.
 
         Returns:
-            UploadResult with success status and message.
+            UploadResult with success status, destination path,
+            and transaction counts.
+
+        Example:
+            >>> from pathlib import Path
+            >>> result = controller.upload_statement(
+            ...     source_path=Path("/tmp/citi.csv"),
+            ...     bank_name="citi",
+            ...     account_type="credit",
+            ... )
+            >>> result.success
+            True
         """
         is_valid, message, _ = self.validate_csv(
             source_path, bank_name,
@@ -372,8 +416,15 @@ class UploadController:
     ) -> tuple[int, int, str]:
         """Run ingestion if service is available.
 
+        Args:
+            bank_name: The bank/account identifier used to
+                look up the column mapping.
+            dest_path: Path to the copied CSV file.
+
         Returns:
-            Tuple of (inserted, duplicates, message_suffix).
+            Tuple of ``(inserted, duplicates, message_suffix)``.
+            Returns ``(0, 0, "")`` when no ingestion service
+            is configured.
         """
         if self._ingestion_service is None:
             return 0, 0, ""

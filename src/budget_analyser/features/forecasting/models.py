@@ -28,6 +28,17 @@ class ForecastPoint:
         lower_bound: Lower confidence bound.
         upper_bound: Upper confidence bound.
         confidence: Confidence level (0.0-1.0).
+
+    Example:
+        >>> point = ForecastPoint(
+        ...     period="2024-06",
+        ...     value=1200.0,
+        ...     lower_bound=900.0,
+        ...     upper_bound=1500.0,
+        ...     confidence=0.8,
+        ... )
+        >>> point.value
+        1200.0
     """
 
     period: str
@@ -46,6 +57,22 @@ class ForecastResult:
         forecasts: List of forecast points.
         historical_data: The historical data used for forecasting.
         metrics: Model performance metrics.
+
+    Example:
+        >>> point = ForecastPoint(
+        ...     period="2024-06",
+        ...     value=1200.0,
+        ...     lower_bound=900.0,
+        ...     upper_bound=1500.0,
+        ...     confidence=0.8,
+        ... )
+        >>> result = ForecastResult(
+        ...     method=ForecastMethod.WEIGHTED_AVERAGE,
+        ...     forecasts=[point],
+        ...     historical_data={"2024-05": 1100.0},
+        ... )
+        >>> result.next_period_forecast.value
+        1200.0
     """
 
     method: ForecastMethod
@@ -55,9 +82,18 @@ class ForecastResult:
 
     @property
     def next_period_forecast(self) -> ForecastPoint | None:
-        """Get the forecast for the next period."""
+        """Get the forecast for the next period.
+
+        Returns:
+            The first ForecastPoint in the forecast list,
+            or None if no forecasts exist.
+        """
         return self.forecasts[0] if self.forecasts else None
 
     def total_forecasted(self) -> float:
-        """Sum of all forecasted values."""
+        """Sum of all forecasted values.
+
+        Returns:
+            Total of all forecast point values.
+        """
         return sum(f.value for f in self.forecasts)

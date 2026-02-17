@@ -15,7 +15,20 @@ from budget_analyser.features.net_worth.models import Account
 
 
 class NetWorthRepository:
-    """SQLite-backed storage for financial accounts."""
+    """SQLite-backed storage for financial accounts.
+
+    Manages CRUD operations for financial accounts used in
+    net worth tracking. The accounts table is created automatically.
+
+    Example:
+        >>> from pathlib import Path
+        >>> repo = NetWorthRepository(db_path=Path("budget.db"))
+        >>> account = repo.add_account(
+        ...     "Chase Checking", "checking", 2500.0,
+        ... )
+        >>> account.name
+        'Chase Checking'
+    """
 
     ACCOUNTS_TABLE = "accounts"
 
@@ -26,9 +39,17 @@ class NetWorthRepository:
     ) -> None:
         """Initialize the net worth repository.
 
+        Creates the accounts table if it does not already exist.
+
         Args:
             db_path: Path to the SQLite database file.
             logger: Optional logger for diagnostics.
+
+        Example:
+            >>> from pathlib import Path
+            >>> repo = NetWorthRepository(
+            ...     db_path=Path("/tmp/test.db"),
+            ... )
         """
         self._db_path = db_path
         self._logger = logger or logging.getLogger(
@@ -75,6 +96,12 @@ class NetWorthRepository:
 
         Raises:
             RuntimeError: If the database insert fails.
+
+        Example:
+            >>> repo.add_account(
+            ...     "Savings Account", "savings", 10000.0,
+            ... )
+            Account(id=1, name='Savings Account', ...)
         """
         today = date.today().isoformat()
 
@@ -111,12 +138,18 @@ class NetWorthRepository:
     ) -> bool:
         """Update an account's balance.
 
+        Also updates the last_updated date to today.
+
         Args:
             account_id: The account ID to update.
             balance: The new balance.
 
         Returns:
             True if the account was updated.
+
+        Example:
+            >>> repo.update_account_balance(1, 3000.0)
+            True
         """
         today = date.today().isoformat()
 
@@ -141,6 +174,11 @@ class NetWorthRepository:
 
         Returns:
             List of all Account entries ordered by type and name.
+
+        Example:
+            >>> accounts = repo.get_all_accounts()
+            >>> len(accounts)
+            3
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -171,6 +209,10 @@ class NetWorthRepository:
 
         Returns:
             True if an account was deleted.
+
+        Example:
+            >>> repo.delete_account(1)
+            True
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""

@@ -17,7 +17,14 @@ import pandas as pd
 
 @dataclass
 class BudgetGoal:
-    """A budget goal for a specific expense category."""
+    """A budget goal for a specific expense category.
+
+    Attributes:
+        id: Database primary key, None for unsaved records.
+        category: Expense category name (e.g. "groceries").
+        monthly_limit: Maximum monthly spending amount.
+        year_month: Target month "YYYY-MM" or "ALL" for default.
+    """
 
     id: int | None
     category: str
@@ -27,7 +34,14 @@ class BudgetGoal:
 
 @dataclass
 class EarningsGoal:
-    """An expected earnings goal for a specific sub-category."""
+    """An expected earnings goal for a specific sub-category.
+
+    Attributes:
+        id: Database primary key, None for unsaved records.
+        sub_category: Earnings sub-category name (e.g. "salary").
+        expected_amount: Expected monthly earnings amount.
+        year_month: Target month "YYYY-MM" or "ALL" for default.
+    """
 
     id: int | None
     sub_category: str
@@ -37,7 +51,17 @@ class EarningsGoal:
 
 @dataclass
 class Account:
-    """A financial account for net worth tracking."""
+    """A financial account for net worth tracking.
+
+    Attributes:
+        id: Database primary key, None for unsaved records.
+        name: Account display name (e.g. "Chase Checking").
+        account_type: One of "checking", "savings", "credit_card",
+            "investment", "loan", or "other".
+        balance: Current account balance.
+        last_updated: Last balance update date in ISO format.
+        notes: Optional free-text notes.
+    """
 
     id: int | None
     name: str
@@ -49,7 +73,19 @@ class Account:
 
 @dataclass
 class RecurringTransaction:  # pylint: disable=too-many-instance-attributes
-    """A detected or user-defined recurring transaction."""
+    """A detected or user-defined recurring transaction.
+
+    Attributes:
+        id: Database primary key, None for unsaved records.
+        description: Transaction description pattern.
+        expected_amount: Expected transaction amount.
+        frequency: Recurrence frequency ("monthly", "weekly",
+            "yearly", or "quarterly").
+        category: Top-level expense category.
+        sub_category: Expense sub-category.
+        last_occurrence: Date of last occurrence in ISO format.
+        is_active: Whether this recurring transaction is active.
+    """
 
     id: int | None
     description: str
@@ -192,6 +228,13 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         """Get budget goal for a category.
 
         First checks for month-specific goal, then falls back to "ALL".
+
+        Args:
+            category: The expense category name.
+            year_month: Specific month "YYYY-MM" or "ALL".
+
+        Returns:
+            The matching BudgetGoal or None if not found.
         """
         with self._get_connection() as conn:
             # Try specific month first
@@ -222,7 +265,11 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         )
 
     def get_all_budget_goals(self) -> list[BudgetGoal]:
-        """Get all budget goals."""
+        """Get all budget goals.
+
+        Returns:
+            List of all BudgetGoal records ordered by category.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 SELECT id, category, monthly_limit, year_month
@@ -242,7 +289,15 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         ]
 
     def delete_budget_goal(self, category: str, year_month: str = "ALL") -> bool:
-        """Delete a budget goal."""
+        """Delete a budget goal.
+
+        Args:
+            category: The expense category name.
+            year_month: Specific month "YYYY-MM" or "ALL".
+
+        Returns:
+            True if a goal was deleted, False if not found.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 DELETE FROM {self.BUDGETS_TABLE}
@@ -337,6 +392,13 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         """Get earnings goal for a sub-category.
 
         First checks for month-specific goal, then falls back to "ALL".
+
+        Args:
+            sub_category: The earnings sub-category name.
+            year_month: Specific month "YYYY-MM" or "ALL".
+
+        Returns:
+            The matching EarningsGoal or None if not found.
         """
         with self._get_connection() as conn:
             # Try specific month first
@@ -367,7 +429,11 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         )
 
     def get_all_earnings_goals(self) -> list[EarningsGoal]:
-        """Get all earnings goals."""
+        """Get all earnings goals.
+
+        Returns:
+            List of all EarningsGoal records ordered by sub_category.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 SELECT id, sub_category, expected_amount, year_month
@@ -387,7 +453,15 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         ]
 
     def delete_earnings_goal(self, sub_category: str, year_month: str = "ALL") -> bool:
-        """Delete an earnings goal."""
+        """Delete an earnings goal.
+
+        Args:
+            sub_category: The earnings sub-category name.
+            year_month: Specific month "YYYY-MM" or "ALL".
+
+        Returns:
+            True if a goal was deleted, False if not found.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 DELETE FROM {self.EARNINGS_GOALS_TABLE}
@@ -434,7 +508,20 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         balance: float = 0,
         notes: str = "",
     ) -> Account:
-        """Add a new financial account."""
+        """Add a new financial account.
+
+        Args:
+            name: Display name for the account.
+            account_type: Type such as "checking", "savings", etc.
+            balance: Initial balance (default 0).
+            notes: Optional free-text notes.
+
+        Returns:
+            The created Account with its database ID.
+
+        Raises:
+            RuntimeError: If the database insert fails.
+        """
         today = date.today().isoformat()
 
         with self._get_connection() as conn:
@@ -460,7 +547,15 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         )
 
     def update_account_balance(self, account_id: int, balance: float) -> bool:
-        """Update an account's balance."""
+        """Update an account's balance.
+
+        Args:
+            account_id: Database ID of the account.
+            balance: New balance value.
+
+        Returns:
+            True if the account was updated, False if not found.
+        """
         today = date.today().isoformat()
 
         with self._get_connection() as conn:
@@ -477,7 +572,11 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         return updated
 
     def get_all_accounts(self) -> list[Account]:
-        """Get all financial accounts."""
+        """Get all financial accounts.
+
+        Returns:
+            List of all Account records ordered by type and name.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 SELECT id, name, account_type, balance, last_updated, notes
@@ -499,7 +598,14 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         ]
 
     def delete_account(self, account_id: int) -> bool:
-        """Delete a financial account."""
+        """Delete a financial account.
+
+        Args:
+            account_id: Database ID of the account.
+
+        Returns:
+            True if the account was deleted, False if not found.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 DELETE FROM {self.ACCOUNTS_TABLE}
@@ -549,7 +655,21 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
         category: str = "",
         sub_category: str = "",
     ) -> RecurringTransaction:
-        """Add a recurring transaction."""
+        """Add a recurring transaction.
+
+        Args:
+            description: Transaction description pattern.
+            expected_amount: Expected transaction amount.
+            frequency: Recurrence frequency (default "monthly").
+            category: Top-level expense category.
+            sub_category: Expense sub-category.
+
+        Returns:
+            The created RecurringTransaction with its database ID.
+
+        Raises:
+            RuntimeError: If the database insert fails.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 INSERT INTO {self.RECURRING_TABLE}
@@ -586,7 +706,14 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
     def get_all_recurring_transactions(
         self, active_only: bool = True
     ) -> list[RecurringTransaction]:
-        """Get all recurring transactions."""
+        """Get all recurring transactions.
+
+        Args:
+            active_only: If True, return only active transactions.
+
+        Returns:
+            List of RecurringTransaction records ordered by description.
+        """
         query = f"""
             SELECT id, description, expected_amount, frequency, category,
                    sub_category, last_occurrence, is_active
@@ -617,7 +744,15 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
     def update_recurring_last_occurrence(
         self, recurring_id: int, last_occurrence: str
     ) -> bool:
-        """Update the last occurrence date of a recurring transaction."""
+        """Update the last occurrence date of a recurring transaction.
+
+        Args:
+            recurring_id: Database ID of the recurring transaction.
+            last_occurrence: New last occurrence date in ISO format.
+
+        Returns:
+            True if the record was updated, False if not found.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 UPDATE {self.RECURRING_TABLE}
@@ -628,7 +763,14 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             return cursor.rowcount > 0
 
     def deactivate_recurring_transaction(self, recurring_id: int) -> bool:
-        """Mark a recurring transaction as inactive."""
+        """Mark a recurring transaction as inactive.
+
+        Args:
+            recurring_id: Database ID of the recurring transaction.
+
+        Returns:
+            True if the record was deactivated, False if not found.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 UPDATE {self.RECURRING_TABLE}
@@ -639,7 +781,14 @@ class BudgetDatabase:  # pylint: disable=too-many-instance-attributes
             return cursor.rowcount > 0
 
     def delete_recurring_transaction(self, recurring_id: int) -> bool:
-        """Delete a recurring transaction."""
+        """Delete a recurring transaction.
+
+        Args:
+            recurring_id: Database ID of the recurring transaction.
+
+        Returns:
+            True if the record was deleted, False if not found.
+        """
         with self._get_connection() as conn:
             cursor = conn.execute(f"""
                 DELETE FROM {self.RECURRING_TABLE}

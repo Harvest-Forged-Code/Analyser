@@ -15,7 +15,15 @@ from budget_analyser.infrastructure.json_mappings import (
 
 
 def _dedup_keep_order(items: Iterable[str]) -> list[str]:
-    """Deduplicate while preserving order."""
+    """Deduplicate while preserving insertion order.
+
+    Args:
+        items: Iterable of raw string values. Blank and
+            duplicate entries (case-insensitive) are dropped.
+
+    Returns:
+        Deduplicated list in original insertion order.
+    """
     seen: set[str] = set()
     out: list[str] = []
     for raw in items:
@@ -42,21 +50,56 @@ class SubCategoryMapperController:
         store: JsonCategoryMappingStore,
         logger: logging.Logger,
     ) -> None:
+        """Initialize the sub-category mapper controller.
+
+        Args:
+            store: Persistence backend for category mappings.
+            logger: Logger instance for audit messages.
+        """
         self._store = store
         self._logger = logger
         self._mapping: dict[str, list[str]] = {}
         self.reload()
 
     def categories(self) -> list[str]:
-        """Return list of category names."""
+        """Return list of category names.
+
+        Returns:
+            List of all category names currently in the mapping.
+
+        Example:
+            >>> ctrl.categories()
+            ['Food', 'Housing', 'Transport']
+        """
         return list(self._mapping.keys())
 
     def sub_categories(self, category: str) -> list[str]:
-        """Return sub-categories for a category."""
+        """Return sub-categories for a category.
+
+        Args:
+            category: Parent category name to look up.
+
+        Returns:
+            List of sub-category names under *category*, or
+            an empty list if the category does not exist.
+
+        Example:
+            >>> ctrl.sub_categories("Food")
+            ['Groceries', 'Dining Out']
+        """
         return list(self._mapping.get(category, []))
 
     def mapping(self) -> dict[str, list[str]]:
-        """Return full category to sub-category mapping."""
+        """Return full category to sub-category mapping.
+
+        Returns:
+            Dictionary mapping each category name to a list
+            of its sub-category names (shallow copies).
+
+        Example:
+            >>> ctrl.mapping()
+            {'Food': ['Groceries', 'Dining Out']}
+        """
         return {
             cat: list(subs)
             for cat, subs in self._mapping.items()
@@ -69,12 +112,18 @@ class SubCategoryMapperController:
     ) -> None:
         """Add a sub-category to a category.
 
+        If the sub-category already exists under a different
+        category it is moved to the new parent.
+
         Args:
             sub_category: Sub-category name.
             category: Parent category name.
 
         Raises:
             ValueError: If names are empty.
+
+        Example:
+            >>> ctrl.add_sub_category("Dining Out", "Food")
         """
         sub = (sub_category or "").strip()
         if not sub:
@@ -102,10 +151,19 @@ class SubCategoryMapperController:
     ) -> None:
         """Move sub-categories between categories.
 
+        Removes the specified sub-categories from *source* and
+        appends them to *target* (deduplicated). No-op if
+        source and target are the same or either is blank.
+
         Args:
             sub_categories: Sub-categories to move.
             source: Source category.
             target: Target category.
+
+        Example:
+            >>> ctrl.move_sub_categories(
+            ...     ["Dining Out"], source="Food", target="Leisure",
+            ... )
         """
         src = (source or "").strip()
         tgt = (target or "").strip()
@@ -139,8 +197,16 @@ class SubCategoryMapperController:
     ) -> None:
         """Replace the entire mapping.
 
+        Normalizes and deduplicates all entries before storing.
+
         Args:
             mapping: New category to sub-category mapping.
+
+        Example:
+            >>> ctrl.set_mapping({
+            ...     "Food": ["Groceries", "Dining Out"],
+            ...     "Housing": ["Rent"],
+            ... })
         """
         normalized: dict[str, list[str]] = {}
         for cat, subs in (mapping or {}).items():
@@ -151,7 +217,16 @@ class SubCategoryMapperController:
         self._mapping = normalized
 
     def save(self) -> None:
-        """Persist current mapping to JSON file."""
+        """Persist current mapping to JSON file.
+
+        Writes the category-to-subcategory mapping to the
+        underlying ``JsonCategoryMappingStore`` and logs
+        a summary.
+
+        Example:
+            >>> ctrl.add_sub_category("Snacks", "Food")
+            >>> ctrl.save()
+        """
         self._store.save_sub_to_cat(self._mapping)
         self._logger.info(
             "Sub-category mapping saved: categories=%d",
@@ -159,7 +234,15 @@ class SubCategoryMapperController:
         )
 
     def reload(self) -> None:
-        """Reload mapping from JSON file."""
+        """Reload mapping from JSON file.
+
+        Replaces the in-memory mapping with fresh data from
+        the ``JsonCategoryMappingStore``. Falls back to an
+        empty mapping on ``DataSourceError``.
+
+        Example:
+            >>> ctrl.reload()
+        """
         try:
             mapping = self._store.load_sub_to_cat()
         except DataSourceError:

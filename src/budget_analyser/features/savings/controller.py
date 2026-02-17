@@ -20,7 +20,18 @@ class SavingsController:
     """Controller for savings rate tracking.
 
     Provides the same API surface as the legacy BudgetController
-    savings methods, but delegates to the feature service.
+    savings methods, but delegates to the feature service. This
+    feature has no repository since savings metrics are computed
+    from transaction data, not stored in a dedicated table.
+
+    Example:
+        >>> ctrl = SavingsController()
+        >>> metrics = ctrl.calculate_savings_metrics(
+        ...     earnings_df=earnings,
+        ...     expenses_df=expenses,
+        ... )
+        >>> metrics.savings_rate
+        30.0
     """
 
     def calculate_savings_metrics(
@@ -38,6 +49,15 @@ class SavingsController:
 
         Returns:
             SavingsMetrics with savings rate and related data.
+
+        Example:
+            >>> metrics = ctrl.calculate_savings_metrics(
+            ...     earnings_df=earnings,
+            ...     expenses_df=expenses,
+            ...     year=2024,
+            ... )
+            >>> metrics.savings_rate
+            30.0
         """
         return calculate_savings_metrics(
             earnings_df=earnings_df,
@@ -61,6 +81,15 @@ class SavingsController:
         Returns:
             List of 12 tuples: (month_name, earnings, expenses,
             savings, savings_rate).
+
+        Example:
+            >>> monthly = ctrl.calculate_monthly_savings(
+            ...     earnings_df=earnings,
+            ...     expenses_df=expenses,
+            ...     year=2024,
+            ... )
+            >>> monthly[0][0]
+            'January'
         """
         return calculate_monthly_savings(
             earnings_df=earnings_df,

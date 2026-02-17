@@ -24,11 +24,27 @@ def calculate_recurring_summary(
 ) -> dict[str, float]:
     """Calculate summary of recurring expenses.
 
+    Converts each transaction to a monthly equivalent using
+    frequency multipliers and sums totals.
+
     Args:
         recurring: List of active recurring transactions.
 
     Returns:
         Dictionary with monthly_total, yearly_projection, and count.
+
+    Example:
+        >>> txns = [
+        ...     RecurringTransaction(
+        ...         id=1, description="Netflix",
+        ...         expected_amount=15.99, frequency="monthly",
+        ...         category="Entertainment",
+        ...         sub_category="Streaming",
+        ...         last_occurrence="2024-01-15",
+        ...     ),
+        ... ]
+        >>> calculate_recurring_summary(recurring=txns)
+        {'monthly_total': 15.99, 'yearly_projection': 191.88, 'count': 1}
     """
     monthly_total = 0.0
     for rec in recurring:
@@ -57,12 +73,23 @@ def check_recurring_anomalies(
 
     Args:
         recurring: Active recurring transactions to check.
-        transactions_df: Historical transaction data.
+        transactions_df: Historical transaction data. Must contain
+            'description', 'amount', and optionally
+            'transaction_date' columns.
         tolerance_percent: Percentage threshold for flagging anomalies.
 
     Returns:
         List of anomaly dicts with description, expected, actual,
         difference, and difference_percent.
+
+    Example:
+        >>> anomalies = check_recurring_anomalies(
+        ...     recurring=txns,
+        ...     transactions_df=df,
+        ...     tolerance_percent=10.0,
+        ... )
+        >>> anomalies[0]["description"]
+        'Netflix'
     """
     if not recurring or transactions_df.empty:
         return []

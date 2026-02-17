@@ -46,6 +46,21 @@ class TrendAnalysisService:
 
         Returns:
             TrendAnalysisResult with all computed metrics.
+
+        Example:
+            >>> import pandas as pd
+            >>> service = TrendAnalysisService()
+            >>> data = pd.Series(
+            ...     [100.0, 120.0, 110.0],
+            ...     index=[
+            ...         pd.Period("2024-01", "M"),
+            ...         pd.Period("2024-02", "M"),
+            ...         pd.Period("2024-03", "M"),
+            ...     ],
+            ... )
+            >>> result = service.analyze(data=data)
+            >>> len(result.monthly_trends)
+            3
         """
         if isinstance(data, dict):
             data = pd.Series(data)
@@ -99,7 +114,18 @@ class TrendAnalysisService:
     def _compute_yoy(
         data: pd.Series,
     ) -> tuple[dict, dict]:
-        """Compute year-over-year changes."""
+        """Compute year-over-year changes.
+
+        Compares each period's value with the same period 12 months
+        prior to calculate absolute and percentage YoY changes.
+
+        Args:
+            data: Monthly values indexed by pandas Period.
+
+        Returns:
+            Tuple of (yoy_changes, yoy_changes_pct) dicts mapping
+            period to absolute change and percentage change.
+        """
         yoy_changes: dict = {}
         yoy_changes_pct: dict = {}
         for period in data.index:
@@ -130,7 +156,23 @@ class TrendAnalysisService:
         yoy_changes: dict,
         yoy_changes_pct: dict,
     ) -> list[MonthlyTrend]:
-        """Build MonthlyTrend objects for each period."""
+        """Build MonthlyTrend objects for each period.
+
+        Assembles all computed metrics (MoM, YoY, moving averages,
+        direction) into a MonthlyTrend for each period in the data.
+
+        Args:
+            data: Original monthly values.
+            mom_changes: Month-over-month absolute changes.
+            mom_changes_pct: Month-over-month percentage changes.
+            moving_averages: Dict mapping window size to rolling
+                mean Series (keys: 3, 6, 12).
+            yoy_changes: Year-over-year absolute changes by period.
+            yoy_changes_pct: Year-over-year percentage changes.
+
+        Returns:
+            List of MonthlyTrend objects ordered by period.
+        """
         trends: list[MonthlyTrend] = []
 
         for period in data.index:
@@ -191,6 +233,19 @@ class TrendAnalysisService:
 
         Returns:
             TrendAnalysisResult with all computed metrics.
+
+        Example:
+            >>> import pandas as pd
+            >>> service = TrendAnalysisService()
+            >>> df = pd.DataFrame({
+            ...     "amount": [100.0, 200.0, 150.0],
+            ...     "transaction_date": [
+            ...         "2024-01-15", "2024-02-15", "2024-03-15",
+            ...     ],
+            ... })
+            >>> result = service.analyze_dataframe(df=df)
+            >>> result.overall_direction
+            <TrendDirection.UNKNOWN: 'unknown'>
         """
         if df.empty or value_column not in df.columns:
             return TrendAnalysisResult()
@@ -231,6 +286,23 @@ class TrendAnalysisService:
 
         Returns:
             Dictionary with comparison metrics.
+
+        Example:
+            >>> import pandas as pd
+            >>> service = TrendAnalysisService()
+            >>> data = pd.Series(
+            ...     [100.0, 120.0],
+            ...     index=[
+            ...         pd.Period("2024-01", "M"),
+            ...         pd.Period("2024-02", "M"),
+            ...     ],
+            ... )
+            >>> result = service.compare_periods(
+            ...     current_period=pd.Period("2024-02", "M"),
+            ...     data=data,
+            ... )
+            >>> result["absolute_change"]
+            20.0
         """
         if current_period not in data.index:
             return {"error": "Period not found"}
@@ -279,7 +351,18 @@ class TrendAnalysisService:
         self,
         mom_changes_pct: pd.Series,
     ) -> TrendDirection:
-        """Determine overall trend direction from MoM changes."""
+        """Determine overall trend direction from MoM changes.
+
+        Uses the average of the last 3 month-over-month percentage
+        changes to classify the overall direction.
+
+        Args:
+            mom_changes_pct: Series of month-over-month percentage
+                changes.
+
+        Returns:
+            TrendDirection based on the recent average change.
+        """
         if mom_changes_pct.empty:
             return TrendDirection.UNKNOWN
 
@@ -306,6 +389,18 @@ def analyze_spending_trends(
 
     Returns:
         TrendAnalysisResult for the (filtered) transactions.
+
+    Example:
+        >>> import pandas as pd
+        >>> df = pd.DataFrame({
+        ...     "amount": [-100, -200, -150],
+        ...     "transaction_date": [
+        ...         "2024-01-15", "2024-02-15", "2024-03-15",
+        ...     ],
+        ... })
+        >>> result = analyze_spending_trends(transactions=df)
+        >>> isinstance(result, TrendAnalysisResult)
+        True
     """
     df = transactions.copy()
 
@@ -331,6 +426,18 @@ def analyze_income_trends(
 
     Returns:
         TrendAnalysisResult for income transactions.
+
+    Example:
+        >>> import pandas as pd
+        >>> df = pd.DataFrame({
+        ...     "amount": [3000, 3100, 3050],
+        ...     "transaction_date": [
+        ...         "2024-01-01", "2024-02-01", "2024-03-01",
+        ...     ],
+        ... })
+        >>> result = analyze_income_trends(transactions=df)
+        >>> isinstance(result, TrendAnalysisResult)
+        True
     """
     df = transactions.copy()
 

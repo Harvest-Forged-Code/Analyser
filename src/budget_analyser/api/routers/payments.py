@@ -18,7 +18,14 @@ router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 
 def _df_to_records(df: pd.DataFrame) -> list[dict]:
-    """Convert DataFrame to list of dicts with date serialization."""
+    """Convert DataFrame to list of dicts with date serialization.
+
+    Args:
+        df: DataFrame to convert, may be None or empty.
+
+    Returns:
+        List of row dictionaries with dates formatted as YYYY-MM-DD.
+    """
     if df is None or df.empty:
         return []
     result = df.copy()

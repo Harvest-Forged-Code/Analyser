@@ -32,6 +32,13 @@ def _hash_password_sha256(plain: str, *, salt: bytes | None = None) -> str:
     """Return salted SHA-256 hash in the form: sha256$<salt_hex>$<hash_hex>.
 
     If salt is not provided, a random 32-byte salt is generated for better security.
+
+    Args:
+        plain: The plaintext password to hash.
+        salt: Optional salt bytes; generated randomly if not provided.
+
+    Returns:
+        Hash string in the format ``sha256$<salt_hex>$<hash_hex>``.
     """
     if salt is None:
         salt = os.urandom(32)  # Increased from 16 to 32 bytes for better security
@@ -43,7 +50,15 @@ def _hash_password_sha256(plain: str, *, salt: bytes | None = None) -> str:
 
 
 def _verify_password_sha256(plain: str, stored: str) -> bool:
-    """Verify a password against a stored salted SHA-256 hash string."""
+    """Verify a password against a stored salted SHA-256 hash string.
+
+    Args:
+        plain: The plaintext password to verify.
+        stored: The stored hash string in ``sha256$salt$digest`` format.
+
+    Returns:
+        True if the password matches the stored hash.
+    """
     try:
         algo, salt_hex, digest = stored.split("$", 2)
     except ValueError:
@@ -69,6 +84,12 @@ class AppPreferences:
         return parser
 
     def get_log_level(self) -> str:
+        """Return the configured application log level.
+
+        Returns:
+            Uppercase log level string (e.g. "DEBUG", "INFO").
+            Falls back to DEFAULT_LOG_LEVEL if not set or invalid.
+        """
         parser = self._parser()
         level = parser.get(APP_SECTION, KEY_LOG_LEVEL, fallback=DEFAULT_LOG_LEVEL)
         level_up = level.upper().strip()
@@ -76,6 +97,14 @@ class AppPreferences:
         return level_up if level_up in valid_levels else DEFAULT_LOG_LEVEL
 
     def set_log_level(self, level: str) -> None:
+        """Persist the application log level to the INI file.
+
+        Args:
+            level: Log level string (DEBUG/INFO/WARNING/ERROR/CRITICAL).
+
+        Raises:
+            ValueError: If level is not a valid Python log level.
+        """
         level_up = level.upper().strip()
         if level_up not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
             raise ValueError(f"Invalid log level: {level}")
@@ -87,6 +116,11 @@ class AppPreferences:
             parser.write(f)
 
     def get_password_hash(self) -> str | None:
+        """Return the stored password hash from the INI file.
+
+        Returns:
+            The hash string, or None if no password is stored.
+        """
         parser = self._parser()
         if not parser.has_section(APP_SECTION):
             return None
@@ -94,6 +128,16 @@ class AppPreferences:
         return value or None
 
     def verify_password(self, plain: str) -> bool:
+        """Verify a plaintext password against the stored hash.
+
+        Falls back to the default password if no hash is stored.
+
+        Args:
+            plain: The plaintext password to verify.
+
+        Returns:
+            True if the password is correct.
+        """
         stored = self.get_password_hash()
         if stored:
             return _verify_password_sha256(plain, stored)
@@ -101,7 +145,11 @@ class AppPreferences:
         return plain == DEFAULT_PASSWORD
 
     def set_password(self, new_plain: str) -> None:
-        """Persist new password hash to the INI."""
+        """Persist new password hash to the INI.
+
+        Args:
+            new_plain: The new plaintext password to store (hashed).
+        """
         hashed = _hash_password_sha256(new_plain)
         parser = self._parser()
         if not parser.has_section(APP_SECTION):

@@ -34,7 +34,15 @@ class TrendDirection(Enum):
             threshold: Minimum change to consider non-stable.
 
         Returns:
-            TrendDirection based on the change.
+            RISING if change exceeds threshold, FALLING if below
+            negative threshold, STABLE if within range, or
+            UNKNOWN if change_pct is NaN.
+
+        Example:
+            >>> TrendDirection.from_change(10.0)
+            <TrendDirection.RISING: 'rising'>
+            >>> TrendDirection.from_change(-2.0)
+            <TrendDirection.STABLE: 'stable'>
         """
         if pd.isna(change_pct):
             return cls.UNKNOWN
@@ -98,14 +106,29 @@ class TrendAnalysisResult:
     lowest_month: pd.Period | None = None
 
     def get_trend(self, period: pd.Period) -> MonthlyTrend | None:
-        """Get trend data for a specific period."""
+        """Get trend data for a specific period.
+
+        Args:
+            period: The pandas Period to look up.
+
+        Returns:
+            MonthlyTrend for the given period, or None if not found.
+        """
         for trend in self.monthly_trends:
             if trend.period == period:
                 return trend
         return None
 
     def recent_trends(self, n: int = 3) -> list[MonthlyTrend]:
-        """Get the most recent N trends."""
+        """Get the most recent N trends.
+
+        Args:
+            n: Number of recent trends to return.
+
+        Returns:
+            List of up to N most recent MonthlyTrend objects,
+            or empty list if no trends exist.
+        """
         return (
             self.monthly_trends[-n:]
             if self.monthly_trends else []
@@ -127,7 +150,20 @@ class DayOfWeek(Enum):
 
     @classmethod
     def from_int(cls, day: int) -> DayOfWeek:
-        """Convert integer (0=Monday) to DayOfWeek."""
+        """Convert integer (0=Monday) to DayOfWeek.
+
+        Args:
+            day: Integer day of week (0=Monday through 6=Sunday).
+
+        Returns:
+            Corresponding DayOfWeek enum member.
+
+        Example:
+            >>> DayOfWeek.from_int(0)
+            <DayOfWeek.MONDAY: 0>
+            >>> DayOfWeek.from_int(6)
+            <DayOfWeek.SUNDAY: 6>
+        """
         return cls(day)
 
 
@@ -157,6 +193,20 @@ class ParetoAnalysis:
     Attributes:
         items: List of ParetoItem sorted by amount descending.
         total_amount: Total spending across all categories.
+
+    Example:
+        >>> item = ParetoItem(
+        ...     category="Food",
+        ...     amount=800.0,
+        ...     percentage=80.0,
+        ...     cumulative_percentage=80.0,
+        ...     is_top_80=True,
+        ... )
+        >>> analysis = ParetoAnalysis(
+        ...     items=[item], total_amount=1000.0,
+        ... )
+        >>> analysis.top_80_count
+        1
     """
 
     items: list[ParetoItem] = field(default_factory=list)
@@ -164,19 +214,34 @@ class ParetoAnalysis:
 
     @property
     def top_80_count(self) -> int:
-        """Number of categories in top 80%."""
+        """Number of categories in top 80%.
+
+        Returns:
+            Count of ParetoItem entries where is_top_80 is True.
+        """
         return sum(1 for item in self.items if item.is_top_80)
 
     @property
     def top_80_categories(self) -> list[str]:
-        """Categories comprising top 80% of spending."""
+        """Categories comprising top 80% of spending.
+
+        Returns:
+            List of category names that fall within the top 80%
+            of total spending.
+        """
         return [
             item.category for item in self.items if item.is_top_80
         ]
 
     @property
     def concentration_ratio(self) -> float:
-        """Ratio of top 80% categories to total categories."""
+        """Ratio of top 80% categories to total categories.
+
+        Returns:
+            Float between 0.0 and 1.0 representing how
+            concentrated spending is. Lower values indicate
+            spending is concentrated in fewer categories.
+        """
         if not self.items:
             return 0.0
         return self.top_80_count / len(self.items)
@@ -213,7 +278,12 @@ class WeeklyPattern:
 
     @property
     def highest_day(self) -> DayOfWeek | None:
-        """Day with highest spending."""
+        """Day with highest spending.
+
+        Returns:
+            DayOfWeek with the highest total_amount,
+            or None if no day patterns exist.
+        """
         if not self.day_patterns:
             return None
         return max(
@@ -222,7 +292,12 @@ class WeeklyPattern:
 
     @property
     def lowest_day(self) -> DayOfWeek | None:
-        """Day with lowest spending."""
+        """Day with lowest spending.
+
+        Returns:
+            DayOfWeek with the lowest non-zero total_amount,
+            or None if no active day patterns exist.
+        """
         if not self.day_patterns:
             return None
         active_days = [
@@ -236,7 +311,12 @@ class WeeklyPattern:
 
     @property
     def weekend_percentage(self) -> float:
-        """Percentage of spending on weekends (Sat + Sun)."""
+        """Percentage of spending on weekends (Sat + Sun).
+
+        Returns:
+            Float percentage (0.0-100.0) of total spending
+            that occurs on Saturday and Sunday.
+        """
         total = sum(p.total_amount for p in self.day_patterns)
         if total == 0:
             return 0.0
@@ -284,7 +364,12 @@ class AnomalyReport:
 
     @property
     def anomaly_rate(self) -> float:
-        """Percentage of transactions that are anomalies."""
+        """Percentage of transactions that are anomalies.
+
+        Returns:
+            Float percentage (0.0-100.0) of total transactions
+            flagged as anomalous, or 0.0 if no transactions.
+        """
         if self.total_transactions == 0:
             return 0.0
         return (
@@ -292,7 +377,11 @@ class AnomalyReport:
         ) * 100
 
     def high_amount_anomalies(self) -> list[Anomaly]:
-        """Get anomalies due to unusually high amounts."""
+        """Get anomalies due to unusually high amounts.
+
+        Returns:
+            List of Anomaly objects where anomaly_type is "high".
+        """
         return [
             a for a in self.anomalies
             if a.anomaly_type == "high"
@@ -339,6 +428,26 @@ class BurnRateMetrics:
         days_until_exhausted: Days until budget exhausted.
         burn_rate_status: Status (on_track, warning, over_budget).
         projected_over_under: Projected amount over/under budget.
+
+    Example:
+        >>> from datetime import date
+        >>> metrics = BurnRateMetrics(
+        ...     period_start=date(2024, 1, 1),
+        ...     period_end=date(2024, 1, 31),
+        ...     budget_amount=1000.0,
+        ...     spent_amount=500.0,
+        ...     days_elapsed=15,
+        ...     days_remaining=16,
+        ...     daily_burn_rate=33.33,
+        ...     projected_total=1033.33,
+        ...     budget_remaining=500.0,
+        ...     safe_daily_spend=31.25,
+        ...     days_until_exhausted=15.0,
+        ...     burn_rate_status="warning",
+        ...     projected_over_under=33.33,
+        ... )
+        >>> metrics.burn_rate_percentage
+        50.0
     """
 
     period_start: date
@@ -357,24 +466,42 @@ class BurnRateMetrics:
 
     @property
     def is_over_budget(self) -> bool:
-        """Return True if already over budget."""
+        """Return True if already over budget.
+
+        Returns:
+            True if spent_amount exceeds budget_amount.
+        """
         return self.spent_amount > self.budget_amount
 
     @property
     def on_track(self) -> bool:
-        """Return True if projected to stay within budget."""
+        """Return True if projected to stay within budget.
+
+        Returns:
+            True if projected_total is at or below budget_amount.
+        """
         return self.projected_total <= self.budget_amount
 
     @property
     def burn_rate_percentage(self) -> float:
-        """Return burn rate as percentage of budget."""
+        """Return burn rate as percentage of budget.
+
+        Returns:
+            Float percentage (0.0-100.0+) of budget consumed,
+            or 0.0 if budget_amount is zero or negative.
+        """
         if self.budget_amount <= 0:
             return 0.0
         return (self.spent_amount / self.budget_amount) * 100
 
     @property
     def time_percentage(self) -> float:
-        """Return percentage of period elapsed."""
+        """Return percentage of period elapsed.
+
+        Returns:
+            Float percentage (0.0-100.0) of the budget period
+            that has passed, or 100.0 if total days is zero.
+        """
         total_days = (
             (self.period_end - self.period_start).days + 1
         )

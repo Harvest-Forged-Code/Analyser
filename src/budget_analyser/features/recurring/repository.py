@@ -16,7 +16,20 @@ from budget_analyser.features.recurring.models import RecurringTransaction
 
 
 class RecurringRepository:
-    """SQLite-backed storage for recurring transactions."""
+    """SQLite-backed storage for recurring transactions.
+
+    Manages persistence and detection of recurring transactions
+    in a shared SQLite database.
+
+    Example:
+        >>> from pathlib import Path
+        >>> repo = RecurringRepository(db_path=Path("budget.db"))
+        >>> txn = repo.add_recurring_transaction(
+        ...     "Netflix", 15.99, "monthly",
+        ... )
+        >>> txn.description
+        'Netflix'
+    """
 
     RECURRING_TABLE = "recurring_transactions"
 
@@ -27,9 +40,18 @@ class RecurringRepository:
     ) -> None:
         """Initialize the recurring transactions repository.
 
+        Creates the recurring_transactions table if it does not
+        already exist.
+
         Args:
             db_path: Path to the SQLite database file.
             logger: Optional logger for diagnostics.
+
+        Example:
+            >>> from pathlib import Path
+            >>> repo = RecurringRepository(
+            ...     db_path=Path("/tmp/test.db"),
+            ... )
         """
         self._db_path = db_path
         self._logger = logger or logging.getLogger(
@@ -82,6 +104,13 @@ class RecurringRepository:
 
         Raises:
             RuntimeError: If the database insert fails.
+
+        Example:
+            >>> repo.add_recurring_transaction(
+            ...     "Spotify", 9.99, "monthly",
+            ...     "Entertainment", "Music",
+            ... )
+            RecurringTransaction(id=1, description='Spotify', ...)
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -131,6 +160,11 @@ class RecurringRepository:
 
         Returns:
             List of RecurringTransaction entries ordered by description.
+
+        Example:
+            >>> txns = repo.get_all_recurring_transactions()
+            >>> len(txns)
+            5
         """
         query = f"""
             SELECT id, description, expected_amount, frequency,
@@ -172,6 +206,10 @@ class RecurringRepository:
 
         Returns:
             True if the record was updated.
+
+        Example:
+            >>> repo.update_last_occurrence(1, "2024-02-15")
+            True
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -193,6 +231,10 @@ class RecurringRepository:
 
         Returns:
             True if the record was deactivated.
+
+        Example:
+            >>> repo.deactivate_recurring_transaction(1)
+            True
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -214,6 +256,10 @@ class RecurringRepository:
 
         Returns:
             True if the record was deleted.
+
+        Example:
+            >>> repo.delete_recurring_transaction(1)
+            True
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -236,12 +282,28 @@ class RecurringRepository:
     ) -> list[dict]:
         """Detect potential recurring transactions from history.
 
+        Groups transactions by description and rounded amount,
+        then identifies patterns occurring at least
+        ``min_occurrences`` times.
+
         Args:
             transactions_df: DataFrame with transaction data.
+                Must contain 'description', 'amount',
+                'transaction_date', 'category', and
+                'sub_category' columns.
             min_occurrences: Minimum times a transaction must appear.
 
         Returns:
-            List of detected recurring transaction patterns.
+            List of detected recurring transaction patterns,
+            sorted by occurrence count descending.
+
+        Example:
+            >>> detected = repo.detect_recurring_transactions(
+            ...     transactions_df=df,
+            ...     min_occurrences=3,
+            ... )
+            >>> detected[0]["description"]
+            'Netflix'
         """
         if transactions_df.empty:
             return []
@@ -298,6 +360,10 @@ class RecurringRepository:
     ) -> str:
         """Estimate transaction frequency from date range.
 
+        Uses average days between occurrences to classify frequency:
+        <=10 days is weekly, <=45 monthly, <=100 quarterly, else
+        yearly.
+
         Args:
             first_date: Earliest transaction date.
             last_date: Latest transaction date.
@@ -305,6 +371,14 @@ class RecurringRepository:
 
         Returns:
             Frequency string (weekly, monthly, quarterly, yearly).
+
+        Example:
+            >>> RecurringRepository._estimate_frequency(
+            ...     first_date=pd.Timestamp("2024-01-01"),
+            ...     last_date=pd.Timestamp("2024-06-01"),
+            ...     count=6,
+            ... )
+            'monthly'
         """
         if (pd.notna(first_date) and pd.notna(last_date)
                 and count > 1):

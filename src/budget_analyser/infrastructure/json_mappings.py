@@ -52,7 +52,15 @@ def _load_json(path: Path) -> dict:
 
 @dataclass(frozen=True)
 class JsonCategoryMappingProvider(CategoryMappingProvider):
-    """JSON-backed category mapping provider."""
+    """JSON-backed category mapping provider.
+
+    Example:
+        >>> provider = JsonCategoryMappingProvider(
+        ...     description_to_sub_category_path=Path("mappers/desc.json"),
+        ...     sub_category_to_category_path=Path("mappers/sub.json"),
+        ... )
+        >>> mapping = provider.description_to_sub_category()
+    """
 
     description_to_sub_category_path: Path
     sub_category_to_category_path: Path
@@ -66,7 +74,15 @@ class JsonCategoryMappingProvider(CategoryMappingProvider):
             pass
 
     def description_to_sub_category(self) -> Mapping[str, list[str]]:
-        """Load mapping from description keywords to sub-category labels."""
+        """Load mapping from description keywords to sub-category labels.
+
+        Returns:
+            Mapping where keys are sub-category labels and values are
+            lists of description keywords.
+
+        Raises:
+            DataSourceError: If the JSON file is missing or invalid.
+        """
         path = self.description_to_sub_category_path
         mapping = _load_json(path)
         try:
@@ -84,7 +100,15 @@ class JsonCategoryMappingProvider(CategoryMappingProvider):
         return mapping
 
     def sub_category_to_category(self) -> Mapping[str, list[str]]:
-        """Load mapping from sub-category keywords to category labels."""
+        """Load mapping from sub-category keywords to category labels.
+
+        Returns:
+            Mapping where keys are category labels and values are
+            lists of sub-category names.
+
+        Raises:
+            DataSourceError: If the JSON file is missing or invalid.
+        """
         path = self.sub_category_to_category_path
         mapping = _load_json(path)
         try:
@@ -104,7 +128,14 @@ class JsonCategoryMappingProvider(CategoryMappingProvider):
 
 @dataclass(frozen=True)
 class JsonCashflowMappingProvider:
-    """JSON-backed provider for cashflow (earnings/expenses) mappings."""
+    """JSON-backed provider for cashflow (earnings/expenses) mappings.
+
+    Example:
+        >>> provider = JsonCashflowMappingProvider(
+        ...     cashflow_to_category_path=Path("mappers/cashflow.json"),
+        ... )
+        >>> mapping = provider.cashflow_to_category()
+    """
 
     cashflow_to_category_path: Path
     logger: logging.Logger | None = None
@@ -117,6 +148,15 @@ class JsonCashflowMappingProvider:
             pass
 
     def cashflow_to_category(self) -> Mapping[str, list[str]]:
+        """Load mapping from cashflow type to category labels.
+
+        Returns:
+            Mapping where keys are cashflow types (e.g. "earnings",
+            "expenses") and values are lists of category names.
+
+        Raises:
+            DataSourceError: If the JSON file is missing or invalid.
+        """
         path = self.cashflow_to_category_path
         mapping = _load_json(path)
         try:
@@ -152,16 +192,48 @@ class JsonCategoryMappingStore:
 
     # ---- Loaders ----
     def load_desc_to_sub(self) -> dict[str, list[str]]:
+        """Load the description-to-sub-category mapping from JSON.
+
+        Returns:
+            Mutable dict copy of the mapping file contents.
+
+        Raises:
+            DataSourceError: If the JSON file is missing or invalid.
+        """
         return dict(_load_json(self.description_to_sub_category_path))
 
     def load_sub_to_cat(self) -> dict[str, list[str]]:
+        """Load the sub-category-to-category mapping from JSON.
+
+        Returns:
+            Mutable dict copy of the mapping file contents.
+
+        Raises:
+            DataSourceError: If the JSON file is missing or invalid.
+        """
         return dict(_load_json(self.sub_category_to_category_path))
 
     # ---- Savers ----
     def save_desc_to_sub(self, mapping: Mapping[str, list[str]]) -> None:
+        """Persist the description-to-sub-category mapping to JSON.
+
+        Args:
+            mapping: The full mapping to write atomically.
+
+        Raises:
+            DataSourceError: If the file cannot be written.
+        """
         self._atomic_write(self.description_to_sub_category_path, mapping)
 
     def save_sub_to_cat(self, mapping: Mapping[str, list[str]]) -> None:
+        """Persist the sub-category-to-category mapping to JSON.
+
+        Args:
+            mapping: The full mapping to write atomically.
+
+        Raises:
+            DataSourceError: If the file cannot be written.
+        """
         self._atomic_write(self.sub_category_to_category_path, mapping)
 
     # ---- Helpers ----
@@ -197,11 +269,27 @@ class JsonCashflowMappingStore:
     logger: logging.Logger | None = None
 
     def load_cashflow(self) -> dict[str, list[str]]:
+        """Load the cashflow-to-category mapping from JSON.
+
+        Returns:
+            Mutable dict copy of the mapping file contents.
+
+        Raises:
+            DataSourceError: If the JSON file is missing or invalid.
+        """
         mapping = dict(_load_json(self.cashflow_to_category_path))
         # Normalize keys to preserve original casing order
         return mapping
 
     def save_cashflow(self, mapping: Mapping[str, list[str]]) -> None:
+        """Persist the cashflow-to-category mapping to JSON.
+
+        Args:
+            mapping: The full mapping to write atomically.
+
+        Raises:
+            DataSourceError: If the file cannot be written.
+        """
         self._atomic_write(self.cashflow_to_category_path, mapping)
 
     def _atomic_write(self, path: Path, data: Mapping[str, list[str]]) -> None:

@@ -22,13 +22,47 @@ from budget_analyser.domain.keyword_matching import (
 
 
 class TransactionProcessor:  # pylint: disable=too-few-public-methods
-    """Use-case/service to categorize transactions for reporting."""
+    """Use-case/service to categorize transactions for reporting.
+
+    Example:
+        >>> processor = TransactionProcessor(mappers=mappers)
+        >>> processed = processor.process(raw_transactions=df)
+        >>> list(processed.columns)
+        ['description', 'amount', 'sub_category', 'category', 'c_or_d']
+    """
 
     def __init__(self, *, mappers: CategoryMappers) -> None:
+        """Initialize the transaction processor.
+
+        Args:
+            mappers: CategoryMappers holding keyword-to-category mappings.
+        """
         self._mappers = mappers
 
     def process(self, *, raw_transactions: pd.DataFrame) -> pd.DataFrame:
-        """Process a normalized transaction DataFrame."""
+        """Process a normalized transaction DataFrame.
+
+        Derives sub_category, category, and c_or_d columns from the
+        description and amount columns using keyword matching.
+
+        Args:
+            raw_transactions: DataFrame with at least ``description``
+                and ``amount`` columns.
+
+        Returns:
+            A copy of the input DataFrame with added ``sub_category``,
+            ``category``, and ``c_or_d`` columns.
+
+        Raises:
+            ValidationError: If ``description`` or ``amount`` column
+                is missing from the input DataFrame.
+
+        Example:
+            >>> processor = TransactionProcessor(mappers=mappers)
+            >>> result = processor.process(raw_transactions=raw_df)
+            >>> "sub_category" in result.columns
+            True
+        """
         processed = raw_transactions.copy()
 
         if "description" not in processed.columns:

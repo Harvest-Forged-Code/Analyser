@@ -26,10 +26,33 @@ def calculate_budget_progress(
     Args:
         budgets: All budget goals to evaluate.
         expenses_df: DataFrame with expense transactions.
+            Must contain 'transaction_date', 'category', and
+            'amount' columns.
         year_month: Month to calculate for (format: "YYYY-MM").
 
     Returns:
         List of BudgetProgress sorted by percentage descending.
+
+    Example:
+        >>> import pandas as pd
+        >>> budgets = [
+        ...     BudgetGoal(
+        ...         id=1, category="Groceries",
+        ...         monthly_limit=500.0, year_month="ALL",
+        ...     ),
+        ... ]
+        >>> expenses = pd.DataFrame({
+        ...     "transaction_date": ["2024-01-15"],
+        ...     "category": ["Groceries"],
+        ...     "amount": [-200.0],
+        ... })
+        >>> progress = calculate_budget_progress(
+        ...     budgets=budgets,
+        ...     expenses_df=expenses,
+        ...     year_month="2024-01",
+        ... )
+        >>> progress[0].percentage
+        40.0
     """
     if not budgets:
         return []
@@ -98,6 +121,20 @@ def build_earnings_goal_map(
 
     Returns:
         Dict mapping sub_category name to expected_amount.
+
+    Example:
+        >>> goals = [
+        ...     EarningsGoal(
+        ...         id=1, sub_category="Salary",
+        ...         expected_amount=5000.0, year_month="ALL",
+        ...     ),
+        ...     EarningsGoal(
+        ...         id=2, sub_category="Salary",
+        ...         expected_amount=5500.0, year_month="2024-12",
+        ...     ),
+        ... ]
+        >>> build_earnings_goal_map(goals=goals, year_month="2024-12")
+        {'Salary': 5500.0}
     """
     result: dict[str, float] = {}
 

@@ -14,7 +14,19 @@ from budget_analyser.features.budget_goals.models import BudgetGoal, EarningsGoa
 
 
 class BudgetGoalsRepository:
-    """SQLite-backed storage for budget goals and earnings goals."""
+    """SQLite-backed storage for budget goals and earnings goals.
+
+    Manages persistence of budget spending limits and earnings
+    expectations in a shared SQLite database. Tables are created
+    automatically on first use.
+
+    Example:
+        >>> from pathlib import Path
+        >>> repo = BudgetGoalsRepository(db_path=Path("budget.db"))
+        >>> goal = repo.set_budget_goal("Groceries", 500.0, "2024-01")
+        >>> goal.category
+        'Groceries'
+    """
 
     BUDGETS_TABLE = "budget_goals"
     EARNINGS_GOALS_TABLE = "earnings_goals"
@@ -26,9 +38,18 @@ class BudgetGoalsRepository:
     ) -> None:
         """Initialize the budget goals repository.
 
+        Creates budget_goals and earnings_goals tables if they do
+        not already exist.
+
         Args:
             db_path: Path to the SQLite database file.
             logger: Optional logger for diagnostics.
+
+        Example:
+            >>> from pathlib import Path
+            >>> repo = BudgetGoalsRepository(
+            ...     db_path=Path("/tmp/test.db"),
+            ... )
         """
         self._db_path = db_path
         self._logger = logger or logging.getLogger(
@@ -84,6 +105,10 @@ class BudgetGoalsRepository:
 
         Raises:
             RuntimeError: If the database insert fails.
+
+        Example:
+            >>> repo.set_budget_goal("Dining", 300.0, "2024-06")
+            BudgetGoal(id=1, category='Dining', ...)
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -129,6 +154,11 @@ class BudgetGoalsRepository:
 
         Returns:
             BudgetGoal if found, None otherwise.
+
+        Example:
+            >>> goal = repo.get_budget_goal("Groceries", "2024-01")
+            >>> goal.monthly_limit if goal else None
+            500.0
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -161,6 +191,11 @@ class BudgetGoalsRepository:
 
         Returns:
             List of all BudgetGoal entries ordered by category.
+
+        Example:
+            >>> goals = repo.get_all_budget_goals()
+            >>> len(goals)
+            3
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -193,6 +228,10 @@ class BudgetGoalsRepository:
 
         Returns:
             True if a goal was deleted.
+
+        Example:
+            >>> repo.delete_budget_goal("Dining", "2024-06")
+            True
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -223,6 +262,13 @@ class BudgetGoalsRepository:
 
         Returns:
             List of 12 BudgetGoal objects, one for each month.
+
+        Example:
+            >>> goals = repo.set_budget_goals_for_year(
+            ...     "Groceries", 500.0, 2024,
+            ... )
+            >>> len(goals)
+            12
         """
         goals = []
         for month in range(1, 13):
@@ -256,6 +302,10 @@ class BudgetGoalsRepository:
 
         Raises:
             RuntimeError: If the database insert fails.
+
+        Example:
+            >>> repo.set_earnings_goal("Salary", 5000.0, "2024-01")
+            EarningsGoal(id=1, sub_category='Salary', ...)
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -301,6 +351,11 @@ class BudgetGoalsRepository:
 
         Returns:
             EarningsGoal if found, None otherwise.
+
+        Example:
+            >>> goal = repo.get_earnings_goal("Salary", "2024-01")
+            >>> goal.expected_amount if goal else None
+            5000.0
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -333,6 +388,11 @@ class BudgetGoalsRepository:
 
         Returns:
             List of all EarningsGoal entries ordered by sub_category.
+
+        Example:
+            >>> goals = repo.get_all_earnings_goals()
+            >>> len(goals)
+            2
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -365,6 +425,10 @@ class BudgetGoalsRepository:
 
         Returns:
             True if a goal was deleted.
+
+        Example:
+            >>> repo.delete_earnings_goal("Freelance", "ALL")
+            True
         """
         with get_connection(self._db_path) as conn:
             cursor = conn.execute(f"""
@@ -396,6 +460,13 @@ class BudgetGoalsRepository:
 
         Returns:
             List of 12 EarningsGoal objects, one for each month.
+
+        Example:
+            >>> goals = repo.set_earnings_goals_for_year(
+            ...     "Salary", 5000.0, 2024,
+            ... )
+            >>> len(goals)
+            12
         """
         goals = []
         for month in range(1, 13):

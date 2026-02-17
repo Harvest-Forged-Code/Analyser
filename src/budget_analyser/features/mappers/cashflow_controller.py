@@ -15,7 +15,15 @@ from budget_analyser.infrastructure.json_mappings import (
 
 
 def _dedup_keep_order(items: Iterable[str]) -> list[str]:
-    """Deduplicate while preserving order."""
+    """Deduplicate while preserving insertion order.
+
+    Args:
+        items: Iterable of raw string values. Blank and
+            duplicate entries (case-insensitive) are dropped.
+
+    Returns:
+        Deduplicated list in original insertion order.
+    """
     seen: set[str] = set()
     out: list[str] = []
     for raw in items:
@@ -42,6 +50,12 @@ class CashflowMapperController:
         store: JsonCashflowMappingStore,
         logger: logging.Logger,
     ) -> None:
+        """Initialize the cashflow mapper controller.
+
+        Args:
+            store: Persistence backend for cashflow mappings.
+            logger: Logger instance for audit messages.
+        """
         self._store = store
         self._logger = logger
         self._mapping: dict[str, list[str]] = {
@@ -50,15 +64,40 @@ class CashflowMapperController:
         self.reload()
 
     def earnings_categories(self) -> list[str]:
-        """Return list of earnings categories."""
+        """Return list of earnings categories.
+
+        Returns:
+            Shallow copy of the current earnings category list.
+
+        Example:
+            >>> ctrl.earnings_categories()
+            ['Salary', 'Freelance']
+        """
         return list(self._mapping.get("Earnings", []))
 
     def expense_categories(self) -> list[str]:
-        """Return list of expense categories."""
+        """Return list of expense categories.
+
+        Returns:
+            Shallow copy of the current expense category list.
+
+        Example:
+            >>> ctrl.expense_categories()
+            ['Groceries', 'Rent', 'Utilities']
+        """
         return list(self._mapping.get("Expenses", []))
 
     def mapping(self) -> dict[str, list[str]]:
-        """Return full earnings/expenses mapping."""
+        """Return full earnings/expenses mapping.
+
+        Returns:
+            Dictionary with ``"Earnings"`` and ``"Expenses"``
+            keys, each mapping to a list of category names.
+
+        Example:
+            >>> ctrl.mapping()
+            {'Earnings': ['Salary'], 'Expenses': ['Rent']}
+        """
         return {
             "Earnings": self.earnings_categories(),
             "Expenses": self.expense_categories(),
@@ -71,9 +110,18 @@ class CashflowMapperController:
     ) -> None:
         """Set the full earnings/expenses mapping.
 
+        Replaces both sides of the mapping. Categories appearing
+        in *expenses* take priority over duplicates in *earnings*.
+
         Args:
             earnings: Categories classified as earnings.
             expenses: Categories classified as expenses.
+
+        Example:
+            >>> ctrl.set_mapping(
+            ...     earnings=["Salary"],
+            ...     expenses=["Rent", "Groceries"],
+            ... )
         """
         earn = _dedup_keep_order(earnings)
         exp = _dedup_keep_order(expenses)
@@ -86,12 +134,18 @@ class CashflowMapperController:
     def add_category(self, name: str, flow: str) -> None:
         """Add a category to earnings or expenses.
 
+        If the category already exists in the opposite flow,
+        it is removed from there first.
+
         Args:
             name: Category name.
-            flow: Target flow ('earnings' or 'expenses').
+            flow: Target flow (``'earnings'`` or ``'expenses'``).
 
         Raises:
             ValueError: If name is empty.
+
+        Example:
+            >>> ctrl.add_category("Side Hustle", "earnings")
         """
         val = (name or "").strip()
         if not val:
@@ -121,7 +175,17 @@ class CashflowMapperController:
     def move_to_earnings(
         self, categories: Iterable[str],
     ) -> None:
-        """Move categories from expenses to earnings."""
+        """Move categories from expenses to earnings.
+
+        Removes the given categories from the expenses list and
+        appends them to earnings (deduplicated).
+
+        Args:
+            categories: Category names to move.
+
+        Example:
+            >>> ctrl.move_to_earnings(["Freelance"])
+        """
         current_exp = self._mapping.get("Expenses", [])
         move_set = {
             c.lower() for c in categories
@@ -139,7 +203,17 @@ class CashflowMapperController:
     def move_to_expenses(
         self, categories: Iterable[str],
     ) -> None:
-        """Move categories from earnings to expenses."""
+        """Move categories from earnings to expenses.
+
+        Removes the given categories from the earnings list and
+        appends them to expenses (deduplicated).
+
+        Args:
+            categories: Category names to move.
+
+        Example:
+            >>> ctrl.move_to_expenses(["Misc Income"])
+        """
         current_earn = self._mapping.get("Earnings", [])
         move_set = {
             c.lower() for c in categories
@@ -155,7 +229,15 @@ class CashflowMapperController:
         )
 
     def save(self) -> None:
-        """Persist current mapping to JSON file."""
+        """Persist current mapping to JSON file.
+
+        Writes the earnings/expenses mapping to the underlying
+        ``JsonCashflowMappingStore`` and logs a summary.
+
+        Example:
+            >>> ctrl.add_category("Bonus", "earnings")
+            >>> ctrl.save()
+        """
         self._store.save_cashflow(self._mapping)
         self._logger.info(
             "Cashflow mapping saved: earnings=%d expenses=%d",
@@ -164,7 +246,15 @@ class CashflowMapperController:
         )
 
     def reload(self) -> None:
-        """Reload mapping from JSON file."""
+        """Reload mapping from JSON file.
+
+        Replaces the in-memory mapping with fresh data from
+        the ``JsonCashflowMappingStore``. Falls back to an
+        empty mapping on ``DataSourceError``.
+
+        Example:
+            >>> ctrl.reload()
+        """
         try:
             mapping = self._store.load_cashflow()
         except DataSourceError:

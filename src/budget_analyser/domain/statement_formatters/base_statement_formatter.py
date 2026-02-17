@@ -51,6 +51,24 @@ class BaseStatementFormatter(ABC):  # pylint: disable=too-few-public-methods
             4. Keep only required columns.
             5. Apply bank-specific formatting.
             6. Parse `transaction_date` as datetime.
+
+        Returns:
+            DataFrame with canonical columns: transaction_date,
+            description, amount, from_account.
+
+        Raises:
+            MappingNotFoundError: If column mapping is missing or
+                required columns cannot be derived.
+
+        Example:
+            >>> formatter = create_statement_formatter(
+            ...     account_name="citi",
+            ...     statement=raw_df,
+            ...     column_mapping={"Date": "transaction_date"},
+            ... )
+            >>> normalized = formatter.get_desired_format()
+            >>> list(normalized.columns)
+            ['transaction_date', 'description', 'amount', 'from_account']
         """
         self._format_amount_column()
         self._rename_columns()

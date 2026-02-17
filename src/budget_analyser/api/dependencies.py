@@ -145,6 +145,11 @@ def initialize() -> None:
     """Wire all controllers.
 
     Must be called exactly once during application startup.
+
+    Raises:
+        FileNotFoundError: If required config or mapping files are
+            missing from the data directory.
+        DataSourceError: If JSON mapping files contain invalid data.
     """
     global \
         _logger, _prefs, _backend_controller, _db_repository, \

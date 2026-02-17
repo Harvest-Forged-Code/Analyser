@@ -19,6 +19,14 @@ class NetWorthController:
     Provides the same API surface as the legacy BudgetController
     net-worth methods, but delegates to the feature repository
     and service.
+
+    Example:
+        >>> from pathlib import Path
+        >>> repo = NetWorthRepository(db_path=Path("budget.db"))
+        >>> ctrl = NetWorthController(repository=repo)
+        >>> summary = ctrl.get_net_worth_summary()
+        >>> summary.net_worth
+        8000.0
     """
 
     def __init__(self, *, repository: NetWorthRepository) -> None:
@@ -26,6 +34,9 @@ class NetWorthController:
 
         Args:
             repository: Net worth repository for persistence.
+
+        Example:
+            >>> ctrl = NetWorthController(repository=repo)
         """
         self._repository = repository
 
@@ -46,6 +57,12 @@ class NetWorthController:
 
         Returns:
             The created Account.
+
+        Example:
+            >>> ctrl.add_account(
+            ...     "Chase Checking", "checking", 2500.0,
+            ... )
+            Account(id=1, name='Chase Checking', ...)
         """
         return self._repository.add_account(
             name, account_type, balance, notes,
@@ -64,6 +81,10 @@ class NetWorthController:
 
         Returns:
             True if the account was updated.
+
+        Example:
+            >>> ctrl.update_account_balance(1, 3000.0)
+            True
         """
         return self._repository.update_account_balance(
             account_id, balance,
@@ -74,6 +95,11 @@ class NetWorthController:
 
         Returns:
             List of all accounts.
+
+        Example:
+            >>> accounts = ctrl.get_all_accounts()
+            >>> len(accounts)
+            3
         """
         return self._repository.get_all_accounts()
 
@@ -85,14 +111,26 @@ class NetWorthController:
 
         Returns:
             True if an account was deleted.
+
+        Example:
+            >>> ctrl.delete_account(1)
+            True
         """
         return self._repository.delete_account(account_id)
 
     def get_net_worth_summary(self) -> NetWorthSummary:
         """Get comprehensive net worth summary.
 
+        Fetches all accounts and computes assets, liabilities,
+        and net worth totals.
+
         Returns:
             NetWorthSummary with totals and per-type breakdowns.
+
+        Example:
+            >>> summary = ctrl.get_net_worth_summary()
+            >>> summary.net_worth
+            8000.0
         """
         accounts = self._repository.get_all_accounts()
         return calculate_net_worth_summary(accounts=accounts)

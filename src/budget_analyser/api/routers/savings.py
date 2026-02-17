@@ -20,7 +20,14 @@ router = APIRouter(prefix="/api/savings", tags=["savings"])
 
 
 def _all_earnings_df(reports: list[MonthlyReports]) -> pd.DataFrame:
-    """Concatenate all earnings DataFrames from reports."""
+    """Concatenate all earnings DataFrames from reports.
+
+    Args:
+        reports: List of MonthlyReports to extract earnings from.
+
+    Returns:
+        Combined DataFrame of all earnings, or empty DataFrame.
+    """
     frames = []
     for r in reports:
         if r.earnings is not None and not r.earnings.empty:
@@ -29,7 +36,14 @@ def _all_earnings_df(reports: list[MonthlyReports]) -> pd.DataFrame:
 
 
 def _all_expenses_df(reports: list[MonthlyReports]) -> pd.DataFrame:
-    """Concatenate all expenses DataFrames from reports."""
+    """Concatenate all expenses DataFrames from reports.
+
+    Args:
+        reports: List of MonthlyReports to extract expenses from.
+
+    Returns:
+        Combined DataFrame of all expenses, or empty DataFrame.
+    """
     frames = []
     for r in reports:
         if r.expenses is not None and not r.expenses.empty:

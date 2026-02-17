@@ -34,7 +34,16 @@ class MatchResult:
 
     @classmethod
     def no_match(cls) -> MatchResult:
-        """Create a result representing no match."""
+        """Create a result representing no match.
+
+        Returns:
+            A MatchResult with empty values and zero score.
+
+        Example:
+            >>> result = MatchResult.no_match()
+            >>> bool(result)
+            False
+        """
         return cls(matched_value="", keyword="", score=0.0, match_type="none")
 
     def __bool__(self) -> bool:
@@ -63,7 +72,13 @@ def calculate_match_score(
         weight: Optional weight multiplier from mapping config.
 
     Returns:
-        Calculated match score.
+        Calculated match score as a float.
+
+    Example:
+        >>> calculate_match_score(
+        ...     keyword="netflix", content="NETFLIX INC", is_exact=False
+        ... )
+        16.09...
     """
     base_score = len(keyword)
 
@@ -97,6 +112,12 @@ def match_by_keywords_scored(
 
     Returns:
         MatchResult with the best match, or no_match if none found.
+
+    Example:
+        >>> mapping = {"streaming": ["netflix", "hulu"]}
+        >>> result = match_by_keywords_scored("NETFLIX INC", mapping)
+        >>> result.matched_value
+        'streaming'
     """
     if not content:
         return MatchResult.no_match()
@@ -159,6 +180,12 @@ def match_by_keywords_exact_scored(
 
     Returns:
         MatchResult with the best exact match, or no_match if none found.
+
+    Example:
+        >>> mapping = {"utilities": ["electric", "gas"]}
+        >>> result = match_by_keywords_exact_scored("electric", mapping)
+        >>> result.matched_value
+        'utilities'
     """
     if not content:
         return MatchResult.no_match()
@@ -201,6 +228,19 @@ def map_by_keywords_substring(content: str, keyword_map: Mapping[str, list[str]]
     """Return the best-scored match if any keyword appears as a substring.
 
     This is a drop-in replacement for the original first-match function.
+
+    Args:
+        content: Text to match against (e.g. transaction description).
+        keyword_map: Mapping of category -> list of keywords.
+
+    Returns:
+        The matched category/sub-category name, or empty string if
+        no match is found.
+
+    Example:
+        >>> mapping = {"streaming": ["netflix", "hulu"]}
+        >>> map_by_keywords_substring("NETFLIX INC", mapping)
+        'streaming'
     """
     result = match_by_keywords_scored(content, keyword_map)
     return result.matched_value
@@ -210,6 +250,18 @@ def map_by_keywords_exact(content: str, keyword_map: Mapping[str, list[str]]) ->
     """Return the best-scored exact match (case-insensitive).
 
     This is a drop-in replacement for the original first-match function.
+
+    Args:
+        content: Text to match exactly (e.g. sub-category name).
+        keyword_map: Mapping of category -> list of keywords.
+
+    Returns:
+        The matched category name, or empty string if no match.
+
+    Example:
+        >>> mapping = {"utilities": ["electric", "gas"]}
+        >>> map_by_keywords_exact("electric", mapping)
+        'utilities'
     """
     result = match_by_keywords_exact_scored(content, keyword_map)
     return result.matched_value

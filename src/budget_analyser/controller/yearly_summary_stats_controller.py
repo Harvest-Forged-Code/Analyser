@@ -1,3 +1,8 @@
+"""Yearly summary statistics controller.
+
+Computes aggregated yearly earnings, expenses, and category breakdowns
+from MonthlyReports for Home page rendering.
+"""
 from __future__ import annotations
 
 import logging
@@ -11,9 +16,20 @@ class YearlySummaryStatsController:
     """Controller to compute Home page statistics from MonthlyReports.
 
     Pure Python (no Qt). Returns DTOs for the view to render.
+
+    Example:
+        >>> ctrl = YearlySummaryStatsController(reports, logger)
+        >>> years = ctrl.available_years()
+        >>> stats = ctrl.get_yearly_stats(2025)
     """
 
     def __init__(self, reports: List[MonthlyReports], logger: logging.Logger):
+        """Initialize with pre-computed monthly reports.
+
+        Args:
+            reports: List of MonthlyReports covering all months.
+            logger: Logger for diagnostics.
+        """
         self._reports = reports
         self._logger = logger
         self._year_cache: Dict[int, YearlyStats] = {}
@@ -21,11 +37,35 @@ class YearlySummaryStatsController:
 
     # ---- Public API ----
     def available_years(self) -> List[int]:
+        """Return sorted list of years that have report data.
+
+        Returns:
+            List of year integers in ascending order.
+
+        Example:
+            >>> ctrl.available_years()
+            [2024, 2025]
+        """
         if not self._reports:
             return []
         return sorted({int(mr.month.year) for mr in self._reports})
 
     def get_yearly_stats(self, year: int) -> YearlyStats:
+        """Get aggregated earnings/expenses stats for a year.
+
+        Results are cached after the first computation.
+
+        Args:
+            year: The calendar year to aggregate.
+
+        Returns:
+            YearlyStats with totals and sub-category breakdowns.
+
+        Example:
+            >>> stats = ctrl.get_yearly_stats(2025)
+            >>> stats.total_earnings
+            50000.0
+        """
         cached = self._year_cache.get(year)
         if cached is not None:
             return cached
@@ -86,6 +126,22 @@ class YearlySummaryStatsController:
 
     # ---- Category hierarchy API ----
     def get_category_breakdown(self, year: int) -> YearlyCategoryBreakdown:  # pylint: disable=too-many-locals
+        """Get category-level breakdown for a year.
+
+        Returns hierarchical CategoryNode trees for both earnings
+        and expenses. Results are cached after first computation.
+
+        Args:
+            year: The calendar year to aggregate.
+
+        Returns:
+            YearlyCategoryBreakdown with earnings and expenses nodes.
+
+        Example:
+            >>> breakdown = ctrl.get_category_breakdown(2025)
+            >>> breakdown.expenses[0].name
+            'Housing'
+        """
         cached = self._year_category_cache.get(year)
         if cached is not None:
             return cached

@@ -17,6 +17,14 @@ class CategoryMappers:
     Attributes:
         description_to_sub_category: Mapping of sub_category -> keywords list.
         sub_category_to_category: Mapping of category -> keywords list.
+
+    Example:
+        >>> mappers = CategoryMappers(
+        ...     description_to_sub_category={"streaming": ["netflix"]},
+        ...     sub_category_to_category={"entertainment": ["streaming"]},
+        ... )
+        >>> mappers.description_to_sub_category["streaming"]
+        ['netflix']
     """
 
     description_to_sub_category: Mapping[str, list[str]]

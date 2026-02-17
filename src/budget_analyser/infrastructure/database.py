@@ -20,7 +20,25 @@ import pandas as pd
 
 @dataclass
 class TransactionRecord:
-    """A single transaction record for database operations."""
+    """A single transaction record for database operations.
+
+    Attributes:
+        transaction_date: Date string in ISO format (YYYY-MM-DD).
+        description: Transaction description text.
+        amount: Transaction amount (positive=credit, negative=debit).
+        from_account: Account identifier the transaction belongs to.
+        sub_category: Derived sub-category label.
+        category: Derived top-level category label.
+        c_or_d: Classification: "earnings", "expenditures", or "neutral".
+
+    Example:
+        >>> record = TransactionRecord(
+        ...     transaction_date="2025-01-15",
+        ...     description="NETFLIX",
+        ...     amount=-15.99,
+        ...     from_account="citi",
+        ... )
+    """
 
     transaction_date: str
     description: str
@@ -175,7 +193,16 @@ class TransactionDatabase:
         return df
 
     def get_transaction_count(self) -> int:
-        """Return the total number of transactions in the database."""
+        """Return the total number of transactions in the database.
+
+        Returns:
+            Integer count of all rows in the transactions table.
+
+        Example:
+            >>> db = TransactionDatabase(db_path)
+            >>> db.get_transaction_count()
+            42
+        """
         query = f"SELECT COUNT(*) FROM {self.TABLE_NAME}"
         with self._get_connection() as conn:
             cursor = conn.execute(query)
@@ -220,7 +247,11 @@ class TransactionDatabase:
         return df
 
     def has_transactions(self) -> bool:
-        """Check if the database has any transactions."""
+        """Check if the database has any transactions.
+
+        Returns:
+            True if the transactions table contains at least one row.
+        """
         return self.get_transaction_count() > 0
 
 
@@ -253,5 +284,9 @@ class DatabaseTransactionRepository:
         return df
 
     def has_data(self) -> bool:
-        """Check if the database has any transactions."""
+        """Check if the database has any transactions.
+
+        Returns:
+            True if the underlying database contains at least one row.
+        """
         return self._database.has_transactions()

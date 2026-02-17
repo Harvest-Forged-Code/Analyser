@@ -19,13 +19,31 @@ def calculate_net_worth_summary(
     """Calculate comprehensive net worth summary from accounts.
 
     Groups accounts into assets vs. liabilities by account type
-    and computes totals.
+    and computes totals. Asset types are checking, savings,
+    investment, and other. Liability types are credit_card and loan.
 
     Args:
         accounts: All financial accounts to include.
 
     Returns:
         NetWorthSummary with totals and per-type breakdowns.
+
+    Example:
+        >>> accounts = [
+        ...     Account(
+        ...         id=1, name="Checking",
+        ...         account_type="checking", balance=5000.0,
+        ...         last_updated="2024-01-15",
+        ...     ),
+        ...     Account(
+        ...         id=2, name="Credit Card",
+        ...         account_type="credit_card", balance=-2000.0,
+        ...         last_updated="2024-01-15",
+        ...     ),
+        ... ]
+        >>> summary = calculate_net_worth_summary(accounts=accounts)
+        >>> summary.net_worth
+        3000.0
     """
     assets_by_type: dict[str, float] = {}
     liabilities_by_type: dict[str, float] = {}

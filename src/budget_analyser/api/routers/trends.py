@@ -36,7 +36,14 @@ router = APIRouter(prefix="/api/trends", tags=["trends"])
 
 
 def _all_transactions_df(reports: list[MonthlyReports]) -> pd.DataFrame:
-    """Concatenate all transactions from reports."""
+    """Concatenate all transactions from reports.
+
+    Args:
+        reports: List of MonthlyReports to extract transactions from.
+
+    Returns:
+        Combined DataFrame of all transactions, or empty DataFrame.
+    """
     frames = []
     for r in reports:
         if r.transactions is not None and not r.transactions.empty:

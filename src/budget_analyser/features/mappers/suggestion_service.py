@@ -58,8 +58,17 @@ class CategorizationSuggestionEngine:
 
         Args:
             min_confidence: Minimum confidence to include.
-            max_suggestions: Maximum number of suggestions.
+                Suggestions below this threshold are discarded.
+            max_suggestions: Maximum number of suggestions
+                returned per description.
             fuzzy_threshold: Threshold for fuzzy matching.
+                Higher values require closer matches.
+
+        Example:
+            >>> engine = CategorizationSuggestionEngine(
+            ...     min_confidence=0.6,
+            ...     max_suggestions=3,
+            ... )
         """
         self._min_confidence = min_confidence
         self._max_suggestions = max_suggestions
@@ -71,9 +80,22 @@ class CategorizationSuggestionEngine:
     ) -> None:
         """Learn from historical mapped transactions.
 
+        Populates the internal mapping of descriptions to
+        sub-categories so future suggestions can use fuzzy
+        matching against known history.
+
         Args:
             transactions: DataFrame with 'description' and
                 'sub_category' columns.
+
+        Example:
+            >>> import pandas as pd
+            >>> engine = CategorizationSuggestionEngine()
+            >>> df = pd.DataFrame({
+            ...     "description": ["TRADER JOES"],
+            ...     "sub_category": ["Groceries"],
+            ... })
+            >>> engine.learn_from_history(transactions=df)
         """
         if transactions.empty:
             return
@@ -100,6 +122,9 @@ class CategorizationSuggestionEngine:
     ) -> SuggestionResult:
         """Generate suggestions for an unmapped transaction.
 
+        Combines pattern detection, historical fuzzy matching,
+        and keyword matching to produce ranked suggestions.
+
         Args:
             description: The transaction description.
             keyword_map: Optional mapping of sub_category to
@@ -107,6 +132,15 @@ class CategorizationSuggestionEngine:
 
         Returns:
             SuggestionResult with ranked suggestions.
+
+        Example:
+            >>> engine = CategorizationSuggestionEngine()
+            >>> result = engine.suggest(
+            ...     description="SQ *COFFEE SHOP",
+            ...     keyword_map={"Coffee": ["COFFEE"]},
+            ... )
+            >>> result.description
+            'SQ *COFFEE SHOP'
         """
         result = SuggestionResult(description=description)
 
@@ -149,12 +183,23 @@ class CategorizationSuggestionEngine:
     ) -> list[SuggestionResult]:
         """Generate suggestions for multiple descriptions.
 
+        Convenience wrapper that calls :meth:`suggest` for each
+        description in the list.
+
         Args:
             descriptions: List of transaction descriptions.
             keyword_map: Optional keyword mapping.
 
         Returns:
             List of SuggestionResult, one per description.
+
+        Example:
+            >>> engine = CategorizationSuggestionEngine()
+            >>> results = engine.suggest_batch(
+            ...     descriptions=["WHOLE FOODS", "SHELL OIL"],
+            ... )
+            >>> len(results)
+            2
         """
         return [
             self.suggest(
@@ -166,7 +211,15 @@ class CategorizationSuggestionEngine:
     def _detect_patterns(
         self, description: str,
     ) -> list[str]:
-        """Detect known merchant patterns in description."""
+        """Detect known merchant patterns in description.
+
+        Args:
+            description: Raw transaction description string.
+
+        Returns:
+            List of human-readable pattern names found
+            (e.g. ``["Square merchant"]``).
+        """
         patterns_found = []
         for pattern, name in MERCHANT_PATTERNS.items():
             if re.search(pattern, description, re.IGNORECASE):
@@ -176,7 +229,15 @@ class CategorizationSuggestionEngine:
     def _match_historical(
         self, desc_lower: str,
     ) -> list[Suggestion]:
-        """Find similar historical mappings."""
+        """Find similar historical mappings.
+
+        Args:
+            desc_lower: Lowercased transaction description.
+
+        Returns:
+            List of Suggestion objects from historical matches
+            that meet the fuzzy threshold.
+        """
         suggestions = []
 
         for hist_desc, sub_cat in (
@@ -205,7 +266,17 @@ class CategorizationSuggestionEngine:
         desc_lower: str,
         keyword_map: Mapping[str, list[str]],
     ) -> list[Suggestion]:
-        """Find partial keyword matches."""
+        """Find partial keyword matches.
+
+        Args:
+            desc_lower: Lowercased transaction description.
+            keyword_map: Mapping of sub-category names to their
+                keyword lists.
+
+        Returns:
+            List of Suggestion objects for keyword matches,
+            one per sub-category at most.
+        """
         suggestions = []
 
         for sub_category, keywords in keyword_map.items():
@@ -245,7 +316,16 @@ class CategorizationSuggestionEngine:
         self,
         suggestions: list[Suggestion],
     ) -> list[Suggestion]:
-        """Remove duplicates, keeping highest confidence."""
+        """Remove duplicates, keeping highest confidence.
+
+        Args:
+            suggestions: List of Suggestion objects that may
+                contain duplicates for the same sub-category.
+
+        Returns:
+            Deduplicated list with only the highest-confidence
+            Suggestion per sub-category.
+        """
         seen: dict[str, Suggestion] = {}
 
         for suggestion in suggestions:
@@ -265,12 +345,28 @@ def create_suggestion_engine(
 ) -> CategorizationSuggestionEngine:
     """Factory function to create a configured suggestion engine.
 
+    Creates an engine and optionally pre-loads it with
+    historical transaction data for fuzzy matching.
+
     Args:
-        historical_transactions: Optional DataFrame to learn from.
+        historical_transactions: Optional DataFrame to learn
+            from. Must have 'description' and 'sub_category'
+            columns if provided.
         min_confidence: Minimum confidence threshold.
 
     Returns:
         Configured CategorizationSuggestionEngine instance.
+
+    Example:
+        >>> import pandas as pd
+        >>> history = pd.DataFrame({
+        ...     "description": ["TRADER JOES"],
+        ...     "sub_category": ["Groceries"],
+        ... })
+        >>> engine = create_suggestion_engine(
+        ...     historical_transactions=history,
+        ...     min_confidence=0.6,
+        ... )
     """
     engine = CategorizationSuggestionEngine(
         min_confidence=min_confidence,

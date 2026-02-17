@@ -53,6 +53,17 @@ class ForecastingService:
 
         Returns:
             ForecastResult with predictions and metrics.
+
+        Example:
+            >>> service = ForecastingService()
+            >>> data = {
+            ...     "2024-01": 1000.0,
+            ...     "2024-02": 1100.0,
+            ...     "2024-03": 1050.0,
+            ... }
+            >>> result = service.forecast(historical_data=data)
+            >>> len(result.forecasts)
+            3
         """
         periods = periods or self._default_periods
 
@@ -97,6 +108,21 @@ class ForecastingService:
 
         Returns:
             ForecastResult with predictions.
+
+        Example:
+            >>> import pandas as pd
+            >>> service = ForecastingService()
+            >>> df = pd.DataFrame({
+            ...     "amount": [-100, -200, -150],
+            ...     "transaction_date": [
+            ...         "2024-01-15", "2024-02-15", "2024-03-15",
+            ...     ],
+            ... })
+            >>> result = service.forecast_from_transactions(
+            ...     transactions=df,
+            ... )
+            >>> result.method
+            <ForecastMethod.WEIGHTED_AVERAGE: 'weighted_average'>
         """
         if transactions.empty or "amount" not in transactions.columns:
             return ForecastResult(method=method)
@@ -140,6 +166,22 @@ class ForecastingService:
 
         Returns:
             Dictionary mapping category to ForecastResult.
+
+        Example:
+            >>> import pandas as pd
+            >>> service = ForecastingService()
+            >>> df = pd.DataFrame({
+            ...     "amount": [-100, -200, -50],
+            ...     "category": ["Food", "Food", "Utilities"],
+            ...     "transaction_date": [
+            ...         "2024-01-15", "2024-02-15", "2024-03-15",
+            ...     ],
+            ... })
+            >>> results = service.forecast_by_category(
+            ...     transactions=df,
+            ... )
+            >>> "Food" in results
+            True
         """
         if (transactions.empty
                 or "category" not in transactions.columns):
@@ -165,7 +207,19 @@ class ForecastingService:
         data: pd.Series,
         periods: int,
     ) -> ForecastResult:
-        """Forecast using simple historical average."""
+        """Forecast using simple historical average.
+
+        Computes the mean and standard deviation of historical data
+        to produce flat forecasts with confidence bounds.
+
+        Args:
+            data: Historical values as a sorted pandas Series.
+            periods: Number of future periods to forecast.
+
+        Returns:
+            ForecastResult using HISTORICAL_AVERAGE method with
+            constant forecast values equal to the historical mean.
+        """
         mean = float(data.mean())
         std = (
             float(data.std()) if len(data) > 1
@@ -209,7 +263,19 @@ class ForecastingService:
         data: pd.Series,
         periods: int,
     ) -> ForecastResult:
-        """Forecast using weighted average (recent values weighted more)."""
+        """Forecast using weighted average (recent values weighted more).
+
+        Assigns linearly increasing weights so that more recent
+        observations have greater influence on the forecast.
+
+        Args:
+            data: Historical values as a sorted pandas Series.
+            periods: Number of future periods to forecast.
+
+        Returns:
+            ForecastResult using WEIGHTED_AVERAGE method with
+            constant forecast values equal to the weighted mean.
+        """
         n = len(data)
         if n == 0:
             return ForecastResult(method=ForecastMethod.WEIGHTED_AVERAGE)
@@ -259,7 +325,21 @@ class ForecastingService:
         data: pd.Series,
         periods: int,
     ) -> ForecastResult:
-        """Forecast using linear trend extrapolation."""
+        """Forecast using linear trend extrapolation.
+
+        Fits a linear regression to historical data and projects
+        the trend forward. Confidence bounds widen for further
+        periods, and confidence decreases by 5% per period.
+
+        Args:
+            data: Historical values as a sorted pandas Series.
+            periods: Number of future periods to forecast.
+
+        Returns:
+            ForecastResult using TREND_EXTRAPOLATION method.
+            Falls back to weighted average if fewer than 2 data
+            points are available.
+        """
         n = len(data)
         if n < 2:
             return self._forecast_weighted_average(data, periods)
@@ -310,6 +390,12 @@ class ForecastingService:
     ) -> tuple[float, float, float]:
         """Perform simple linear regression.
 
+        Fits y = slope * x + intercept using ordinary least squares
+        where x is the integer index of each data point.
+
+        Args:
+            data: Historical values as a pandas Series.
+
         Returns:
             Tuple of (slope, intercept, residual_std).
         """
@@ -338,7 +424,20 @@ class ForecastingService:
         data: pd.Series,
         periods: int,
     ) -> ForecastResult:
-        """Forecast using ensemble of all methods."""
+        """Forecast using ensemble of all methods.
+
+        Runs historical average, weighted average, and trend
+        extrapolation, then combines results by averaging each
+        forecast point across all three methods.
+
+        Args:
+            data: Historical values as a sorted pandas Series.
+            periods: Number of future periods to forecast.
+
+        Returns:
+            ForecastResult using ENSEMBLE method with averaged
+            forecast values and per-method metrics.
+        """
         results = [
             self._forecast_historical_average(data, periods),
             self._forecast_weighted_average(data, periods),
@@ -366,7 +465,20 @@ class ForecastingService:
         results: list[ForecastResult],
         periods: int,
     ) -> list[ForecastPoint]:
-        """Average forecast points across multiple methods."""
+        """Average forecast points across multiple methods.
+
+        For each future period, averages the value, lower_bound,
+        and upper_bound from all method results. Confidence is
+        slightly reduced (95% of configured interval) to reflect
+        ensemble uncertainty.
+
+        Args:
+            results: List of ForecastResult from individual methods.
+            periods: Number of future periods to combine.
+
+        Returns:
+            List of averaged ForecastPoint objects.
+        """
         combined: list[ForecastPoint] = []
 
         for i in range(periods):
@@ -412,7 +524,18 @@ class ForecastingService:
         last_period: str,
         count: int,
     ) -> list[str]:
-        """Generate future period strings from the last known period."""
+        """Generate future period strings from the last known period.
+
+        Parses the last period as "YYYY-MM" and increments monthly.
+        Falls back to "period_1", "period_2", etc. if parsing fails.
+
+        Args:
+            last_period: Last known period in "YYYY-MM" format.
+            count: Number of future periods to generate.
+
+        Returns:
+            List of period strings in "YYYY-MM" format.
+        """
         try:
             year, month = map(int, last_period.split("-"))
             periods = []
@@ -440,6 +563,18 @@ def forecast_spending(
 
     Returns:
         ForecastResult using weighted average method.
+
+    Example:
+        >>> import pandas as pd
+        >>> df = pd.DataFrame({
+        ...     "amount": [-500, -600, -550],
+        ...     "transaction_date": [
+        ...         "2024-01-15", "2024-02-15", "2024-03-15",
+        ...     ],
+        ... })
+        >>> result = forecast_spending(transactions=df)
+        >>> len(result.forecasts)
+        3
     """
     service = ForecastingService()
     return service.forecast_from_transactions(

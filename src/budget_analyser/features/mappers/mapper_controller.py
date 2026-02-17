@@ -17,6 +17,14 @@ from budget_analyser.infrastructure.json_mappings import (
 
 
 def _norm(s: str) -> str:
+    """Normalize a string to lowercase with whitespace stripped.
+
+    Args:
+        s: Raw string value.
+
+    Returns:
+        Stripped, lowercased string; empty string if *s* is falsy.
+    """
     return (s or "").strip().lower()
 
 
@@ -39,10 +47,29 @@ class MapperController:
     )
 
     def __post_init__(self) -> None:
+        """Load mappings from the store on initialization."""
         self.reload()
 
     def list_unmapped_transactions(self) -> pd.DataFrame:
-        """Return unmapped transactions across all reports."""
+        """Return unmapped transactions across all reports.
+
+        Scans all loaded ``MonthlyReports`` and collects
+        transactions that have no sub-category assigned.
+
+        Returns:
+            DataFrame with columns ``transaction_date``,
+            ``description``, ``amount``, ``from_account``,
+            sorted by date descending. Empty DataFrame if
+            no unmapped transactions exist.
+
+        Example:
+            >>> ctrl = MapperController(
+            ...     reports=reports, logger=log, store=store,
+            ... )
+            >>> df = ctrl.list_unmapped_transactions()
+            >>> list(df.columns)
+            ['transaction_date', 'description', 'amount', 'from_account']
+        """
         frames: list[pd.DataFrame] = []
         for mr in self.reports:
             df = getattr(mr, "transactions", None)
@@ -85,7 +112,24 @@ class MapperController:
         return out
 
     def list_unmapped_descriptions(self) -> list[str]:
-        """Return unique unmapped descriptions, sorted."""
+        """Return unique unmapped descriptions, sorted.
+
+        Collects description strings from transactions that have
+        no sub-category, deduplicates, and returns them sorted
+        case-insensitively.
+
+        Returns:
+            Alphabetically sorted list of unique unmapped
+            description strings.
+
+        Example:
+            >>> ctrl = MapperController(
+            ...     reports=reports, logger=log, store=store,
+            ... )
+            >>> descs = ctrl.list_unmapped_descriptions()
+            >>> isinstance(descs, list)
+            True
+        """
         seen: set[str] = set()
         out: list[str] = []
         for mr in self.reports:
@@ -111,14 +155,32 @@ class MapperController:
         return out
 
     def list_sub_categories(self) -> list[str]:
-        """Return sorted list of sub-categories."""
+        """Return sorted list of sub-categories.
+
+        Returns:
+            Alphabetically sorted sub-category names from the
+            description-to-subcategory mapping.
+
+        Example:
+            >>> ctrl.list_sub_categories()
+            ['Coffee', 'Groceries', 'Utilities']
+        """
         return sorted(
             self._desc_to_sub.keys(),
             key=lambda s: s.lower(),
         )
 
     def list_categories(self) -> list[str]:
-        """Return sorted list of categories."""
+        """Return sorted list of categories.
+
+        Returns:
+            Alphabetically sorted category names from the
+            sub-category-to-category mapping.
+
+        Example:
+            >>> ctrl.list_categories()
+            ['Food', 'Housing', 'Transport']
+        """
         return sorted(
             self._sub_to_cat.keys(),
             key=lambda s: s.lower(),
@@ -131,6 +193,10 @@ class MapperController:
     ) -> None:
         """Append description keywords to a sub-category.
 
+        Maps one or more raw transaction descriptions to the
+        given sub-category so future transactions with these
+        descriptions are automatically categorized.
+
         Args:
             sub_category: Target sub-category.
             descriptions: Keywords to add.
@@ -138,6 +204,12 @@ class MapperController:
         Raises:
             ValueError: If sub-category doesn't exist or
                 descriptions are already mapped.
+
+        Example:
+            >>> ctrl.add_descriptions_to_sub_category(
+            ...     "Weekly Groceries",
+            ...     ["TRADER JOES", "WHOLE FOODS"],
+            ... )
         """
         sub_category = sub_category.strip()
         if not sub_category:
@@ -194,12 +266,20 @@ class MapperController:
     ) -> None:
         """Create a new sub-category and link to a category.
 
+        Initializes the sub-category with an empty description
+        list and appends it to the specified parent category.
+
         Args:
             sub_category: New sub-category name.
             category: Parent category name.
 
         Raises:
             ValueError: If names are empty or sub-category exists.
+
+        Example:
+            >>> ctrl.create_sub_category(
+            ...     "Organic Produce", "Groceries",
+            ... )
         """
         sc = sub_category.strip()
         if not sc:
@@ -227,11 +307,27 @@ class MapperController:
             pass
 
     def save(self) -> None:
-        """Persist current mappings to JSON files."""
+        """Persist current mappings to JSON files.
+
+        Writes both the description-to-subcategory and
+        subcategory-to-category mappings to the underlying
+        ``JsonCategoryMappingStore``.
+
+        Example:
+            >>> ctrl.create_sub_category("Dining", "Food")
+            >>> ctrl.save()
+        """
         self.store.save_desc_to_sub(self._desc_to_sub)
         self.store.save_sub_to_cat(self._sub_to_cat)
 
     def reload(self) -> None:
-        """Reload mappings from JSON files."""
+        """Reload mappings from JSON files.
+
+        Replaces the in-memory mappings with fresh data from
+        the ``JsonCategoryMappingStore``.
+
+        Example:
+            >>> ctrl.reload()
+        """
         self._desc_to_sub = self.store.load_desc_to_sub()
         self._sub_to_cat = self.store.load_sub_to_cat()

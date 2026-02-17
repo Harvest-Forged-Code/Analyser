@@ -56,6 +56,19 @@ class BurnRateService:
 
         Returns:
             BurnRateMetrics with all calculated values.
+
+        Example:
+            >>> from datetime import date
+            >>> service = BurnRateService()
+            >>> metrics = service.calculate_monthly_burn_rate(
+            ...     budget_amount=1000.0,
+            ...     spent_amount=500.0,
+            ...     year=2024,
+            ...     month=1,
+            ...     as_of_date=date(2024, 1, 15),
+            ... )
+            >>> metrics.daily_burn_rate
+            33.333333333333336
         """
         period_start = date(year, month, 1)
         _, days_in_month = monthrange(year, month)
@@ -101,6 +114,23 @@ class BurnRateService:
 
         Returns:
             BurnRateMetrics based on transaction totals.
+
+        Example:
+            >>> import pandas as pd
+            >>> from datetime import date
+            >>> service = BurnRateService()
+            >>> df = pd.DataFrame({
+            ...     "amount": [-50.0, -30.0, -20.0],
+            ... })
+            >>> metrics = service.calculate_from_transactions(
+            ...     transactions=df,
+            ...     budget_amount=500.0,
+            ...     year=2024,
+            ...     month=1,
+            ...     as_of_date=date(2024, 1, 15),
+            ... )
+            >>> metrics.spent_amount
+            100.0
         """
         if (transactions.empty
                 or "amount" not in transactions.columns):
@@ -141,7 +171,26 @@ class BurnRateService:
             as_of_date: Date to calculate as of.
 
         Returns:
-            List of CategoryBurnRate for each budgeted category.
+            List of CategoryBurnRate for each budgeted category,
+            sorted by burn_rate_percentage descending.
+
+        Example:
+            >>> import pandas as pd
+            >>> from datetime import date
+            >>> service = BurnRateService()
+            >>> df = pd.DataFrame({
+            ...     "amount": [-100.0, -50.0],
+            ...     "category": ["Food", "Utilities"],
+            ... })
+            >>> results = service.calculate_by_category(
+            ...     transactions=df,
+            ...     budgets={"Food": 300.0, "Utilities": 100.0},
+            ...     year=2024,
+            ...     month=1,
+            ...     as_of_date=date(2024, 1, 15),
+            ... )
+            >>> len(results)
+            2
         """
         results = []
 
@@ -183,7 +232,25 @@ class BurnRateService:
         days_elapsed: int,
         days_remaining: int,
     ) -> BurnRateMetrics:
-        """Calculate all burn rate metrics."""
+        """Calculate all burn rate metrics.
+
+        Derives daily burn rate, projected total, safe daily spend,
+        days until exhaustion, and budget status from the provided
+        period and spending data.
+
+        Args:
+            period_start: First day of the budget period.
+            period_end: Last day of the budget period.
+            budget_amount: Total budget for the period.
+            spent_amount: Amount spent so far.
+            days_elapsed: Days elapsed since period_start.
+            days_remaining: Days remaining until period_end.
+
+        Returns:
+            BurnRateMetrics with all derived values including
+            daily_burn_rate, projected_total, safe_daily_spend,
+            days_until_exhausted, and burn_rate_status.
+        """
         total_days = days_elapsed + days_remaining
 
         daily_burn_rate = (
@@ -256,6 +323,16 @@ def calculate_burn_rate(
 
     Returns:
         BurnRateMetrics for the current date.
+
+    Example:
+        >>> metrics = calculate_burn_rate(
+        ...     budget=1000.0,
+        ...     spent=400.0,
+        ...     year=2024,
+        ...     month=1,
+        ... )
+        >>> metrics.budget_amount
+        1000.0
     """
     service = BurnRateService()
     return service.calculate_monthly_burn_rate(

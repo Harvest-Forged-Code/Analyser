@@ -19,6 +19,20 @@ class EarningsRow:
         expected: Expected amount from goals.
         diff: Difference (actual - expected).
         diff_percent: Percentage difference.
+
+    Example:
+        >>> row = EarningsRow(
+        ...     sub_category="Salary",
+        ...     actual=5000.0,
+        ...     percent_of_total=80.0,
+        ...     expected=4500.0,
+        ...     diff=500.0,
+        ...     diff_percent=11.11,
+        ... )
+        >>> row.sub_category
+        'Salary'
+        >>> row.diff
+        500.0
     """
 
     sub_category: str

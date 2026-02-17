@@ -52,6 +52,19 @@ class SpendingPatternService:
 
         Returns:
             ParetoAnalysis showing spending distribution.
+
+        Example:
+            >>> import pandas as pd
+            >>> service = SpendingPatternService()
+            >>> df = pd.DataFrame({
+            ...     "amount": [-500, -200, -100],
+            ...     "category": ["Food", "Transport", "Other"],
+            ... })
+            >>> result = service.pareto_analysis(
+            ...     transactions=df,
+            ... )
+            >>> result.total_amount
+            800.0
         """
         if (transactions.empty
                 or group_by not in transactions.columns):
@@ -109,6 +122,21 @@ class SpendingPatternService:
 
         Returns:
             WeeklyPattern showing daily spending distribution.
+
+        Example:
+            >>> import pandas as pd
+            >>> service = SpendingPatternService()
+            >>> df = pd.DataFrame({
+            ...     "amount": [-50, -30, -20],
+            ...     "transaction_date": [
+            ...         "2024-01-15", "2024-01-16", "2024-01-17",
+            ...     ],
+            ... })
+            >>> result = service.weekly_pattern(
+            ...     transactions=df,
+            ... )
+            >>> len(result.day_patterns)
+            7
         """
         if transactions.empty:
             return WeeklyPattern()
@@ -168,6 +196,24 @@ class SpendingPatternService:
 
         Returns:
             AnomalyReport with detected anomalies.
+
+        Example:
+            >>> import pandas as pd
+            >>> service = SpendingPatternService()
+            >>> df = pd.DataFrame({
+            ...     "amount": [-10, -15, -12, -500],
+            ...     "category": ["Food"] * 4,
+            ...     "description": ["a", "b", "c", "d"],
+            ...     "transaction_date": [
+            ...         "2024-01-01", "2024-01-02",
+            ...         "2024-01-03", "2024-01-04",
+            ...     ],
+            ... })
+            >>> report = service.detect_anomalies(
+            ...     transactions=df,
+            ... )
+            >>> report.total_transactions > 0
+            True
         """
         if (transactions.empty
                 or "amount" not in transactions.columns):
@@ -202,7 +248,22 @@ class SpendingPatternService:
         df: pd.DataFrame,
         category: str,
     ) -> list[Anomaly]:
-        """Find anomalies within a group of transactions."""
+        """Find anomalies within a group of transactions.
+
+        Uses z-score analysis to identify transactions whose
+        absolute amount deviates from the group mean by more
+        than the configured anomaly_threshold.
+
+        Args:
+            df: DataFrame of transactions for a single group,
+                must contain an 'abs_amount' column.
+            category: Category label for the group.
+
+        Returns:
+            List of Anomaly objects for transactions exceeding
+            the z-score threshold. Empty if fewer than 3
+            transactions or zero standard deviation.
+        """
         if len(df) < 3:
             return []
 
@@ -261,6 +322,27 @@ class SpendingPatternService:
 
         Returns:
             List of SavingsRateTrend for each period.
+
+        Example:
+            >>> import pandas as pd
+            >>> service = SpendingPatternService()
+            >>> earn = pd.DataFrame({
+            ...     "amount": [3000, 3100],
+            ...     "transaction_date": [
+            ...         "2024-01-01", "2024-02-01",
+            ...     ],
+            ... })
+            >>> exp = pd.DataFrame({
+            ...     "amount": [-2000, -2100],
+            ...     "transaction_date": [
+            ...         "2024-01-15", "2024-02-15",
+            ...     ],
+            ... })
+            >>> trends = service.savings_rate_trend(
+            ...     earnings=earn, expenses=exp,
+            ... )
+            >>> len(trends)
+            2
         """
         earnings_by_month = self._aggregate_by_month(
             earnings, is_expense=False,
@@ -299,7 +381,19 @@ class SpendingPatternService:
         *,
         is_expense: bool,
     ) -> dict[str, float]:
-        """Aggregate amounts by month."""
+        """Aggregate amounts by month.
+
+        Groups transactions by month and sums amounts. For expenses,
+        uses absolute values; for earnings, uses raw values.
+
+        Args:
+            df: DataFrame with 'amount' and either
+                'transaction_date' or 'year_month' column.
+            is_expense: If True, take absolute values of amounts.
+
+        Returns:
+            Dict mapping period string ("YYYY-MM") to total amount.
+        """
         if df.empty or "amount" not in df.columns:
             return {}
 
@@ -339,6 +433,19 @@ def analyze_spending_patterns(
 
     Returns:
         Dictionary containing pareto, weekly, and anomaly analyses.
+
+    Example:
+        >>> import pandas as pd
+        >>> df = pd.DataFrame({
+        ...     "amount": [-100, -200, -50],
+        ...     "category": ["Food", "Transport", "Other"],
+        ...     "transaction_date": [
+        ...         "2024-01-15", "2024-01-16", "2024-01-17",
+        ...     ],
+        ... })
+        >>> results = analyze_spending_patterns(transactions=df)
+        >>> set(results.keys())
+        {'pareto', 'weekly', 'anomalies'}
     """
     service = SpendingPatternService()
 

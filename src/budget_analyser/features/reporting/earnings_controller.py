@@ -48,6 +48,23 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
         logger: logging.Logger,
         budget_controller: object | None = None,
     ) -> None:
+        """Initialize the earnings statistics controller.
+
+        Args:
+            reports: List of monthly report objects containing
+                earnings DataFrames and period metadata.
+            logger: Logger instance for diagnostic messages.
+            budget_controller: Optional controller exposing
+                ``get_earnings_goal_map()`` for expected-earnings
+                lookups. When ``None``, expected values default
+                to zero.
+
+        Example:
+            >>> ctrl = EarningsStatsController(
+            ...     reports=reports,
+            ...     logger=logging.getLogger(__name__),
+            ... )
+        """
         self._reports = reports
         self._logger = logger
         self._budget_controller = budget_controller
@@ -58,18 +75,48 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
         self._year_cache: dict[int, _YearSummary] = {}
 
     def available_months(self) -> list[pd.Period]:
-        """Return sorted list of available months."""
+        """Return sorted list of available months.
+
+        Returns:
+            Periods sorted in chronological order.
+
+        Example:
+            >>> months = ctrl.available_months()
+            >>> months[0]
+            Period('2024-01', 'M')
+        """
         return sorted(self._by_period.keys())
 
     def available_years(self) -> list[int]:
-        """Return sorted list of years that have data."""
+        """Return sorted list of years that have data.
+
+        Returns:
+            Distinct years in ascending order.
+
+        Example:
+            >>> ctrl.available_years()
+            [2023, 2024]
+        """
         return sorted(
             {int(p.year) for p in self._by_period.keys()},
         )
 
     @staticmethod
     def month_label(period: pd.Period) -> str:
-        """Return short month label (e.g., 'Jan 2025')."""
+        """Return short month label (e.g., ``'Jan 2025'``).
+
+        Args:
+            period: A monthly pandas Period.
+
+        Returns:
+            Formatted string like ``"Jan 2025"``.
+
+        Example:
+            >>> EarningsStatsController.month_label(
+            ...     pd.Period("2025-01", freq="M"),
+            ... )
+            'Jan 2025'
+        """
         short_names = [
             "Jan", "Feb", "Mar", "Apr", "May", "Jun",
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -80,13 +127,40 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
         )
 
     def total_for_month(self, period: pd.Period) -> float:
-        """Return total earnings for a month."""
+        """Return total earnings for a month.
+
+        Args:
+            period: The month to query.
+
+        Returns:
+            Sum of all earnings amounts for the period.
+            Returns ``0.0`` when no data exists.
+
+        Example:
+            >>> ctrl.total_for_month(pd.Period("2024-01", "M"))
+            5200.0
+        """
         return self._get_month_summary(period).total
 
     def subcategory_totals(
         self, period: pd.Period,
     ) -> list[tuple[str, float]]:
-        """Return sub-category totals for a month."""
+        """Return sub-category totals for a month.
+
+        Args:
+            period: The month to query.
+
+        Returns:
+            List of ``(sub_category_name, total_amount)`` tuples
+            sorted by amount descending.
+
+        Example:
+            >>> totals = ctrl.subcategory_totals(
+            ...     pd.Period("2024-01", "M"),
+            ... )
+            >>> totals[0]
+            ('Salary', 5000.0)
+        """
         return list(
             self._get_month_summary(period).subcats,
         )
@@ -96,7 +170,29 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
         period: pd.Period,
         sub_category: str | None = None,
     ) -> pd.DataFrame:
-        """Return transactions for a month."""
+        """Return earnings transactions for a month.
+
+        Optionally filters to a specific sub-category.
+
+        Args:
+            period: The month to query.
+            sub_category: If provided, only return transactions
+                matching this sub-category name.
+
+        Returns:
+            DataFrame with columns ``transaction_date``,
+            ``description``, ``amount``, ``from_account``,
+            and ``sub_category``. Empty DataFrame when no
+            data exists.
+
+        Example:
+            >>> df = ctrl.transactions(
+            ...     pd.Period("2024-01", "M"),
+            ...     sub_category="Salary",
+            ... )
+            >>> list(df.columns)
+            ['transaction_date', 'description', 'amount', ...]
+        """
         mr = self._by_period.get(period)
         if mr is None:
             return pd.DataFrame()
@@ -117,13 +213,47 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
         return df.copy()
 
     def total_for_year(self, year: int) -> float:
-        """Return total earnings for a year."""
+        """Return total earnings for a year.
+
+        Args:
+            year: Calendar year (e.g. ``2024``).
+
+        Returns:
+            Sum of all monthly earnings totals for the year.
+
+        Example:
+            >>> ctrl.total_for_year(2024)
+            62400.0
+        """
         return self._get_year_summary(year).total
 
     def table_for_month(
         self, period: pd.Period,
     ) -> tuple[list[EarningsRow], float, float]:
-        """Return aggregated earnings table for a month."""
+        """Build the earnings table for a single month.
+
+        Retrieves all earnings transactions for the given month
+        and computes actual vs expected totals per sub-category.
+
+        Args:
+            period: The month to query.
+
+        Returns:
+            A 3-tuple of:
+                - rows: List of EarningsRow with category,
+                  actual, expected, diff, and percentages.
+                - actual_total: Sum of all actual earnings.
+                - expected_total: Sum of all expected earnings.
+
+        Example:
+            >>> rows, actual, expected = ctrl.table_for_month(
+            ...     pd.Period("2024-01", "M"),
+            ... )
+            >>> len(rows)
+            3
+            >>> actual
+            5200.0
+        """
         summary = self._get_month_summary(period)
         actual_map = dict(summary.subcats)
         expected_map = self._expected_for_month(period)
@@ -132,7 +262,28 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
     def table_for_year(
         self, year: int,
     ) -> tuple[list[EarningsRow], float, float]:
-        """Return aggregated earnings table for a year."""
+        """Build the earnings table for an entire year.
+
+        Aggregates sub-category totals across all months in the
+        year and computes actual vs expected values.
+
+        Args:
+            year: Calendar year (e.g. ``2024``).
+
+        Returns:
+            A 3-tuple of:
+                - rows: List of EarningsRow aggregated across
+                  all months of the year.
+                - actual_total: Sum of all actual earnings.
+                - expected_total: Sum of all expected earnings.
+
+        Example:
+            >>> rows, actual, expected = ctrl.table_for_year(
+            ...     2024,
+            ... )
+            >>> actual
+            62400.0
+        """
         year_summary = self._get_year_summary(year)
         actual_map: dict[str, float] = {}
         for _, _, subcats in year_summary.months:
@@ -150,7 +301,27 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
     def table_for_range(
         self, start_date: date, end_date: date,
     ) -> tuple[list[EarningsRow], float, float]:
-        """Return aggregated earnings table for a date range."""
+        """Build the earnings table for a custom date range.
+
+        Aggregates sub-category totals for transactions falling
+        within the specified date range inclusive.
+
+        Args:
+            start_date: Start of the range (inclusive).
+            end_date: End of the range (inclusive).
+
+        Returns:
+            A 3-tuple of:
+                - rows: List of EarningsRow for the range.
+                - actual_total: Sum of all actual earnings.
+                - expected_total: Sum of all expected earnings.
+
+        Example:
+            >>> from datetime import date
+            >>> rows, actual, expected = ctrl.table_for_range(
+            ...     date(2024, 1, 1), date(2024, 6, 30),
+            ... )
+        """
         actual_map = dict(
             self.subcategory_totals_for_range(
                 start_date, end_date,
@@ -167,7 +338,24 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
     def year_breakdown(
         self, year: int,
     ) -> list[tuple[pd.Period, float, list[tuple[str, float]]]]:
-        """Return breakdown by month for the given year."""
+        """Return month-by-month breakdown for the given year.
+
+        Args:
+            year: Calendar year (e.g. ``2024``).
+
+        Returns:
+            List of 3-tuples, one per month:
+                - period: The pandas Period for the month.
+                - total: Total earnings for that month.
+                - subcats: List of ``(sub_category, amount)``
+                  tuples for the month.
+
+        Example:
+            >>> breakdown = ctrl.year_breakdown(2024)
+            >>> period, total, subcats = breakdown[0]
+            >>> total
+            5200.0
+        """
         return list(self._get_year_summary(year).months)
 
     def transactions_for_year(
@@ -177,7 +365,29 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
         month: pd.Period | None = None,
         sub_category: str | None = None,
     ) -> pd.DataFrame:
-        """Return transactions for a year."""
+        """Return earnings transactions for a year.
+
+        Optionally restricts to a specific month and/or
+        sub-category.
+
+        Args:
+            year: Calendar year (e.g. ``2024``).
+            month: If provided, only include this month.
+            sub_category: If provided, filter to this
+                sub-category name.
+
+        Returns:
+            DataFrame of matching transactions. Empty
+            DataFrame with standard columns when no data
+            exists.
+
+        Example:
+            >>> df = ctrl.transactions_for_year(
+            ...     2024, sub_category="Salary",
+            ... )
+            >>> len(df) > 0
+            True
+        """
         frames = []
         for period in self._by_period:
             if int(period.year) != year:
@@ -206,7 +416,26 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
     def total_for_range(
         self, start_date: date, end_date: date,
     ) -> float:
-        """Return total earnings for a date range."""
+        """Return total earnings for a date range.
+
+        Sums earnings amounts across all months for
+        transactions whose date falls within the range.
+
+        Args:
+            start_date: Start of the range (inclusive).
+            end_date: End of the range (inclusive).
+
+        Returns:
+            Total earnings amount. Returns ``0.0`` when
+            no transactions match.
+
+        Example:
+            >>> from datetime import date
+            >>> ctrl.total_for_range(
+            ...     date(2024, 1, 1), date(2024, 6, 30),
+            ... )
+            31200.0
+        """
         total = 0.0
         for mr in self._reports:
             if mr.earnings is None or mr.earnings.empty:
@@ -224,7 +453,28 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
     def subcategory_totals_for_range(
         self, start_date: date, end_date: date,
     ) -> list[tuple[str, float]]:
-        """Return sub-category totals for a date range."""
+        """Return sub-category totals for a date range.
+
+        Groups earnings by sub-category for transactions within
+        the given date range.
+
+        Args:
+            start_date: Start of the range (inclusive).
+            end_date: End of the range (inclusive).
+
+        Returns:
+            List of ``(sub_category_name, total_amount)`` tuples
+            sorted by amount descending. Empty list when no
+            data exists.
+
+        Example:
+            >>> from datetime import date
+            >>> totals = ctrl.subcategory_totals_for_range(
+            ...     date(2024, 1, 1), date(2024, 6, 30),
+            ... )
+            >>> totals[0]
+            ('Salary', 30000.0)
+        """
         frames = []
         for mr in self._reports:
             if mr.earnings is None or mr.earnings.empty:
@@ -267,7 +517,31 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
         end_date: date,
         sub_category: str | None = None,
     ) -> pd.DataFrame:
-        """Return transactions within a date range."""
+        """Return earnings transactions within a date range.
+
+        Collects transactions across all monthly reports whose
+        transaction date falls within the range, optionally
+        filtered by sub-category.
+
+        Args:
+            start_date: Start of the range (inclusive).
+            end_date: End of the range (inclusive).
+            sub_category: If provided, filter to this
+                sub-category name.
+
+        Returns:
+            DataFrame with columns ``transaction_date``,
+            ``description``, ``amount``, ``from_account``,
+            and ``sub_category``. Empty DataFrame when no
+            data matches.
+
+        Example:
+            >>> from datetime import date
+            >>> df = ctrl.transactions_for_range(
+            ...     date(2024, 1, 1), date(2024, 6, 30),
+            ...     sub_category="Salary",
+            ... )
+        """
         frames = []
         for mr in self._reports:
             if mr.earnings is None or mr.earnings.empty:
@@ -300,7 +574,16 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
     def _expected_for_month(
         self, period: pd.Period,
     ) -> dict[str, float]:
-        """Get expected earnings for a month."""
+        """Get expected earnings for a month from budget goals.
+
+        Args:
+            period: The month to look up.
+
+        Returns:
+            Mapping of sub-category to expected amount.
+            Empty dict when no budget controller is set or
+            lookup fails.
+        """
         if self._budget_controller is None:
             return {}
         try:
@@ -315,7 +598,18 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
     def _expected_for_periods(
         self, periods: Iterable[pd.Period],
     ) -> dict[str, float]:
-        """Get aggregated expected earnings across periods."""
+        """Get aggregated expected earnings across periods.
+
+        Sums expected amounts per sub-category across multiple
+        months.
+
+        Args:
+            periods: Iterable of monthly periods to aggregate.
+
+        Returns:
+            Mapping of sub-category to cumulative expected
+            amount. Empty dict when no budget controller is set.
+        """
         if self._budget_controller is None:
             return {}
         expected: dict[str, float] = {}
@@ -332,7 +626,23 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
         actual_map: dict[str, float],
         expected_map: dict[str, float],
     ) -> tuple[list[EarningsRow], float, float]:
-        """Build EarningsRow list from actual vs expected."""
+        """Build EarningsRow list from actual vs expected maps.
+
+        Computes difference, percentage of total, and diff
+        percentage for each sub-category.
+
+        Args:
+            actual_map: Sub-category to actual amount mapping.
+            expected_map: Sub-category to expected amount
+                mapping.
+
+        Returns:
+            A 3-tuple of:
+                - rows: EarningsRow list sorted by actual
+                  amount descending.
+                - actual_total: Sum of actual values.
+                - expected_total: Sum of expected values.
+        """
         actual_total = sum(actual_map.values())
         expected_total = (
             sum(expected_map.values()) if expected_map else 0.0
@@ -372,7 +682,18 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
     def _get_month_summary(
         self, period: pd.Period,
     ) -> _MonthSummary:
-        """Get or compute month summary from cache."""
+        """Get or compute month summary from cache.
+
+        Groups earnings by sub-category and caches the result
+        for subsequent calls with the same period.
+
+        Args:
+            period: The month to summarise.
+
+        Returns:
+            Cached or freshly computed ``_MonthSummary`` with
+            total and sub-category breakdown.
+        """
         cached = self._month_cache.get(period)
         if cached is not None:
             return cached
@@ -413,7 +734,18 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
         return summary
 
     def _get_year_summary(self, year: int) -> _YearSummary:
-        """Compute and cache yearly summary."""
+        """Compute and cache yearly earnings summary.
+
+        Iterates months for the year, accumulates totals,
+        and caches the result.
+
+        Args:
+            year: Calendar year (e.g. ``2024``).
+
+        Returns:
+            Cached or freshly computed ``_YearSummary`` with
+            aggregate total and per-month breakdown.
+        """
         cached = self._year_cache.get(year)
         if cached is not None:
             return cached

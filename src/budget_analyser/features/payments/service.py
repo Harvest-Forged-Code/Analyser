@@ -42,12 +42,39 @@ class PaymentMatchingService:
     ) -> PaymentMatchResult:
         """Match payments with confirmations.
 
+        Iterates through each payment and finds the best
+        matching confirmation based on amount tolerance and
+        date proximity. Each confirmation can only be matched
+        once.
+
         Args:
             payments_made: DataFrame of payment transactions.
+                Must contain ``amount`` and ``transaction_date``
+                columns.
             payment_confirmations: DataFrame of confirmations.
+                Must contain ``amount`` and ``transaction_date``
+                columns.
 
         Returns:
             PaymentMatchResult with matched and unmatched items.
+
+        Example:
+            >>> import pandas as pd
+            >>> svc = PaymentMatchingService()
+            >>> payments = pd.DataFrame({
+            ...     "amount": [-100.0],
+            ...     "transaction_date": ["2025-01-10"],
+            ... })
+            >>> confirms = pd.DataFrame({
+            ...     "amount": [100.0],
+            ...     "transaction_date": ["2025-01-12"],
+            ... })
+            >>> result = svc.match_payments(
+            ...     payments_made=payments,
+            ...     payment_confirmations=confirms,
+            ... )
+            >>> len(result.matched_pairs)
+            1
         """
         if not self._has_required_columns(
             payments_made, payment_confirmations,
@@ -119,7 +146,16 @@ class PaymentMatchingService:
     def _has_required_columns(
         *dataframes: pd.DataFrame,
     ) -> bool:
-        """Return True if all DataFrames have required columns."""
+        """Return True if all DataFrames have required columns.
+
+        Args:
+            *dataframes: One or more DataFrames to validate.
+
+        Returns:
+            ``True`` if every DataFrame is non-empty and
+            contains both ``amount`` and ``transaction_date``
+            columns.
+        """
         required = {"amount", "transaction_date"}
         return all(
             not df.empty and required.issubset(df.columns)
@@ -135,7 +171,23 @@ class PaymentMatchingService:
         conf_dates: pd.Series,
         already_matched: set[int],
     ) -> tuple[int, object, int, float] | None:
-        """Find the best matching confirmation for a payment."""
+        """Find the best matching confirmation for a payment.
+
+        Scans all unmatched confirmations and returns the one
+        with the highest confidence score, if any.
+
+        Args:
+            pm_amount: Absolute payment amount.
+            pm_date: Payment datetime.
+            confirmations: DataFrame of confirmation rows.
+            conf_dates: Pre-parsed confirmation dates.
+            already_matched: Indices already claimed by
+                earlier matches.
+
+        Returns:
+            Tuple of ``(index, date, days_apart, score)`` for
+            the best match, or ``None`` if no match is found.
+        """
         best_match = None
         best_score = 0.0
 
@@ -169,7 +221,19 @@ class PaymentMatchingService:
     ) -> float | None:
         """Calculate match confidence between two transactions.
 
-        Returns None if the transactions are not within tolerances.
+        Uses a weighted combination of date proximity (60%)
+        and amount similarity (40%).
+
+        Args:
+            amount_a: Absolute amount of the first transaction.
+            date_a: Date of the first transaction.
+            amount_b: Absolute amount of the second transaction.
+            date_b: Date of the second transaction.
+
+        Returns:
+            Confidence score between 0.0 and 1.0, or ``None``
+            if the transactions exceed the configured tolerances
+            for amount or days apart.
         """
         amount_diff = abs(amount_a - amount_b)
         if amount_diff > self._amount_tolerance:
@@ -195,12 +259,36 @@ class PaymentMatchingService:
     ) -> list[tuple[int, float]]:
         """Find potential matches for a single transaction.
 
+        Scores every candidate against the given transaction
+        and returns those within tolerance, sorted by
+        confidence (highest first).
+
         Args:
-            transaction: The transaction to match.
-            candidates: DataFrame of potential matches.
+            transaction: The transaction to match. Must contain
+                ``amount`` and ``transaction_date`` fields.
+            candidates: DataFrame of potential matches with
+                ``amount`` and ``transaction_date`` columns.
 
         Returns:
-            List of (candidate_index, confidence_score) tuples.
+            List of ``(candidate_index, confidence_score)``
+            tuples, sorted by descending confidence.
+
+        Example:
+            >>> import pandas as pd
+            >>> svc = PaymentMatchingService()
+            >>> tx = pd.Series({
+            ...     "amount": -200.0,
+            ...     "transaction_date": "2025-03-01",
+            ... })
+            >>> cands = pd.DataFrame({
+            ...     "amount": [200.0],
+            ...     "transaction_date": ["2025-03-02"],
+            ... })
+            >>> matches = svc.find_potential_matches(
+            ...     transaction=tx, candidates=cands,
+            ... )
+            >>> len(matches) >= 1
+            True
         """
         if candidates.empty:
             return []
@@ -250,6 +338,14 @@ def create_payment_matcher(
 
     Returns:
         Configured PaymentMatchingService instance.
+
+    Example:
+        >>> from budget_analyser.features.payments.service import (
+        ...     create_payment_matcher,
+        ... )
+        >>> matcher = create_payment_matcher(max_days_apart=10)
+        >>> matcher._max_days_apart
+        10
     """
     return PaymentMatchingService(
         max_days_apart=max_days_apart,

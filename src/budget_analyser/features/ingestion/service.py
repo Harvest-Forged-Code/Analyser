@@ -60,13 +60,27 @@ class TransactionIngestionService:
     ) -> IngestionResult:
         """Ingest a single CSV file into the database.
 
+        Loads the CSV, formats it according to the bank's
+        statement formatter, categorizes transactions using
+        keyword mappings, and stores the results.
+
         Args:
             csv_path: Path to the CSV file.
-            account_name: Account identifier (e.g. "citi").
+            account_name: Account identifier (e.g. ``"citi"``).
             column_mapping: Source-to-canonical column mapping.
 
         Returns:
             IngestionResult with success status and statistics.
+
+        Example:
+            >>> from pathlib import Path
+            >>> result = service.ingest_csv(
+            ...     csv_path=Path("statements/citi.csv"),
+            ...     account_name="citi",
+            ...     column_mapping={"Date": "transaction_date"},
+            ... )
+            >>> result.success
+            True
         """
         try:
             return self._do_ingest(
@@ -87,11 +101,26 @@ class TransactionIngestionService:
     ) -> IngestionResult:
         """Ingest multiple CSV files into the database.
 
+        Processes each file individually via ``ingest_csv`` and
+        aggregates the results. Partial failures are reported
+        in the message while successful files still count.
+
         Args:
-            csv_files: List of (csv_path, account_name, column_mapping).
+            csv_files: List of ``(csv_path, account_name,
+                column_mapping)`` tuples, one per file.
 
         Returns:
             Aggregated IngestionResult with combined statistics.
+            ``success`` is ``False`` if any file failed.
+
+        Example:
+            >>> from pathlib import Path
+            >>> result = service.ingest_multiple_csvs([
+            ...     (Path("citi.csv"), "citi", {"Date": "date"}),
+            ...     (Path("disc.csv"), "discover", {"Date": "date"}),
+            ... ])
+            >>> result.transactions_processed >= 0
+            True
         """
         total_processed = 0
         total_inserted = 0
@@ -140,7 +169,22 @@ class TransactionIngestionService:
         account_name: str,
         column_mapping: Mapping[str, str],
     ) -> IngestionResult:
-        """Core ingestion pipeline (load -> format -> categorize -> store)."""
+        """Core ingestion pipeline.
+
+        Executes the full pipeline: load CSV, format via bank
+        formatter, categorize with keyword mappers, and insert
+        into the transaction database.
+
+        Args:
+            csv_path: Path to the CSV file.
+            account_name: Account identifier for formatter
+                selection.
+            column_mapping: Source-to-canonical column mapping.
+
+        Returns:
+            IngestionResult with counts for processed,
+            inserted, and duplicate transactions.
+        """
         self._logger.info(
             "Loading CSV: %s for account: %s",
             csv_path, account_name,

@@ -37,9 +37,33 @@ except ImportError:
 
 
 class CsvExporter:
-    """Export data to CSV format."""
+    """Export data to CSV format.
+
+    Writes structured row data to CSV files or strings using
+    the configured column definitions for header names,
+    key extraction, and value formatting.
+
+    Example:
+        >>> from budget_analyser.features.export.service import (
+        ...     CsvExporter,
+        ... )
+        >>> from budget_analyser.features.export.models import (
+        ...     ExportColumn,
+        ... )
+        >>> exporter = CsvExporter(
+        ...     columns=[ExportColumn("Name", "name")],
+        ... )
+        >>> exporter.export_to_string([{"name": "Alice"}])
+        'Name\\r\\nAlice\\r\\n'
+    """
 
     def __init__(self, columns: list[ExportColumn]) -> None:
+        """Initialize the CSV exporter.
+
+        Args:
+            columns: Column definitions controlling which
+                keys are extracted and how values are formatted.
+        """
         self._columns = columns
 
     def export_to_file(
@@ -49,7 +73,26 @@ class CsvExporter:
         *,
         include_headers: bool = True,
     ) -> None:
-        """Export data to a CSV file."""
+        """Export data to a CSV file.
+
+        Creates parent directories if they do not exist and
+        writes the data using UTF-8 encoding.
+
+        Args:
+            data: Sequence of row dictionaries to export.
+            filepath: Destination file path for the CSV output.
+            include_headers: Whether to write a header row.
+
+        Example:
+            >>> from pathlib import Path
+            >>> exporter = CsvExporter(
+            ...     columns=[ExportColumn("Name", "name")],
+            ... )
+            >>> exporter.export_to_file(
+            ...     [{"name": "Alice"}],
+            ...     Path("/tmp/out.csv"),
+            ... )
+        """
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
@@ -73,7 +116,25 @@ class CsvExporter:
         *,
         include_headers: bool = True,
     ) -> str:
-        """Export data to a CSV string."""
+        """Export data to a CSV string.
+
+        Args:
+            data: Sequence of row dictionaries to export.
+            include_headers: Whether to include a header row.
+
+        Returns:
+            CSV-formatted string with CRLF line endings.
+
+        Example:
+            >>> exporter = CsvExporter(
+            ...     columns=[ExportColumn("Name", "name")],
+            ... )
+            >>> csv_str = exporter.export_to_string(
+            ...     [{"name": "Bob"}],
+            ... )
+            >>> "Bob" in csv_str
+            True
+        """
         output = io.StringIO()
         writer = csv.writer(output)
 
@@ -94,7 +155,15 @@ class CsvExporter:
 class PdfExporter:  # pylint: disable=too-few-public-methods
     """Export data to PDF format.
 
-    Requires reportlab library. Check HAS_REPORTLAB before using.
+    Requires the ``reportlab`` library. Check ``HAS_REPORTLAB``
+    before instantiating to avoid ``ImportError``.
+
+    Example:
+        >>> from budget_analyser.features.export.service import (
+        ...     PdfExporter, HAS_REPORTLAB,
+        ... )
+        >>> if HAS_REPORTLAB:
+        ...     exporter = PdfExporter(columns=[])
     """
 
     def __init__(
@@ -102,6 +171,16 @@ class PdfExporter:  # pylint: disable=too-few-public-methods
         columns: list[ExportColumn],
         config: ExportConfig | None = None,
     ) -> None:
+        """Initialize the PDF exporter.
+
+        Args:
+            columns: Column definitions for the data table.
+            config: Export configuration. Defaults to
+                ``ExportConfig()`` when ``None``.
+
+        Raises:
+            ImportError: If ``reportlab`` is not installed.
+        """
         if not HAS_REPORTLAB:
             raise ImportError(
                 "PDF export requires reportlab. "
@@ -117,7 +196,26 @@ class PdfExporter:  # pylint: disable=too-few-public-methods
         *,
         summary: dict[str, Any] | None = None,
     ) -> None:
-        """Export data to a PDF file."""
+        """Export data to a PDF file.
+
+        Creates parent directories if they do not exist and
+        writes a styled PDF document with optional title,
+        timestamp, summary section, and data table.
+
+        Args:
+            data: Sequence of row dictionaries to export.
+            filepath: Destination file path for the PDF output.
+            summary: Optional key-value pairs rendered as a
+                summary section before the data table.
+
+        Example:
+            >>> from pathlib import Path
+            >>> exporter = PdfExporter(columns=EARNINGS_COLUMNS)
+            >>> exporter.export_to_file(
+            ...     data=[{"date": "2025-01-01", "amount": 100}],
+            ...     filepath=Path("/tmp/report.pdf"),
+            ... )
+        """
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
@@ -142,7 +240,19 @@ class PdfExporter:  # pylint: disable=too-few-public-methods
         data: Sequence[dict[str, Any]],
         summary: dict[str, Any] | None,
     ) -> list:
-        """Build the PDF elements."""
+        """Build the full list of PDF flowable elements.
+
+        Assembles the title, optional subtitle, optional
+        timestamp, optional summary section, and data table.
+
+        Args:
+            data: Row dictionaries for the data table.
+            summary: Optional key-value pairs for the summary.
+
+        Returns:
+            List of reportlab flowable elements ready for
+            document building.
+        """
         elements = []
         styles = getSampleStyleSheet()
 
@@ -203,7 +313,18 @@ class PdfExporter:  # pylint: disable=too-few-public-methods
         summary: dict[str, Any],
         styles: object,
     ) -> list:
-        """Build the summary section."""
+        """Build the summary section of the PDF.
+
+        Renders key-value pairs as a two-column table with a
+        "Summary" heading.
+
+        Args:
+            summary: Dictionary of label-to-value pairs.
+            styles: reportlab stylesheet for paragraph styling.
+
+        Returns:
+            List of flowable elements for the summary section.
+        """
         elements = []
 
         section_style = ParagraphStyle(
@@ -238,7 +359,18 @@ class PdfExporter:  # pylint: disable=too-few-public-methods
     def _build_data_table(
         self, data: Sequence[dict[str, Any]],
     ) -> list:
-        """Build the data table."""
+        """Build the styled data table for the PDF.
+
+        Creates a table with a purple header row, alternating
+        row backgrounds, and grid lines.
+
+        Args:
+            data: Row dictionaries for the table body.
+
+        Returns:
+            List containing the styled ``Table`` element,
+            or an empty list if *data* is empty.
+        """
         elements = []
 
         if not data:
@@ -307,7 +439,18 @@ class ExportService:
 
     @staticmethod
     def is_pdf_available() -> bool:
-        """Check if PDF export is available."""
+        """Check if PDF export is available.
+
+        Returns:
+            ``True`` if the ``reportlab`` library is installed.
+
+        Example:
+            >>> from budget_analyser.features.export.service import (
+            ...     ExportService,
+            ... )
+            >>> isinstance(ExportService.is_pdf_available(), bool)
+            True
+        """
         return HAS_REPORTLAB
 
     def export_transactions_csv(
@@ -317,7 +460,22 @@ class ExportService:
         *,
         columns: list[ExportColumn] | None = None,
     ) -> None:
-        """Export transactions to CSV file."""
+        """Export transactions to a CSV file.
+
+        Args:
+            transactions: Sequence of transaction dicts.
+            filepath: Destination file path for the CSV.
+            columns: Custom column definitions. Defaults to
+                ``TRANSACTION_COLUMNS``.
+
+        Example:
+            >>> from pathlib import Path
+            >>> svc = ExportService()
+            >>> svc.export_transactions_csv(
+            ...     transactions=[{"date": "2025-01-01"}],
+            ...     filepath=Path("/tmp/txns.csv"),
+            ... )
+        """
         cols = columns or self.TRANSACTION_COLUMNS
         exporter = CsvExporter(cols)
         exporter.export_to_file(transactions, filepath)
@@ -328,7 +486,24 @@ class ExportService:
         *,
         columns: list[ExportColumn] | None = None,
     ) -> str:
-        """Export transactions to CSV string."""
+        """Export transactions to a CSV string.
+
+        Args:
+            transactions: Sequence of transaction dicts.
+            columns: Custom column definitions. Defaults to
+                ``TRANSACTION_COLUMNS``.
+
+        Returns:
+            CSV-formatted string with headers and data rows.
+
+        Example:
+            >>> svc = ExportService()
+            >>> csv = svc.export_transactions_csv_string(
+            ...     transactions=[{"date": "2025-01-01"}],
+            ... )
+            >>> "Date" in csv
+            True
+        """
         cols = columns or self.TRANSACTION_COLUMNS
         exporter = CsvExporter(cols)
         return exporter.export_to_string(transactions)
@@ -342,7 +517,29 @@ class ExportService:
         config: ExportConfig | None = None,
         summary: dict[str, Any] | None = None,
     ) -> None:
-        """Export transactions to PDF file."""
+        """Export transactions to a PDF file.
+
+        Args:
+            transactions: Sequence of transaction dicts.
+            filepath: Destination file path for the PDF.
+            columns: Custom column definitions. Defaults to
+                ``TRANSACTION_COLUMNS``.
+            config: PDF export configuration. Defaults to a
+                config titled "Transaction Report".
+            summary: Optional key-value pairs rendered as a
+                summary section before the data table.
+
+        Raises:
+            ImportError: If ``reportlab`` is not installed.
+
+        Example:
+            >>> svc = ExportService()
+            >>> if svc.is_pdf_available():
+            ...     svc.export_transactions_pdf(
+            ...         transactions=[{"date": "2025-01-01"}],
+            ...         filepath=Path("/tmp/report.pdf"),
+            ...     )
+        """
         if not HAS_REPORTLAB:
             raise ImportError(
                 "PDF export requires reportlab. "
@@ -366,7 +563,21 @@ class ExportService:
         *,
         columns: list[ExportColumn] | None = None,
     ) -> None:
-        """Export summary report to CSV file."""
+        """Export summary report to a CSV file.
+
+        Args:
+            summary_data: Sequence of summary row dicts.
+            filepath: Destination file path for the CSV.
+            columns: Custom column definitions. Defaults to
+                ``SUMMARY_COLUMNS``.
+
+        Example:
+            >>> svc = ExportService()
+            >>> svc.export_summary_csv(
+            ...     summary_data=[{"category": "Food"}],
+            ...     filepath=Path("/tmp/summary.csv"),
+            ... )
+        """
         cols = columns or self.SUMMARY_COLUMNS
         exporter = CsvExporter(cols)
         exporter.export_to_file(summary_data, filepath)
@@ -380,7 +591,29 @@ class ExportService:
         config: ExportConfig | None = None,
         summary: dict[str, Any] | None = None,
     ) -> None:
-        """Export summary report to PDF file."""
+        """Export summary report to a PDF file.
+
+        Args:
+            summary_data: Sequence of summary row dicts.
+            filepath: Destination file path for the PDF.
+            columns: Custom column definitions. Defaults to
+                ``SUMMARY_COLUMNS``.
+            config: PDF export configuration. Defaults to a
+                config titled "Category Summary Report".
+            summary: Optional key-value pairs rendered as a
+                summary section before the data table.
+
+        Raises:
+            ImportError: If ``reportlab`` is not installed.
+
+        Example:
+            >>> svc = ExportService()
+            >>> if svc.is_pdf_available():
+            ...     svc.export_summary_pdf(
+            ...         summary_data=[{"category": "Food"}],
+            ...         filepath=Path("/tmp/summary.pdf"),
+            ...     )
+        """
         if not HAS_REPORTLAB:
             raise ImportError(
                 "PDF export requires reportlab. "
@@ -399,14 +632,42 @@ class ExportService:
 
 
 def format_currency(value: float) -> str:
-    """Format a number as currency."""
+    """Format a number as USD currency string.
+
+    Negative values are displayed with a leading minus sign.
+
+    Args:
+        value: The numeric value to format.
+
+    Returns:
+        Currency string with dollar sign and two decimal places
+        (e.g. ``"$1,234.56"`` or ``"-$50.00"``).
+
+    Example:
+        >>> format_currency(1234.5)
+        '$1,234.50'
+        >>> format_currency(-50)
+        '-$50.00'
+    """
     if value < 0:
         return f"-${abs(value):,.2f}"
     return f"${value:,.2f}"
 
 
 def format_percentage(value: float) -> str:
-    """Format a number as percentage."""
+    """Format a number as a percentage string.
+
+    Args:
+        value: The numeric value to format (e.g. ``75.123``).
+
+    Returns:
+        Percentage string with one decimal place
+        (e.g. ``"75.1%"``).
+
+    Example:
+        >>> format_percentage(75.123)
+        '75.1%'
+    """
     return f"{value:.1f}%"
 
 

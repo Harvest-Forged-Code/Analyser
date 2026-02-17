@@ -17,6 +17,13 @@ class SettingsController:
       - Expose available log levels and the current level
       - Apply a new log level (persist + update running logger)
       - Validate and update password via preferences
+
+    Example:
+        >>> import logging
+        >>> logger = logging.getLogger("budget_analyser")
+        >>> ctrl = SettingsController(logger=logger, prefs=prefs)
+        >>> ctrl.get_current_log_level()
+        'INFO'
     """
 
     def __init__(
@@ -24,25 +31,60 @@ class SettingsController:
         logger: logging.Logger,
         prefs: AppPreferences,
     ) -> None:
+        """Initialize the settings controller.
+
+        Args:
+            logger: Application logger instance.
+            prefs: Application preferences for persisting settings.
+
+        Example:
+            >>> import logging
+            >>> ctrl = SettingsController(
+            ...     logger=logging.getLogger("budget_analyser"),
+            ...     prefs=prefs,
+            ... )
+        """
         self._logger = logger
         self._prefs = prefs
 
     def get_log_levels(self) -> list[str]:
-        """Return available log level names."""
+        """Return available log level names.
+
+        Returns:
+            List of valid log level strings.
+
+        Example:
+            >>> ctrl.get_log_levels()
+            ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        """
         return ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
     def get_current_log_level(self) -> str:
-        """Return the current log level name."""
+        """Return the current log level name.
+
+        Returns:
+            Current log level as a string (e.g. "INFO").
+
+        Example:
+            >>> ctrl.get_current_log_level()
+            'INFO'
+        """
         return self._prefs.get_log_level()
 
     def apply_log_level(self, level: str) -> None:
         """Apply a new log level.
+
+        Persists the level to preferences and updates the running
+        logger.
 
         Args:
             level: Log level name (DEBUG, INFO, etc.).
 
         Raises:
             ValueError: If the level is not valid.
+
+        Example:
+            >>> ctrl.apply_log_level("DEBUG")
         """
         if level not in self.get_log_levels():
             raise ValueError(f"Invalid log level: {level}")
@@ -61,6 +103,10 @@ class SettingsController:
 
         Returns:
             True if the password matches.
+
+        Example:
+            >>> ctrl.verify_password("my_secret")
+            True
         """
         return self._prefs.verify_password(password)
 
@@ -72,14 +118,24 @@ class SettingsController:
     ) -> None:
         """Change the application password.
 
+        Validates the current password, enforces minimum length,
+        and checks that new and confirm match.
+
         Args:
             current: Current password for verification.
-            new: New password to set.
+            new: New password to set (minimum 6 characters).
             confirm: Confirmation of the new password.
 
         Raises:
             ValueError: If current password is wrong, new password
                 is too short, or passwords don't match.
+
+        Example:
+            >>> ctrl.change_password(
+            ...     current="old_pass",
+            ...     new="new_pass_123",
+            ...     confirm="new_pass_123",
+            ... )
         """
         if not self._prefs.verify_password(current):
             raise ValueError("Current password is incorrect.")

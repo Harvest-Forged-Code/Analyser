@@ -25,7 +25,14 @@ router = APIRouter(prefix="/api/recurring", tags=["recurring"])
 
 
 def _all_transactions_df(reports: list[MonthlyReports]) -> pd.DataFrame:
-    """Concatenate all transactions from reports."""
+    """Concatenate all transactions from reports.
+
+    Args:
+        reports: List of MonthlyReports to extract transactions from.
+
+    Returns:
+        Combined DataFrame of all transactions, or empty DataFrame.
+    """
     frames = []
     for r in reports:
         if r.transactions is not None and not r.transactions.empty:
@@ -34,7 +41,14 @@ def _all_transactions_df(reports: list[MonthlyReports]) -> pd.DataFrame:
 
 
 def _df_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
-    """Convert DataFrame to list of dicts with date serialization."""
+    """Convert DataFrame to list of dicts with date serialization.
+
+    Args:
+        df: DataFrame to convert, may be None or empty.
+
+    Returns:
+        List of row dictionaries with dates formatted as YYYY-MM-DD.
+    """
     if df is None or df.empty:
         return []
     result = df.copy()

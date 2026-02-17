@@ -50,7 +50,17 @@ class ValidationReport:
 
     @property
     def summary(self) -> dict[str, int]:
-        """Return count of issues by severity."""
+        """Return count of issues by severity.
+
+        Returns:
+            Dictionary with keys "error", "warning", "info" and
+            integer counts.
+
+        Example:
+            >>> report = ValidationReport()
+            >>> report.summary
+            {'error': 0, 'warning': 0, 'info': 0}
+        """
         counts: dict[str, int] = {"error": 0, "warning": 0, "info": 0}
         for issue in self.issues:
             counts[issue.severity] = counts.get(issue.severity, 0) + 1
@@ -58,29 +68,58 @@ class ValidationReport:
 
     @property
     def is_valid(self) -> bool:
-        """Return True if no errors found."""
+        """Return True if no errors found.
+
+        Returns:
+            True if there are zero error-level issues.
+
+        Example:
+            >>> report = ValidationReport()
+            >>> report.is_valid
+            True
+        """
         return self.summary.get("error", 0) == 0
 
     @property
     def error_count(self) -> int:
-        """Return number of errors."""
+        """Return number of errors.
+
+        Returns:
+            Count of error-level issues.
+        """
         return self.summary.get("error", 0)
 
     @property
     def warning_count(self) -> int:
-        """Return number of warnings."""
+        """Return number of warnings.
+
+        Returns:
+            Count of warning-level issues.
+        """
         return self.summary.get("warning", 0)
 
     def add(self, issue: ValidationIssue) -> None:
-        """Add an issue to the report."""
+        """Add an issue to the report.
+
+        Args:
+            issue: The ValidationIssue to append.
+        """
         self.issues.append(issue)
 
     def errors(self) -> list[ValidationIssue]:
-        """Return only error-level issues."""
+        """Return only error-level issues.
+
+        Returns:
+            List of ValidationIssue objects with severity "error".
+        """
         return [i for i in self.issues if i.severity == "error"]
 
     def warnings(self) -> list[ValidationIssue]:
-        """Return only warning-level issues."""
+        """Return only warning-level issues.
+
+        Returns:
+            List of ValidationIssue objects with severity "warning".
+        """
         return [i for i in self.issues if i.severity == "warning"]
 
 
@@ -92,6 +131,15 @@ class MappingValidationService:
     - Orphaned sub-categories without parent categories
     - Potential typos in category names
     - Missing or empty mappings
+
+    Example:
+        >>> svc = MappingValidationService(similarity_threshold=0.85)
+        >>> report = svc.validate_all(
+        ...     desc_to_sub={"rent": ["landlord"]},
+        ...     sub_to_cat={"housing": ["rent"]},
+        ... )
+        >>> report.is_valid
+        True
     """
 
     # Common typo patterns to detect
@@ -361,6 +409,14 @@ def validate_mappings(
 
     Returns:
         ValidationReport with all issues found.
+
+    Example:
+        >>> report = validate_mappings(
+        ...     desc_to_sub={"rent": ["landlord"]},
+        ...     sub_to_cat={"housing": ["rent"]},
+        ... )
+        >>> report.is_valid
+        True
     """
     service = MappingValidationService()
     return service.validate_all(
