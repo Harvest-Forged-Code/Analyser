@@ -14,7 +14,12 @@ from collections.abc import Iterable
 import pandas as pd
 
 from budget_analyser.core.models import MonthlyReports
-from budget_analyser.features.reporting.models import EarningsRow
+from budget_analyser.features.reporting.models import (
+    EarningsDashboard,
+    EarningsMonthTrend,
+    EarningsRow,
+    EarningsSourceTrend,
+)
 
 
 @dataclass(frozen=True)
@@ -569,6 +574,150 @@ class EarningsStatsController:  # pylint: disable=too-many-public-methods
                 "from_account", "sub_category",
             ])
         return pd.concat(frames, ignore_index=True)
+
+    # ---- Dashboard helpers ----
+    def dashboard(self, period: pd.Period) -> EarningsDashboard:
+        """Compute aggregated dashboard data for KPI cards.
+
+        Args:
+            period: The selected month.
+
+        Returns:
+            EarningsDashboard with current/previous totals,
+            MoM change, YTD total, goal progress, and sparkline.
+
+        Example:
+            >>> dash = ctrl.dashboard(pd.Period("2026-02", "M"))
+            >>> dash.current_month_total
+            5200.0
+        """
+        current_total = self.total_for_month(period)
+        prev_period = period - 1
+        prev_total = self.total_for_month(prev_period)
+
+        mom_pct: float | None = None
+        if prev_total > 0:
+            mom_pct = (
+                (current_total - prev_total) / prev_total * 100
+            )
+
+        year = int(period.year)
+        ytd_total = 0.0
+        for p in self._by_period:
+            if int(p.year) == year and p <= period:
+                ytd_total += self._get_month_summary(p).total
+
+        expected_map = self._expected_for_month(period)
+        goal_total = sum(expected_map.values())
+        goal_pct: float | None = None
+        if goal_total > 0:
+            goal_pct = current_total / goal_total * 100
+
+        sparkline: list[float] = []
+        for i in range(5, -1, -1):
+            sp = period - i
+            sparkline.append(self.total_for_month(sp))
+
+        return EarningsDashboard(
+            current_month_total=current_total,
+            previous_month_total=prev_total,
+            mom_change_percent=mom_pct,
+            ytd_total=ytd_total,
+            goal_total=goal_total,
+            goal_progress_percent=goal_pct,
+            period=str(period),
+            year=year,
+            sparkline=sparkline,
+        )
+
+    def monthly_trend(
+        self, *, months: int = 12,
+    ) -> list[EarningsMonthTrend]:
+        """Return last N months of total earnings for chart data.
+
+        Args:
+            months: Number of most recent months to include.
+
+        Returns:
+            List of EarningsMonthTrend ordered chronologically.
+
+        Example:
+            >>> trend = ctrl.monthly_trend(months=6)
+            >>> len(trend)
+            6
+        """
+        all_periods = self.available_months()
+        selected = all_periods[-months:] if months else all_periods
+
+        return [
+            EarningsMonthTrend(
+                period=str(p),
+                label=self.month_label(p),
+                total=self._get_month_summary(p).total,
+            )
+            for p in selected
+        ]
+
+    def source_trend(
+        self, *, months: int = 6,
+    ) -> list[EarningsSourceTrend]:
+        """Return per-subcategory monthly totals for sparklines.
+
+        Args:
+            months: Number of most recent months to include.
+
+        Returns:
+            List of EarningsSourceTrend, one per sub-category,
+            sorted by total descending.
+
+        Example:
+            >>> trends = ctrl.source_trend(months=6)
+            >>> trends[0].sub_category
+            'Salary'
+        """
+        all_periods = self.available_months()
+        selected = all_periods[-months:] if months else all_periods
+
+        per_period: dict[
+            str, dict[str, float]
+        ] = {}
+        all_subs: set[str] = set()
+
+        for p in selected:
+            summary = self._get_month_summary(p)
+            period_map: dict[str, float] = {}
+            for sub, amt in summary.subcats:
+                period_map[sub] = float(amt)
+                all_subs.add(sub)
+            per_period[str(p)] = period_map
+
+        source_totals: dict[str, float] = {
+            sub: sum(
+                pm.get(sub, 0.0) for pm in per_period.values()
+            )
+            for sub in all_subs
+        }
+
+        sorted_sources = sorted(
+            all_subs,
+            key=lambda s: source_totals.get(s, 0.0),
+            reverse=True,
+        )
+
+        return [
+            EarningsSourceTrend(
+                sub_category=sub,
+                months=[
+                    EarningsMonthTrend(
+                        period=str(p),
+                        label=self.month_label(p),
+                        total=per_period[str(p)].get(sub, 0.0),
+                    )
+                    for p in selected
+                ],
+            )
+            for sub in sorted_sources
+        ]
 
     # ---- Expected helpers ----
     def _expected_for_month(

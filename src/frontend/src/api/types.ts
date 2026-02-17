@@ -194,6 +194,30 @@ export interface EarningsRow {
   diff_percent: number | null;
 }
 
+// Earnings Dashboard
+export interface EarningsMonthTrend {
+  period: string;
+  label: string;
+  total: number;
+}
+
+export interface EarningsSourceTrend {
+  sub_category: string;
+  months: EarningsMonthTrend[];
+}
+
+export interface EarningsDashboard {
+  current_month_total: number;
+  previous_month_total: number;
+  mom_change_percent: number | null;
+  ytd_total: number;
+  goal_total: number;
+  goal_progress_percent: number | null;
+  period: string;
+  year: number;
+  sparkline: number[];
+}
+
 // Mappers
 export interface Suggestion {
   sub_category: string;

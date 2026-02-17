@@ -14,6 +14,11 @@ from budget_analyser.api.dependencies import get_earnings_stats_controller
 from budget_analyser.features.reporting.earnings_controller import (
     EarningsStatsController,
 )
+from budget_analyser.features.reporting.models import (
+    EarningsDashboard,
+    EarningsMonthTrend,
+    EarningsSourceTrend,
+)
 
 router = APIRouter(prefix="/api/earnings", tags=["earnings"])
 
@@ -53,6 +58,113 @@ def get_available_months(
     return [str(p) for p in controller.available_months()]
 
 
+@router.get("/dashboard")
+def get_dashboard(
+    *,
+    period: str = Query(...),
+    controller: EarningsStatsController = Depends(
+        get_earnings_stats_controller,
+    ),
+) -> dict[str, Any]:
+    """Get aggregated earnings dashboard data for KPI cards.
+
+    Args:
+        period: Month period string (e.g., "2026-02").
+        controller: Injected EarningsStatsController.
+
+    Returns:
+        EarningsDashboard fields as a dict.
+
+    Raises:
+        HTTPException: If period is invalid.
+    """
+    try:
+        period_obj = pd.Period(period)
+        dash: EarningsDashboard = controller.dashboard(period_obj)
+        return {
+            "current_month_total": dash.current_month_total,
+            "previous_month_total": dash.previous_month_total,
+            "mom_change_percent": dash.mom_change_percent,
+            "ytd_total": dash.ytd_total,
+            "goal_total": dash.goal_total,
+            "goal_progress_percent": dash.goal_progress_percent,
+            "period": dash.period,
+            "year": dash.year,
+            "sparkline": dash.sparkline,
+        }
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Invalid period: {exc}",
+        ) from exc
+
+
+@router.get("/trend")
+def get_trend(
+    *,
+    months: int = Query(12, ge=1, le=60),
+    controller: EarningsStatsController = Depends(
+        get_earnings_stats_controller,
+    ),
+) -> list[dict[str, Any]]:
+    """Get monthly earnings trend for chart data.
+
+    Args:
+        months: Number of recent months (default 12).
+        controller: Injected EarningsStatsController.
+
+    Returns:
+        List of dicts with period, label, total.
+    """
+    items: list[EarningsMonthTrend] = controller.monthly_trend(
+        months=months,
+    )
+    return [
+        {
+            "period": item.period,
+            "label": item.label,
+            "total": item.total,
+        }
+        for item in items
+    ]
+
+
+@router.get("/source-trend")
+def get_source_trend(
+    *,
+    months: int = Query(6, ge=1, le=24),
+    controller: EarningsStatsController = Depends(
+        get_earnings_stats_controller,
+    ),
+) -> list[dict[str, Any]]:
+    """Get per-source monthly totals for sparklines.
+
+    Args:
+        months: Number of recent months (default 6).
+        controller: Injected EarningsStatsController.
+
+    Returns:
+        List of dicts with sub_category and monthly data.
+    """
+    items: list[EarningsSourceTrend] = controller.source_trend(
+        months=months,
+    )
+    return [
+        {
+            "sub_category": item.sub_category,
+            "months": [
+                {
+                    "period": m.period,
+                    "label": m.label,
+                    "total": m.total,
+                }
+                for m in item.months
+            ],
+        }
+        for item in items
+    ]
+
+
 @router.get("/month/{period}")
 def get_month_table(
     *,
@@ -75,7 +187,9 @@ def get_month_table(
     """
     try:
         period_obj = pd.Period(period)
-        result = controller.table_for_month(period_obj)
+        rows, actual_total, expected_total = controller.table_for_month(
+            period_obj,
+        )
         return {
             "rows": [
                 {
@@ -86,10 +200,10 @@ def get_month_table(
                     "diff": row.diff,
                     "diff_percent": row.diff_percent,
                 }
-                for row in result.rows
+                for row in rows
             ],
-            "actual_total": result.actual_total,
-            "expected_total": result.expected_total,
+            "actual_total": actual_total,
+            "expected_total": expected_total,
         }
     except (ValueError, KeyError) as e:
         raise HTTPException(

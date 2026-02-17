@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "../client";
-import type { EarningsRow } from "../types";
+import type {
+  EarningsDashboard,
+  EarningsMonthTrend,
+  EarningsRow,
+  EarningsSourceTrend,
+} from "../types";
 
 export function useEarningsMonths() {
   return useQuery({
@@ -38,6 +43,43 @@ export function useEarningsMonthTransactions(
       return response.data;
     },
     enabled: !!period,
+  });
+}
+
+export function useEarningsDashboard(period: string | undefined) {
+  return useQuery({
+    queryKey: ["earnings", "dashboard", period],
+    queryFn: async () => {
+      const response = await apiClient.get<EarningsDashboard>("/earnings/dashboard", {
+        params: { period },
+      });
+      return response.data;
+    },
+    enabled: !!period,
+  });
+}
+
+export function useEarningsTrend(months = 12) {
+  return useQuery({
+    queryKey: ["earnings", "trend", months],
+    queryFn: async () => {
+      const response = await apiClient.get<EarningsMonthTrend[]>("/earnings/trend", {
+        params: { months },
+      });
+      return response.data;
+    },
+  });
+}
+
+export function useEarningsSourceTrend(months = 6) {
+  return useQuery({
+    queryKey: ["earnings", "source-trend", months],
+    queryFn: async () => {
+      const response = await apiClient.get<EarningsSourceTrend[]>("/earnings/source-trend", {
+        params: { months },
+      });
+      return response.data;
+    },
   });
 }
 
