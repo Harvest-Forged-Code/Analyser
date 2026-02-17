@@ -1,5 +1,5 @@
 import React from "react";
-import { Target, Plus, Trash2 } from "lucide-react";
+import { Target, Plus, Trash2, Pencil } from "lucide-react";
 import {
   useBudgetGoals,
   useSetBudget,
@@ -8,6 +8,7 @@ import {
   useEarningsGoals,
   useSetEarningsGoal,
   useDeleteEarningsGoal,
+  useBudgetGoalsSummary,
 } from "@/api/hooks/use-budget-goals";
 import { useEarningsMonths } from "@/api/hooks/use-earnings";
 import PageHeader from "@/components/page-header";
@@ -58,6 +59,7 @@ export default function BudgetGoalsPage() {
   const [earningsYearMonth, setEarningsYearMonth] = React.useState("ALL");
 
   // Queries
+  const { data: budgetGoalsSummary } = useBudgetGoalsSummary();
   const { data: budgetGoals, isLoading: budgetGoalsLoading } = useBudgetGoals();
   const { data: earningsGoals, isLoading: earningsGoalsLoading } = useEarningsGoals();
   const { data: availableMonths } = useEarningsMonths();
@@ -177,6 +179,58 @@ export default function BudgetGoalsPage() {
 
         {/* Budget Goals Tab */}
         <TabsContent value="budget-goals" className="space-y-4">
+          {/* Summary Strip */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Budget
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">
+                  {budgetGoalsSummary
+                    ? formatCurrency(budgetGoalsSummary.total_monthly_budget)
+                    : "\u2014"}
+                </p>
+                <p className="text-xs text-muted-foreground">per month</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Categories
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">
+                  {budgetGoalsSummary
+                    ? budgetGoalsSummary.categories_tracked
+                    : "\u2014"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  categories tracked
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Month Overrides
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">
+                  {budgetGoalsSummary
+                    ? budgetGoalsSummary.month_overrides
+                    : "\u2014"}
+                </p>
+                <p className="text-xs text-muted-foreground">overrides</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Header Row */}
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">Budget Goals</h2>
             <Dialog open={budgetDialogOpen} onOpenChange={setBudgetDialogOpen}>
@@ -240,11 +294,12 @@ export default function BudgetGoalsPage() {
             </Dialog>
           </div>
 
+          {/* Card Grid */}
           {budgetGoalsLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-40 w-full" />
             </div>
           ) : !budgetGoals || budgetGoals.length === 0 ? (
             <EmptyState
@@ -253,40 +308,64 @@ export default function BudgetGoalsPage() {
               description="Add your first budget goal to start tracking spending limits"
             />
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="text-left p-4">Category</th>
-                    <th className="text-right p-4">Monthly Limit</th>
-                    <th className="text-center p-4">Year Month</th>
-                    <th className="text-center p-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {budgetGoals.map((goal) => (
-                    <tr key={goal.id}>
-                      <td className="p-4 font-medium">{goal.category}</td>
-                      <td className="p-4 text-right font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {budgetGoals.map((goal) => {
+                const overrideCount = budgetGoals.filter(
+                  (g) =>
+                    g.category === goal.category && g.year_month !== "ALL"
+                ).length;
+                return (
+                  <Card key={goal.id}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center justify-between">
+                        <span>{goal.category}</span>
+                        <Badge variant="outline">
+                          {goal.year_month === "ALL"
+                            ? "All Months"
+                            : goal.year_month}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <p className="text-2xl font-bold">
                         {formatCurrency(goal.monthly_limit)}
-                      </td>
-                      <td className="p-4 text-center">
-                        <Badge variant="outline">{goal.year_month}</Badge>
-                      </td>
-                      <td className="p-4 text-center">
+                        <span className="text-sm font-normal text-muted-foreground">
+                          /mo
+                        </span>
+                      </p>
+                      {goal.year_month === "ALL" && overrideCount > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {overrideCount} override{overrideCount > 1 ? "s" : ""}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 pt-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteBudgetGoal(goal.category)}
+                          onClick={() => {
+                            setBudgetCategory(goal.category);
+                            setBudgetLimit(goal.monthly_limit.toString());
+                            setBudgetYearMonth(goal.year_month);
+                            setBudgetDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleDeleteBudgetGoal(goal.category)
+                          }
                           disabled={deleteBudgetMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
