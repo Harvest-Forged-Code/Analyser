@@ -14,8 +14,12 @@ from budget_analyser.api.dependencies import (
 )
 from budget_analyser.api.serializers import (
     BudgetGoalSchema,
-    EarningsGoalSchema,
+    BudgetGoalsSummarySchema,
     BudgetProgressSchema,
+    CategoryProgressPointSchema,
+    EarningsGoalSchema,
+    EarningsGoalsSummarySchema,
+    ProgressSummarySchema,
     SetBudgetRequest,
     SetBudgetYearRequest,
     SetEarningsGoalRequest,
@@ -128,6 +132,159 @@ def set_budget_for_year(
         year=body.year,
     )
     return {"message": "Budget goal set for all months in year"}
+
+
+@router.get("/summary", response_model=BudgetGoalsSummarySchema)
+def get_budget_goals_summary(
+    *, controller: BudgetGoalsController = Depends(
+        get_budget_goals_controller,
+    ),
+) -> BudgetGoalsSummarySchema:
+    """Get aggregate summary of all budget goals.
+
+    Args:
+        controller: Injected BudgetGoalsController.
+
+    Returns:
+        BudgetGoalsSummarySchema with totals and counts.
+    """
+    s = controller.get_budget_goals_summary()
+    return BudgetGoalsSummarySchema(
+        total_monthly_budget=s.total_monthly_budget,
+        categories_tracked=s.categories_tracked,
+        month_overrides=s.month_overrides,
+    )
+
+
+@router.get(
+    "/earnings/summary",
+    response_model=EarningsGoalsSummarySchema,
+)
+def get_earnings_goals_summary(
+    *, controller: BudgetGoalsController = Depends(
+        get_budget_goals_controller,
+    ),
+) -> EarningsGoalsSummarySchema:
+    """Get aggregate summary of all earnings goals.
+
+    Args:
+        controller: Injected BudgetGoalsController.
+
+    Returns:
+        EarningsGoalsSummarySchema with totals and counts.
+    """
+    s = controller.get_earnings_goals_summary()
+    return EarningsGoalsSummarySchema(
+        total_expected_earnings=s.total_expected_earnings,
+        sub_categories_tracked=s.sub_categories_tracked,
+        month_overrides=s.month_overrides,
+    )
+
+
+@router.get(
+    "/progress/history/{category}",
+    response_model=list[CategoryProgressPointSchema],
+)
+def get_category_progress_history(
+    *,
+    category: str,
+    reports: list[MonthlyReports] = Depends(get_reports),
+    budget_controller: BudgetGoalsController = Depends(
+        get_budget_goals_controller,
+    ),
+) -> list[CategoryProgressPointSchema]:
+    """Get 12-month progress history for a single category.
+
+    Args:
+        category: Expense category name.
+        reports: Injected reports cache.
+        budget_controller: Injected BudgetGoalsController.
+
+    Returns:
+        List of CategoryProgressPointSchema, one per available month.
+    """
+    import pandas as pd
+
+    if not reports:
+        return []
+
+    all_expenses = []
+    months = []
+    for report in sorted(reports, key=lambda r: r.month):
+        ym = str(report.month)
+        months.append(ym)
+        if not report.expenses.empty:
+            all_expenses.append(report.expenses)
+
+    combined_expenses = (
+        pd.concat(all_expenses, ignore_index=True)
+        if all_expenses else pd.DataFrame()
+    )
+
+    recent_months = months[-12:]
+
+    history = budget_controller.get_category_progress_history(
+        category=category,
+        expenses_df=combined_expenses,
+        months=recent_months,
+    )
+    return [
+        CategoryProgressPointSchema(
+            year_month=p.year_month,
+            budget_limit=p.budget_limit,
+            spent=p.spent,
+            remaining=p.remaining,
+            percentage=p.percentage,
+            status=p.status,
+        )
+        for p in history
+    ]
+
+
+@router.get(
+    "/progress/{year_month}/summary",
+    response_model=ProgressSummarySchema,
+)
+def get_progress_summary(
+    *,
+    year_month: str,
+    reports: list[MonthlyReports] = Depends(get_reports),
+    budget_controller: BudgetGoalsController = Depends(
+        get_budget_goals_controller,
+    ),
+) -> ProgressSummarySchema:
+    """Get aggregate progress summary for a month.
+
+    Args:
+        year_month: Year-month string (e.g., "2024-01").
+        reports: Injected reports cache.
+        budget_controller: Injected BudgetGoalsController.
+
+    Returns:
+        ProgressSummarySchema with status counts and totals.
+
+    Raises:
+        HTTPException: If month not found.
+    """
+    import pandas as pd
+    period = pd.Period(year_month)
+    report = next((r for r in reports if r.month == period), None)
+
+    if not report or report.expenses.empty:
+        raise HTTPException(
+            status_code=404, detail=f"No expense data for {year_month}",
+        )
+
+    s = budget_controller.get_progress_summary(
+        expenses_df=report.expenses, year_month=year_month,
+    )
+    return ProgressSummarySchema(
+        on_track_count=s.on_track_count,
+        warning_count=s.warning_count,
+        over_budget_count=s.over_budget_count,
+        total_spent=s.total_spent,
+        total_budget=s.total_budget,
+    )
 
 
 @router.get("/progress/{year_month}", response_model=list[BudgetProgressSchema])

@@ -62,6 +62,43 @@ class BudgetProgressSchema(BaseModel):
     status: str
 
 
+class BudgetGoalsSummarySchema(BaseModel):
+    """Serialized BudgetGoalsSummary."""
+
+    total_monthly_budget: float
+    categories_tracked: int
+    month_overrides: int
+
+
+class EarningsGoalsSummarySchema(BaseModel):
+    """Serialized EarningsGoalsSummary."""
+
+    total_expected_earnings: float
+    sub_categories_tracked: int
+    month_overrides: int
+
+
+class ProgressSummarySchema(BaseModel):
+    """Serialized ProgressSummary."""
+
+    on_track_count: int
+    warning_count: int
+    over_budget_count: int
+    total_spent: float
+    total_budget: float
+
+
+class CategoryProgressPointSchema(BaseModel):
+    """Serialized CategoryProgressPoint."""
+
+    year_month: str
+    budget_limit: float
+    spent: float
+    remaining: float
+    percentage: float
+    status: str
+
+
 # ===================================================================
 # features/net_worth/models.py
 # ===================================================================
