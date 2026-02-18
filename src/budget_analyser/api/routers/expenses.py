@@ -11,8 +11,8 @@ import pandas as pd
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from budget_analyser.api.dependencies import get_expenses_stats_controller
-from budget_analyser.features.reporting.expenses_controller import (
-    ExpensesStatsController,
+from budget_analyser.features.reporting.expenses_service import (
+    ExpensesStatsService,
 )
 
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
@@ -38,14 +38,14 @@ def _df_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
 
 @router.get("/months")
 def get_available_months(
-    *, controller: ExpensesStatsController = Depends(
+    *, controller: ExpensesStatsService = Depends(
         get_expenses_stats_controller,
     ),
 ) -> list[str]:
     """List all available months with expense data.
 
     Args:
-        controller: Injected ExpensesStatsController.
+        controller: Injected ExpensesStatsService.
 
     Returns:
         List of month strings (e.g., "2024-01").
@@ -57,7 +57,7 @@ def get_available_months(
 def get_month_category_breakdown(
     *,
     period: str,
-    controller: ExpensesStatsController = Depends(
+    controller: ExpensesStatsService = Depends(
         get_expenses_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -65,7 +65,7 @@ def get_month_category_breakdown(
 
     Args:
         period: Month period string (e.g., "2024-01").
-        controller: Injected ExpensesStatsController.
+        controller: Injected ExpensesStatsService.
 
     Returns:
         List of category breakdown records.
@@ -89,7 +89,7 @@ def get_month_transactions(
     period: str,
     category: str | None = Query(None),
     sub_category: str | None = Query(None),
-    controller: ExpensesStatsController = Depends(
+    controller: ExpensesStatsService = Depends(
         get_expenses_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -99,7 +99,7 @@ def get_month_transactions(
         period: Month period string (e.g., "2024-01").
         category: Optional category filter.
         sub_category: Optional sub-category filter.
-        controller: Injected ExpensesStatsController.
+        controller: Injected ExpensesStatsService.
 
     Returns:
         List of transaction records.
@@ -123,7 +123,7 @@ def get_month_transactions(
 def get_year_table(
     *,
     year: int,
-    controller: ExpensesStatsController = Depends(
+    controller: ExpensesStatsService = Depends(
         get_expenses_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -131,7 +131,7 @@ def get_year_table(
 
     Args:
         year: Year as integer.
-        controller: Injected ExpensesStatsController.
+        controller: Injected ExpensesStatsService.
 
     Returns:
         List of monthly expense records.
@@ -152,7 +152,7 @@ def get_year_table(
 def get_year_breakdown(
     *,
     year: int,
-    controller: ExpensesStatsController = Depends(
+    controller: ExpensesStatsService = Depends(
         get_expenses_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -160,7 +160,7 @@ def get_year_breakdown(
 
     Args:
         year: Year as integer.
-        controller: Injected ExpensesStatsController.
+        controller: Injected ExpensesStatsService.
 
     Returns:
         List of category breakdown records.
@@ -184,7 +184,7 @@ def get_year_transactions(
     month: int | None = Query(None),
     category: str | None = Query(None),
     sub_category: str | None = Query(None),
-    controller: ExpensesStatsController = Depends(
+    controller: ExpensesStatsService = Depends(
         get_expenses_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -195,7 +195,7 @@ def get_year_transactions(
         month: Optional month filter (1-12).
         category: Optional category filter.
         sub_category: Optional sub-category filter.
-        controller: Injected ExpensesStatsController.
+        controller: Injected ExpensesStatsService.
 
     Returns:
         List of transaction records.
@@ -222,7 +222,7 @@ def get_range_table(
     *,
     start_date: str = Query(...),
     end_date: str = Query(...),
-    controller: ExpensesStatsController = Depends(
+    controller: ExpensesStatsService = Depends(
         get_expenses_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -231,7 +231,7 @@ def get_range_table(
     Args:
         start_date: Start date in ISO format (YYYY-MM-DD).
         end_date: End date in ISO format (YYYY-MM-DD).
-        controller: Injected ExpensesStatsController.
+        controller: Injected ExpensesStatsService.
 
     Returns:
         List of expense records.

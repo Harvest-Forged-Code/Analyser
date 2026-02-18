@@ -1,15 +1,20 @@
-"""Budget goals business logic.
+"""Budget goals business logic and service.
 
-Pure calculation functions for budget progress tracking.
-No PySide6 or infrastructure dependencies.
+Contains:
+- ``BudgetGoalsService``: stateful facade holding a ``BudgetGoalsModel``
+  reference and delegating persistence + computation.
+- Pure calculation functions for budget progress tracking.
 """
 
 from __future__ import annotations
+
+import logging
 
 import pandas as pd
 
 from budget_analyser.features.budget_goals.models import (
     BudgetGoal,
+    BudgetGoalsModel,
     BudgetGoalsSummary,
     BudgetProgress,
     CategoryProgressPoint,
@@ -18,6 +23,346 @@ from budget_analyser.features.budget_goals.models import (
     ProgressSummary,
 )
 
+
+# ---------------------------------------------------------------------------
+# BudgetGoalsService (absorbs former BudgetGoalsController)
+# ---------------------------------------------------------------------------
+
+class BudgetGoalsService:
+    """Service for budget goal management.
+
+    Delegates persistence to BudgetGoalsModel and business logic
+    to pure service functions.
+
+    Example:
+        >>> from pathlib import Path
+        >>> model = BudgetGoalsModel(db_path=Path("budget.db"))
+        >>> svc = BudgetGoalsService(model=model)
+        >>> svc.set_budget("Groceries", 500.0)
+        BudgetGoal(id=1, category='Groceries', ...)
+    """
+
+    def __init__(
+        self,
+        *,
+        model: BudgetGoalsModel,
+        logger: logging.Logger | None = None,
+    ) -> None:
+        """Initialize the budget goals service.
+
+        Args:
+            model: Budget goals model instance.
+            logger: Optional logger for diagnostics.
+        """
+        self._model = model
+        self._logger = logger or logging.getLogger(
+            "budget_analyser.features.budget_goals.service"
+        )
+
+    # ==================== Budget Goals ====================
+
+    def set_budget(
+        self,
+        category: str,
+        monthly_limit: float,
+        year_month: str = "ALL",
+    ) -> BudgetGoal:
+        """Set a budget limit for a category.
+
+        Args:
+            category: Expense category name (e.g. "Groceries").
+            monthly_limit: Monthly spending limit in dollars.
+            year_month: Period as "YYYY-MM" or "ALL" for every month.
+
+        Returns:
+            The created or updated BudgetGoal.
+        """
+        return self._model.set_budget_goal(
+            category, monthly_limit, year_month,
+        )
+
+    def get_budget(
+        self,
+        category: str,
+        year_month: str = "ALL",
+    ) -> BudgetGoal | None:
+        """Get budget for a category.
+
+        Args:
+            category: Expense category name (e.g. "Groceries").
+            year_month: Period as "YYYY-MM" or "ALL".
+
+        Returns:
+            BudgetGoal if found, None otherwise.
+        """
+        return self._model.get_budget_goal(category, year_month)
+
+    def get_all_budgets(self) -> list[BudgetGoal]:
+        """Get all budget goals.
+
+        Returns:
+            List of all BudgetGoal entries.
+        """
+        return self._model.get_all_budget_goals()
+
+    def delete_budget(
+        self,
+        category: str,
+        year_month: str = "ALL",
+    ) -> bool:
+        """Delete a budget goal.
+
+        Args:
+            category: Expense category name to delete.
+            year_month: Period as "YYYY-MM" or "ALL".
+
+        Returns:
+            True if a goal was deleted.
+        """
+        return self._model.delete_budget_goal(category, year_month)
+
+    def set_budget_for_year(
+        self,
+        category: str,
+        monthly_limit: float,
+        year: int,
+    ) -> list[BudgetGoal]:
+        """Set budget limits for all 12 months of a year.
+
+        Args:
+            category: The expense category name.
+            monthly_limit: The monthly spending limit.
+            year: The year to set goals for.
+
+        Returns:
+            List of 12 BudgetGoal objects.
+        """
+        return self._model.set_budget_goals_for_year(
+            category, monthly_limit, year,
+        )
+
+    # ==================== Earnings Goals ====================
+
+    def set_earnings_goal(
+        self,
+        sub_category: str,
+        expected_amount: float,
+        year_month: str = "ALL",
+    ) -> EarningsGoal:
+        """Set an expected earnings amount for a sub-category.
+
+        Args:
+            sub_category: Earnings sub-category (e.g. "Salary").
+            expected_amount: Expected monthly amount in dollars.
+            year_month: Period as "YYYY-MM" or "ALL".
+
+        Returns:
+            The created or updated EarningsGoal.
+        """
+        return self._model.set_earnings_goal(
+            sub_category, expected_amount, year_month,
+        )
+
+    def get_earnings_goal(
+        self,
+        sub_category: str,
+        year_month: str = "ALL",
+    ) -> EarningsGoal | None:
+        """Get earnings goal for a sub-category.
+
+        Args:
+            sub_category: Earnings sub-category (e.g. "Salary").
+            year_month: Period as "YYYY-MM" or "ALL".
+
+        Returns:
+            EarningsGoal if found, None otherwise.
+        """
+        return self._model.get_earnings_goal(
+            sub_category, year_month,
+        )
+
+    def get_all_earnings_goals(self) -> list[EarningsGoal]:
+        """Get all earnings goals.
+
+        Returns:
+            List of all EarningsGoal entries.
+        """
+        return self._model.get_all_earnings_goals()
+
+    def delete_earnings_goal(
+        self,
+        sub_category: str,
+        year_month: str = "ALL",
+    ) -> bool:
+        """Delete an earnings goal.
+
+        Args:
+            sub_category: Earnings sub-category name to delete.
+            year_month: Period as "YYYY-MM" or "ALL".
+
+        Returns:
+            True if a goal was deleted.
+        """
+        return self._model.delete_earnings_goal(
+            sub_category, year_month,
+        )
+
+    def set_earnings_goal_for_year(
+        self,
+        sub_category: str,
+        expected_amount: float,
+        year: int,
+    ) -> list[EarningsGoal]:
+        """Set expected earnings for all 12 months of a year.
+
+        Args:
+            sub_category: The earnings sub-category name.
+            expected_amount: The expected monthly earnings amount.
+            year: The year to set goals for.
+
+        Returns:
+            List of 12 EarningsGoal objects.
+        """
+        return self._model.set_earnings_goals_for_year(
+            sub_category, expected_amount, year,
+        )
+
+    def get_earnings_goal_map(
+        self,
+        year_month: str = "ALL",
+    ) -> dict[str, float]:
+        """Get a mapping of sub-category to expected amount.
+
+        Args:
+            year_month: Specific month "YYYY-MM" or "ALL" for defaults.
+
+        Returns:
+            Dict mapping sub_category name to expected_amount.
+        """
+        goals = self._model.get_all_earnings_goals()
+        return build_earnings_goal_map(
+            goals=goals, year_month=year_month,
+        )
+
+    # ==================== Budget Progress ====================
+
+    def calculate_budget_progress(
+        self,
+        expenses_df: pd.DataFrame,
+        year_month: str,
+    ) -> list[BudgetProgress]:
+        """Calculate budget progress for all categories in a given month.
+
+        Args:
+            expenses_df: DataFrame with expense transactions.
+            year_month: Month to calculate for (format: "YYYY-MM").
+
+        Returns:
+            List of BudgetProgress for each category with a budget.
+        """
+        budgets = self._model.get_all_budget_goals()
+        return calculate_budget_progress(
+            budgets=budgets,
+            expenses_df=expenses_df,
+            year_month=year_month,
+        )
+
+    # ==================== Summaries ====================
+
+    def get_budget_goals_summary(self) -> BudgetGoalsSummary:
+        """Get aggregate summary of all budget goals.
+
+        Returns:
+            BudgetGoalsSummary with totals and counts.
+        """
+        goals = self._model.get_all_budget_goals()
+        return calculate_budget_goals_summary(goals=goals)
+
+    def get_earnings_goals_summary(self) -> EarningsGoalsSummary:
+        """Get aggregate summary of all earnings goals.
+
+        Returns:
+            EarningsGoalsSummary with totals and counts.
+        """
+        goals = self._model.get_all_earnings_goals()
+        return calculate_earnings_goals_summary(goals=goals)
+
+    def get_progress_summary(
+        self,
+        expenses_df: pd.DataFrame,
+        year_month: str,
+    ) -> ProgressSummary:
+        """Get aggregate progress summary for a month.
+
+        Args:
+            expenses_df: DataFrame with expense transactions.
+            year_month: Month to calculate for (format: "YYYY-MM").
+
+        Returns:
+            ProgressSummary with status counts and totals.
+        """
+        progress = self.calculate_budget_progress(
+            expenses_df, year_month,
+        )
+        return calculate_progress_summary(progress_list=progress)
+
+    def get_category_progress_history(
+        self,
+        *,
+        category: str,
+        expenses_df: pd.DataFrame,
+        months: list[str],
+    ) -> list[CategoryProgressPoint]:
+        """Get historical progress for a single category.
+
+        Args:
+            category: The expense category to track.
+            expenses_df: DataFrame with all expense transactions.
+            months: List of year-month strings to compute history for.
+
+        Returns:
+            List of CategoryProgressPoint, one per month.
+        """
+        budgets = self._model.get_all_budget_goals()
+        return calculate_category_progress_history(
+            category=category,
+            budgets=budgets,
+            expenses_df=expenses_df,
+            months=months,
+        )
+
+    def get_categories_over_budget(
+        self,
+        expenses_df: pd.DataFrame,
+        year_month: str,
+    ) -> list[BudgetProgress]:
+        """Get categories that are over or near budget limit.
+
+        Returns only categories with status "over" or "warning"
+        (at or above 80% budget utilization).
+
+        Args:
+            expenses_df: DataFrame with expense transactions.
+            year_month: Month to check (format: "YYYY-MM").
+
+        Returns:
+            List of BudgetProgress entries with warning or over status.
+        """
+        progress = self.calculate_budget_progress(
+            expenses_df, year_month,
+        )
+        return [
+            p for p in progress if p.status in ("over", "warning")
+        ]
+
+
+# Backward compatibility alias
+BudgetGoalsController = BudgetGoalsService
+
+
+# ---------------------------------------------------------------------------
+# Pure calculation functions
+# ---------------------------------------------------------------------------
 
 def calculate_budget_progress(
     *,
@@ -36,27 +381,6 @@ def calculate_budget_progress(
 
     Returns:
         List of BudgetProgress sorted by percentage descending.
-
-    Example:
-        >>> import pandas as pd
-        >>> budgets = [
-        ...     BudgetGoal(
-        ...         id=1, category="Groceries",
-        ...         monthly_limit=500.0, year_month="ALL",
-        ...     ),
-        ... ]
-        >>> expenses = pd.DataFrame({
-        ...     "transaction_date": ["2024-01-15"],
-        ...     "category": ["Groceries"],
-        ...     "amount": [-200.0],
-        ... })
-        >>> progress = calculate_budget_progress(
-        ...     budgets=budgets,
-        ...     expenses_df=expenses,
-        ...     year_month="2024-01",
-        ... )
-        >>> progress[0].percentage
-        40.0
     """
     if not budgets:
         return []
@@ -117,7 +441,7 @@ def calculate_budget_goals_summary(
     """Compute aggregate summary statistics for budget goals.
 
     Args:
-        goals: All budget goals from the repository.
+        goals: All budget goals from the model.
 
     Returns:
         BudgetGoalsSummary with totals and counts.
@@ -127,7 +451,9 @@ def calculate_budget_goals_summary(
     unique_categories = {g.category for g in goals}
 
     return BudgetGoalsSummary(
-        total_monthly_budget=sum(g.monthly_limit for g in default_goals),
+        total_monthly_budget=sum(
+            g.monthly_limit for g in default_goals
+        ),
         categories_tracked=len(unique_categories),
         month_overrides=len(override_goals),
     )
@@ -140,7 +466,7 @@ def calculate_earnings_goals_summary(
     """Compute aggregate summary statistics for earnings goals.
 
     Args:
-        goals: All earnings goals from the repository.
+        goals: All earnings goals from the model.
 
     Returns:
         EarningsGoalsSummary with totals and counts.
@@ -150,7 +476,9 @@ def calculate_earnings_goals_summary(
     unique_sub_categories = {g.sub_category for g in goals}
 
     return EarningsGoalsSummary(
-        total_expected_earnings=sum(g.expected_amount for g in default_goals),
+        total_expected_earnings=sum(
+            g.expected_amount for g in default_goals
+        ),
         sub_categories_tracked=len(unique_sub_categories),
         month_overrides=len(override_goals),
     )
@@ -181,14 +509,24 @@ def calculate_progress_summary(
     )
 
 
-def _spending_by_month(expenses_df: pd.DataFrame, category: str) -> dict[str, float]:
+def _spending_by_month(
+    expenses_df: pd.DataFrame,
+    category: str,
+) -> dict[str, float]:
     """Return absolute spending per year-month for a single category."""
     result: dict[str, float] = {}
-    if expenses_df.empty or "transaction_date" not in expenses_df.columns:
+    if (expenses_df.empty
+            or "transaction_date" not in expenses_df.columns):
         return result
     df = expenses_df.copy()
-    df["_ym"] = pd.to_datetime(df["transaction_date"], errors="coerce").dt.strftime("%Y-%m")
-    cat_df = df[df["category"] == category] if "category" in df.columns else pd.DataFrame()
+    df["_ym"] = pd.to_datetime(
+        df["transaction_date"], errors="coerce",
+    ).dt.strftime("%Y-%m")
+    cat_df = (
+        df[df["category"] == category]
+        if "category" in df.columns
+        else pd.DataFrame()
+    )
     if not cat_df.empty:
         for ym, amount in cat_df.groupby("_ym")["amount"].sum().items():
             result[str(ym)] = abs(float(amount))
@@ -203,9 +541,6 @@ def calculate_category_progress_history(
     months: list[str],
 ) -> list[CategoryProgressPoint]:
     """Compute historical progress for a single category across months.
-
-    For each month, finds the applicable budget (month-specific override
-    or ALL default) and calculates spending against it.
 
     Args:
         category: The expense category to track.
@@ -226,12 +561,12 @@ def calculate_category_progress_history(
         else:
             month_limits[b.year_month] = b.monthly_limit
 
-    spending_by_month = _spending_by_month(expenses_df, category)
+    spending = _spending_by_month(expenses_df, category)
 
     result: list[CategoryProgressPoint] = []
     for ym in months:
         limit = month_limits.get(ym, default_limit)
-        spent = spending_by_month.get(ym, 0.0)
+        spent = spending.get(ym, 0.0)
         remaining = limit - spent
         percentage = (spent / limit * 100) if limit > 0 else 0.0
 
@@ -269,20 +604,6 @@ def build_earnings_goal_map(
 
     Returns:
         Dict mapping sub_category name to expected_amount.
-
-    Example:
-        >>> goals = [
-        ...     EarningsGoal(
-        ...         id=1, sub_category="Salary",
-        ...         expected_amount=5000.0, year_month="ALL",
-        ...     ),
-        ...     EarningsGoal(
-        ...         id=2, sub_category="Salary",
-        ...         expected_amount=5500.0, year_month="2024-12",
-        ...     ),
-        ... ]
-        >>> build_earnings_goal_map(goals=goals, year_month="2024-12")
-        {'Salary': 5500.0}
     """
     result: dict[str, float] = {}
 

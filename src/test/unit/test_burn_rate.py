@@ -4,7 +4,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from budget_analyser.domain.burn_rate import (
+from budget_analyser.features.trends import (
     BurnRateService,
     BurnRateMetrics,
     CategoryBurnRate,

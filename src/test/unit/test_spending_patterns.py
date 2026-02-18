@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from budget_analyser.domain.spending_patterns import (
+from budget_analyser.features.trends import (
     SpendingPatternService,
     ParetoAnalysis,
     ParetoItem,

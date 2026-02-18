@@ -1,7 +1,7 @@
 """Savings service.
 
 Pure business logic for savings rate calculations.
-No PySide6 or infrastructure dependencies.
+No infrastructure dependencies.
 """
 
 from __future__ import annotations
@@ -194,3 +194,69 @@ def _sum_for_month(
     )
     month_data = working[working["_ym"] == year_month]
     return float(month_data["amount"].sum()) if not month_data.empty else 0.0
+
+
+class SavingsService:
+    """Service for savings rate tracking.
+
+    Wraps the module-level pure functions so that callers can
+    receive an injectable instance via the composition root.
+
+    Example:
+        >>> svc = SavingsService()
+        >>> metrics = svc.calculate_savings_metrics(
+        ...     earnings_df=earnings,
+        ...     expenses_df=expenses,
+        ... )
+        >>> metrics.savings_rate
+        30.0
+    """
+
+    def calculate_savings_metrics(
+        self,
+        earnings_df: pd.DataFrame,
+        expenses_df: pd.DataFrame,
+        year: int | None = None,
+    ) -> SavingsMetrics:
+        """Calculate savings rate and related metrics.
+
+        Args:
+            earnings_df: DataFrame with earnings transactions.
+            expenses_df: DataFrame with expense transactions.
+            year: Optional year to filter by.
+
+        Returns:
+            SavingsMetrics with savings rate and related data.
+        """
+        return calculate_savings_metrics(
+            earnings_df=earnings_df,
+            expenses_df=expenses_df,
+            year=year,
+        )
+
+    def calculate_monthly_savings(
+        self,
+        earnings_df: pd.DataFrame,
+        expenses_df: pd.DataFrame,
+        year: int,
+    ) -> list[tuple[str, float, float, float, float]]:
+        """Calculate savings for each month in a year.
+
+        Args:
+            earnings_df: DataFrame with earnings transactions.
+            expenses_df: DataFrame with expense transactions.
+            year: Year to calculate monthly savings for.
+
+        Returns:
+            List of 12 tuples: (month_name, earnings, expenses,
+            savings, savings_rate).
+        """
+        return calculate_monthly_savings(
+            earnings_df=earnings_df,
+            expenses_df=expenses_df,
+            year=year,
+        )
+
+
+# Backward compatibility alias
+SavingsController = SavingsService

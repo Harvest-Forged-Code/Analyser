@@ -7,10 +7,15 @@ database transactions, updating categories retroactively.
 from __future__ import annotations
 
 from budget_analyser.features.recategorize.service import (
+    RecategorizeController,
+    RecategorizeOrchestrator,
+    RecategorizeResult,
     RecategorizeService,
 )
-from budget_analyser.features.recategorize.controller import (
-    RecategorizeController,
-)
 
-__all__ = ["RecategorizeService", "RecategorizeController"]
+__all__ = [
+    "RecategorizeController",
+    "RecategorizeOrchestrator",
+    "RecategorizeResult",
+    "RecategorizeService",
+]

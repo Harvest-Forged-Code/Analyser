@@ -1,14 +1,31 @@
 """Report service (business logic).
 
 Provides pure functions/use-cases that generate report tables
-from processed transaction data.
+from processed transaction data, and the end-to-end report
+pipeline orchestrator.
 """
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Mapping
 
 import pandas as pd
+
+from budget_analyser.core.models import MonthlyReports
+from budget_analyser.core.protocols import (
+    CategoryMappingProvider,
+    ColumnMappingProvider,
+    StatementRepository,
+)
+from budget_analyser.features.ingestion.categorization import (
+    CategoryMappers,
+    TransactionProcessor,
+)
+from budget_analyser.features.ingestion.formatters import (
+    create_statement_formatter,
+)
 
 
 class ReportService:
@@ -305,3 +322,358 @@ class ReportService:
             margins=True,
             margins_name="Total",
         )
+
+
+class ReportPipelineService:  # pylint: disable=too-few-public-methods
+    """Orchestrate the end-to-end reporting workflow.
+
+    Loads statements, formats them, categorizes transactions, and
+    generates month-wise report tables.
+    """
+
+    def __init__(
+        self,
+        *,
+        statement_repository: StatementRepository,
+        column_mappings: ColumnMappingProvider,
+        category_mappings: CategoryMappingProvider,
+        report_service: ReportService,
+        logger: logging.Logger,
+    ) -> None:
+        """Create the pipeline service.
+
+        Args:
+            statement_repository: Loads raw statements.
+            column_mappings: Provides per-account column mapping.
+            category_mappings: Provides keyword mappers.
+            report_service: Domain service to build reports.
+            logger: Logger used for operational logs.
+        """
+        self._statement_repository = statement_repository
+        self._column_mappings = column_mappings
+        self._category_mappings = category_mappings
+        self._report_service = report_service
+        self._logger = logger
+
+    def run(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+        self,
+    ) -> list[MonthlyReports]:
+        """Execute the workflow and return month-wise report tables.
+
+        Returns:
+            A list of ``MonthlyReports`` objects (one per month).
+
+        Raises:
+            MappingNotFoundError: If column or category mappings are
+                missing or misconfigured.
+            DataSourceError: If statement CSV files cannot be read.
+            ValidationError: If transaction data is malformed.
+        """
+        # 1) Load raw statement data.
+        t0 = time.perf_counter()
+        self._logger.info("Loading statements")
+        statements = self._statement_repository.get_statements()
+        self._logger.info(
+            "Pipeline start: accounts=%d", len(statements),
+        )
+
+        # 2) Format each statement using account-specific column
+        #    mapping.
+        formatted_frames: list[pd.DataFrame] = []
+        for account, raw_statement in statements.items():
+            try:
+                self._log_raw_diagnostics(account, raw_statement)
+                column_mapping = (
+                    self._column_mappings.get_column_mapping(account)
+                )
+                self._log_column_mapping(account, column_mapping)
+                formatter = create_statement_formatter(
+                    account_name=account,
+                    statement=raw_statement,
+                    column_mapping=column_mapping,
+                )
+                formatted = formatter.get_desired_format()
+                self._log_formatted(account, formatted)
+                formatted_frames.append(formatted)
+            except Exception:  # pylint: disable=broad-exception-caught
+                self._log_formatting_error(
+                    account, raw_statement, locals(),
+                )
+                raise
+
+        if not formatted_frames:
+            return []
+
+        # 3) Merge all formatted statements.
+        transactions = pd.concat(
+            formatted_frames, ignore_index=True,
+        )
+        self._log_debug_safe(
+            "Merged transactions shape=%s cols=%s",
+            transactions.shape,
+            list(transactions.columns),
+        )
+
+        # 4) Categorize using JSON keyword mappings.
+        processor = TransactionProcessor(
+            mappers=CategoryMappers(
+                description_to_sub_category=(
+                    self._category_mappings
+                    .description_to_sub_category()
+                ),
+                sub_category_to_category=(
+                    self._category_mappings
+                    .sub_category_to_category()
+                ),
+            )
+        )
+        processed = processor.process(raw_transactions=transactions)
+
+        # 5) Add a month period column for grouping.
+        processed["year_month"] = (
+            processed["transaction_date"].dt.to_period("M")
+        )
+
+        # 6) Build month-wise report tables.
+        reports = self._build_reports(processed)
+
+        self._log_pipeline_summary(processed, t0)
+        return reports
+
+    def run_from_database(
+        self, processed_transactions: pd.DataFrame,
+    ) -> list[MonthlyReports]:
+        """Generate reports from pre-processed database transactions.
+
+        Skips the CSV loading, formatting, and categorization steps
+        since the database already contains processed transactions.
+
+        Args:
+            processed_transactions: DataFrame with columns:
+                transaction_date, description, amount,
+                from_account, sub_category, category, c_or_d.
+
+        Returns:
+            A list of ``MonthlyReports`` objects (one per month).
+        """
+        t0 = time.perf_counter()
+        tx_count = len(processed_transactions)
+        self._logger.info(
+            "Generating reports from database: %d transactions",
+            tx_count,
+        )
+
+        if processed_transactions.empty:
+            self._logger.info("No transactions in database")
+            return []
+
+        if "transaction_date" in processed_transactions.columns:
+            processed_transactions["transaction_date"] = (
+                pd.to_datetime(
+                    processed_transactions["transaction_date"],
+                    format="mixed",
+                    errors="coerce",
+                )
+            )
+
+        date_col = processed_transactions["transaction_date"]
+        processed_transactions["year_month"] = (
+            date_col.dt.to_period("M")
+        )
+
+        reports = self._build_reports(processed_transactions)
+
+        self._log_pipeline_summary(
+            processed_transactions, t0, prefix="Database pipeline",
+        )
+        return reports
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _build_reports(
+        self, processed: pd.DataFrame,
+    ) -> list[MonthlyReports]:
+        """Build month-wise report tables from processed data."""
+        reports: list[MonthlyReports] = []
+        for month, group in processed.groupby(
+            processed["year_month"],
+        ):
+            self._logger.info(
+                "Generating reports for %s", month,
+            )
+            earn_source, exp_source = self._apply_exclusions(
+                group, month,
+            )
+            reports.append(
+                MonthlyReports(
+                    month=month,
+                    earnings=self._report_service.earnings(
+                        statement=earn_source,
+                    ),
+                    expenses=self._report_service.expenses(
+                        statement=exp_source,
+                    ),
+                    expenses_category=(
+                        self._report_service.expenses_category(
+                            statement=exp_source,
+                        )
+                    ),
+                    expenses_sub_category=(
+                        self._report_service.expenses_sub_category(
+                            statement=exp_source,
+                        )
+                    ),
+                    transactions=group,
+                )
+            )
+        return reports
+
+    def _apply_exclusions(
+        self,
+        group: pd.DataFrame,
+        month: object,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Apply payment exclusion rules for standard reports."""
+        try:
+            earn_source = group
+            exp_source = group
+            if "sub_category" in group.columns:
+                earn_source = group[
+                    group["sub_category"].fillna("")
+                    != "payment_confirmations"
+                ]
+                exp_source = group[
+                    group["sub_category"].fillna("")
+                    != "payments_made"
+                ]
+            else:
+                self._logger.debug(
+                    "No sub_category column for %s; "
+                    "skipping payments exclusions",
+                    month,
+                )
+        except Exception:  # pylint: disable=broad-exception-caught
+            earn_source = group
+            exp_source = group
+        return earn_source, exp_source
+
+    def _log_debug_safe(
+        self, msg: str, *args: object,
+    ) -> None:
+        """Log a debug message, swallowing any errors."""
+        try:
+            self._logger.debug(msg, *args)
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
+    def _log_raw_diagnostics(
+        self, account: str, raw_statement: object,
+    ) -> None:
+        """Log shape and columns of the raw statement."""
+        try:
+            shape = getattr(raw_statement, "shape", None)
+            cols = list(getattr(raw_statement, "columns", []))
+            self._logger.debug(
+                "Formatting account=%s raw_shape=%s "
+                "raw_cols=%s",
+                account, shape, cols,
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
+    def _log_column_mapping(
+        self,
+        account: str,
+        column_mapping: object,
+    ) -> None:
+        """Log column mapping metadata."""
+        try:
+            self._logger.debug(
+                "Account=%s column_mapping size=%d "
+                "sample_keys=%s",
+                account,
+                len(column_mapping or {}),  # type: ignore[arg-type]
+                list(
+                    (column_mapping or {}).keys()  # type: ignore[union-attr]
+                )[:5],
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
+    def _log_formatted(
+        self, account: str, formatted: object,
+    ) -> None:
+        """Log formatted statement metadata."""
+        try:
+            self._logger.debug(
+                "Formatted account=%s shape=%s cols=%s",
+                account,
+                getattr(formatted, "shape", None),
+                list(getattr(formatted, "columns", [])),
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
+    def _log_formatting_error(
+        self,
+        account: str,
+        raw_statement: object,
+        local_vars: dict[str, object],
+    ) -> None:
+        """Log rich context when formatting fails."""
+        try:
+            head_repr = None
+            try:
+                head_repr = raw_statement.head(5).to_dict()  # type: ignore[union-attr]
+            except Exception:  # pylint: disable=broad-exception-caught
+                fallback = getattr(
+                    raw_statement, "head",
+                    lambda n=5, rs=raw_statement: rs,
+                )
+                head_repr = str(fallback())[:500]
+            column_mapping = local_vars.get("column_mapping")
+            mapping_keys = (
+                list(
+                    (column_mapping or {}).keys()  # type: ignore[union-attr]
+                )[:10]
+                if column_mapping is not None else []
+            )
+            self._logger.exception(
+                "Formatting failed for account=%s; "
+                "cols=%s; mapping_keys=%s; head=%s",
+                account,
+                list(getattr(raw_statement, "columns", [])),
+                mapping_keys,
+                head_repr,
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            self._logger.exception(
+                "Formatting failed for account=%s", account,
+            )
+
+    def _log_pipeline_summary(
+        self,
+        processed: pd.DataFrame,
+        t0: float,
+        *,
+        prefix: str = "Pipeline",
+    ) -> None:
+        """Log a final summary line for the pipeline run."""
+        try:
+            duration = time.perf_counter() - t0
+            months = processed["year_month"].nunique()
+            self._logger.info(
+                "%s end: transactions=%d months=%d "
+                "duration=%.2fs",
+                prefix,
+                len(processed.index),
+                int(months),
+                duration,
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
+
+BackendController = ReportPipelineService  # backward compat

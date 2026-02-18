@@ -20,15 +20,14 @@ Budget Analyser is a personal finance tracking application that:
 ## [WORKFLOW] Development Process
 
 ### Core Principle
-**Vertical Slices First** — When adding features, create self-contained feature modules that own all layers (models, repository, service, controller). Do not scatter logic across horizontal layers.
+**Vertical Slices First** — When adding features, create self-contained feature modules that own all layers (models + service). Do not scatter logic across horizontal layers.
 
 ### Mandatory Workflow
 
-1. **Understand the existing code** — Budget Analyser uses a hybrid architecture. Most features are migrated to vertical slices under `features/`. Check if your feature already exists.
+1. **Understand the existing code** — Budget Analyser uses a vertical slices architecture. All features live under `features/`. Check if your feature already exists.
 2. **For new features:** Follow the vertical slice pattern (see "When Adding New Features" section below)
-3. **For migrations:** Extract horizontal layer code into vertical slices incrementally, use backward-compat shims
-4. **Test everything:** All unit tests must pass before committing (`uv run pytest src/test/unit/ -q`)
-5. **Verify imports:** Ensure no circular dependencies between features or with core
+3. **Test everything:** All unit tests must pass before committing (`uv run pytest src/test/unit/ -q`)
+4. **Verify imports:** Ensure no circular dependencies between features or with core
 
 ### Development Commands
 
@@ -56,26 +55,26 @@ uv run pylint src/budget_analyser
 
 ### Architecture Overview
 
-**Vertical feature slices architecture** — All 11 core features are organized as self-contained vertical slices. Each feature owns all its layers: models, repository, service, and controller. The frontend is a Tauri v2 + React app that communicates with the Python backend via FastAPI. Shared infrastructure lives in `core/`.
+**Vertical feature slices architecture** — All 13 features are organized as self-contained vertical slices. Each feature owns its layers: `models.py` (DTOs + data access) and `service.py` (business logic + coordination). The frontend is a Tauri v2 + React app that communicates with the Python backend via FastAPI. Shared infrastructure lives in `core/`.
 
 ```
 src/budget_analyser/
 ├── api/             # FastAPI REST API layer
 │   ├── main.py          # App factory, CORS, router registration
-│   ├── dependencies.py  # Composition root (controller wiring)
-│   └── routers/         # Route modules (auth, reports, dashboard, etc.)
+│   ├── dependencies.py  # Composition root (service wiring)
+│   └── routers/         # 17 route modules (auth, reports, dashboard, etc.)
 ├── core/            # Shared foundation (protocols, errors, DB utils, shared DTOs)
 │   ├── __init__.py
 │   ├── protocols.py     # Domain interfaces (StatementRepository, etc.)
 │   ├── errors.py        # Domain exception hierarchy
 │   ├── database.py      # Shared SQLite connection factory
 │   └── models.py        # Cross-feature DTOs (MonthlyReports)
-├── features/        # Vertical feature slices (11 complete modules)
+├── features/        # Vertical feature slices (13 modules)
 │   ├── budget_goals/    # Budget and earnings goals management
-│   │   ├── models.py
-│   │   ├── repository.py
-│   │   ├── service.py
-│   │   └── controller.py
+│   │   ├── models.py        # DTOs + data access (BudgetGoalsModel)
+│   │   ├── service.py       # Business logic (BudgetGoalsService)
+│   │   ├── controller.py    # Backward-compat shim → service.py
+│   │   └── repository.py    # Backward-compat shim → models.py
 │   ├── net_worth/       # Financial accounts and net worth tracking
 │   ├── recurring/       # Recurring transaction management
 │   ├── savings/         # Savings metrics and tracking
@@ -86,30 +85,9 @@ src/budget_analyser/
 │   ├── reporting/       # Monthly report generation
 │   ├── mappers/         # Category and cashflow mapping
 │   ├── ingestion/       # CSV ingestion pipeline
+│   ├── recategorize/    # Transaction recategorization
 │   └── settings/        # Settings management
-├── controller/      # Legacy presentation layer (backward-compat shims)
-│   ├── backend_controller.py  # Orchestrates end-to-end workflow
-│   ├── budget_controller.py   # Shim: aliases BudgetGoalsController
-│   └── *_controller.py        # Page-specific controllers
-├── domain/          # Legacy business logic (backward-compat shims)
-│   ├── protocols.py             # Backward-compat shim → core.protocols
-│   ├── errors.py                # Backward-compat shim → core.errors
-│   ├── statement_formatter.py   # Factory for bank-specific formatters
-│   ├── statement_formatters/    # Bank-specific CSV parsers
-│   ├── transaction_processor.py # Categorization logic
-│   ├── transaction_ingestion.py # CSV → DB pipeline
-│   ├── reporting.py             # Report generation service
-│   ├── forecasting.py           # Expense forecasting
-│   ├── trend_analysis.py        # MoM/YoY trend analysis
-│   ├── burn_rate.py             # Budget burn rate calculations
-│   ├── spending_patterns.py     # Pareto, anomaly detection
-│   ├── payment_matching.py      # Payment reconciliation
-│   ├── categorization_suggestions.py  # Auto-suggest categories
-│   └── export_service.py        # CSV/Excel/PDF export
-├── infrastructure/  # Persistence & external systems
-│   ├── database.py, budget_database.py  # SQLite adapters (budget_goals migrated)
-│   ├── json_mappings.py                 # JSON mapper loader/saver
-│   └── ini_config.py                    # INI config parsing
+├── domain/          # Backward-compat shims (12 files → features/)
 ├── settings/        # Configuration (settings.py, preferences.py)
 └── data/            # Application data (not code)
     ├── config/budget_analyser.ini   # Runtime config
@@ -133,20 +111,24 @@ src/budget_analyser/
 **Entry point:** `python -m budget_analyser` → `api.main:app` via uvicorn on port 8741
 
 **Architecture status:**
-- ✅ 11 feature modules with complete stack (models, repo, service, controller)
-- ✅ FastAPI REST API layer with 15 router modules
+- ✅ 13 feature modules with models.py + service.py
+- ✅ FastAPI REST API layer with 17 router modules
 - ✅ Tauri v2 + React frontend with 13 pages
-- ✅ 17 backward-compat shims for old locations (9 domain + 8 controller files)
+- ✅ Backward-compat shims: 12 domain/ files, 8 feature controller.py, 4 feature repository.py
+- ✅ Legacy `controller/` and `infrastructure/` directories removed
 - ✅ Shared core layer with protocols, errors, database utilities
-- ✅ 454 unit tests passing
+- ✅ 469 unit tests passing
 
-**Backward compatibility:** Old imports still work via re-export shims. Example:
+**Backward compatibility:** Old imports still work via re-export shims in `domain/` and feature-level `controller.py`/`repository.py` files. Example:
 ```python
-# OLD WAY (still works, via shim)
-from budget_analyser.domain.budget_goals import create_budget
+# OLD WAY (still works, via domain/ shim)
+from budget_analyser.domain.forecasting import ForecastService
+
+# OLD WAY (still works, via feature controller.py shim)
+from budget_analyser.features.budget_goals.controller import BudgetGoalsController
 
 # NEW WAY (preferred)
-from budget_analyser.features.budget_goals.service import create_budget
+from budget_analyser.features.budget_goals.service import BudgetGoalsService
 ```
 
 ## Code Style & Linting
@@ -317,14 +299,14 @@ Author: Prabhukumar Sivamorthy
 
 | Pattern | When to Use | Example in Codebase |
 |---------|-------------|---------------------|
-| **Vertical Slice** | Self-contained feature owning all layers | `features/budget_goals/` (models, repo, service, controller) |
+| **Vertical Slice** | Self-contained feature owning all layers | `features/budget_goals/` (models.py + service.py) |
 | **Strategy** | Multiple algorithms for same task | `StatementFormatters` (Citi, Discover, Default) |
 | **Factory** | Object creation with selection logic | `create_statement_formatter()` |
 | **Template Method** | Define algorithm skeleton, let subclasses override steps | `BaseStatementFormatter._bank_specific_formatting()` |
 | **Repository** | Abstract data access | `BudgetGoalsRepository`, `TransactionDatabase`, `CsvStatementRepository` |
 | **Protocol/Interface** | Decouple layers, enable testing | `core.protocols`: `StatementRepository`, `ColumnMappingProvider` |
-| **Service** | Pure business logic functions | `budget_goals.service`, `ReportService`, `TransactionProcessor` |
-| **Dependency Injection** | Loose coupling, testability | Controllers receive dependencies via constructor |
+| **Service** | Business logic + coordination facade | `budget_goals.service`, `ReportService`, `TransactionProcessor` |
+| **Dependency Injection** | Loose coupling, testability | Services receive dependencies via constructor |
 | **Composition Root** | Single wiring location for all dependencies | `api/dependencies.py::initialize()` |
 | **Data Transfer Object** | Pass data across layers immutably | `MonthlyReports`, `BudgetGoal` (frozen dataclasses) |
 
@@ -333,7 +315,7 @@ Author: Prabhukumar Sivamorthy
 - **Single Responsibility Principle (SRP)** — every class and function does one thing
 - **One class per file** — each module has a single public class or cohesive set of functions
 - **DRY (Don't Repeat Yourself)** — extract duplicated logic into helpers or shared utilities
-- **Layered architecture** — API routers → controllers → domain → infrastructure (no skipping layers)
+- **Layered architecture** — API routers → feature services → core (no skipping layers)
 - **Domain independence** — domain layer has no dependencies on infrastructure (use protocols)
 - **Protocol-based abstractions** — define interfaces in domain, implement in infrastructure
 - **Frozen dataclasses** for immutable configuration and DTOs
@@ -346,34 +328,28 @@ Author: Prabhukumar Sivamorthy
 **ALWAYS use vertical slices** — This is the standard pattern in this codebase. See `features/budget_goals/`, `features/net_worth/`, etc. for examples.
 
 1. Create `features/<name>/` directory with all required files
-2. **models.py** — DTOs (frozen dataclasses) for data transfer between layers
-3. **repository.py** — Database access using `core.database.get_connection()`
-4. **service.py** — Pure business logic functions (no infrastructure)
-5. **controller.py** — Thin facade that coordinates repository + service
-6. **__init__.py** — Export public interfaces (controller, repository, models)
-7. Wire controller in `api/dependencies.py` composition root
-8. Add API router in `api/routers/<feature>.py`
-9. Add unit tests: `src/test/unit/test_<feature>_{models,repository,service,controller}.py`
+2. **models.py** — DTOs (frozen dataclasses) and data access (DB operations using `core.database.get_connection()`)
+3. **service.py** — Business logic + coordination facade
+4. **__init__.py** — Export public interfaces (service, models)
+5. Wire service in `api/dependencies.py` composition root
+6. Add API router in `api/routers/<feature>.py`
+7. Add unit tests: `src/test/unit/test_<feature>_{models,service}.py`
 
 **Pattern example (net_worth):**
 ```
 features/net_worth/
-├── __init__.py              # Export NetWorthRepository, NetWorthController
-├── models.py                # Account, NetWorthSummary (frozen dataclasses)
-├── repository.py            # CRUD operations on accounts table
-├── service.py               # calculate_net_worth_summary(), etc.
-├── controller.py            # NetWorthController (aggregates repo + service)
-└── (no page.py if no UI)
+├── __init__.py              # Export NetWorthService
+├── models.py                # Account, NetWorthSummary (frozen dataclasses + DB access)
+├── service.py               # NetWorthService (business logic + coordination)
+└── (controller.py)          # Optional backward-compat shim if migrated
 ```
 
-**For changes to legacy (unmigrated) domain code:**
+**For changes to legacy domain/ shim code:**
 
-Legacy code still exists in `domain/` and `controller/` as backward-compat shims. If you must modify it:
-1. First, check if a vertical slice feature already exists for this domain
-2. If yes: Move the logic into the feature module
-3. If no: Extract the feature into a new vertical slice
-4. Keep shims in old locations for backward compatibility
-5. Never add new code to legacy horizontal layers
+Legacy shim files exist in `domain/` that re-export from `features/`. If you must modify logic referenced by these shims:
+1. Find the canonical location in `features/`
+2. Make changes there (never modify the shim itself)
+3. Domain shims are read-only re-exports — do not add new code to `domain/`
 
 ## Diagrams
 
@@ -432,12 +408,10 @@ uv run pytest --cov=src/budget_analyser
 ```
 src/test/
 ├── unit/           # Fast, isolated tests (mock external dependencies)
-│   ├── test_budget_goals_service.py      # Feature slice: service pure functions
-│   ├── test_budget_goals_repository.py   # Feature slice: SQLite CRUD (tmp_path)
-│   ├── test_budget_goals_controller.py   # Feature slice: controller integration
-│   ├── test_budget_controller.py         # Legacy facade backward compat
+│   ├── test_budget_goals_service.py      # Feature slice: service tests
+│   ├── test_budget_goals_models.py       # Feature slice: model/data access tests
 │   ├── test_keyword_matching.py          # Domain business logic
-│   ├── ... (other domain/controller tests)
+│   ├── ... (other feature/domain tests)
 ├── manual/         # Manual smoke tests
 ├── integration/    # Component interaction tests (real DB, file I/O)
 └── system/         # End-to-end workflow tests (full app scenarios)
@@ -470,6 +444,14 @@ src/test/
 
 ## [RECENT-CHANGES] Latest Updates
 
+### Architecture Simplification (Phase 4 Complete)
+- Merged `controller.py` into `service.py` and `repository.py` into `models.py` within each feature
+- Deleted legacy `controller/` directory (backend_controller, dtos, utils moved to features/)
+- Deleted legacy `infrastructure/` directory (ini_config moved to settings/, json_mappings moved to mappers/)
+- Reduced `domain/` to 12 backward-compat shim files (re-exports only)
+- Feature-level `controller.py` and `repository.py` files now shims pointing to `service.py`/`models.py`
+- 13 feature modules, 17 API routers, 469 unit tests passing
+
 ### Tauri + React Migration
 - Migrated from PySide6 (Qt) desktop GUI to Tauri v2 + React frontend
 - FastAPI backend serves REST API on port 8741
@@ -477,12 +459,10 @@ src/test/
 - 41 E2E tests passing via Playwright
 
 ### Vertical Slices (Phase 3 Complete)
-- All 11 features migrated to vertical slices
+- All features migrated to vertical slices
 - Core layer with shared protocols, errors, database utilities
-- 17 backward-compat shims for old import locations
-- 454 unit tests passing
 
 ## Skills
 
 ### Vertical Slices Pattern
-When creating a new feature, follow the vertical slice structure already established in `features/budget_goals/`, `features/net_worth/`, etc. Each feature is self-contained with models, repository, service, and controller.
+When creating a new feature, follow the vertical slice structure already established in `features/budget_goals/`, `features/net_worth/`, etc. Each feature is self-contained with `models.py` (DTOs + data access) and `service.py` (business logic).

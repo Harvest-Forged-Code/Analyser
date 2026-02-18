@@ -12,10 +12,9 @@ from budget_analyser.features.payments.models import (
 )
 from budget_analyser.features.payments.service import (
     PaymentMatchingService,
-    create_payment_matcher,
-)
-from budget_analyser.features.payments.controller import (
+    PaymentsReconciliationService,
     PaymentsReconciliationController,
+    create_payment_matcher,
 )
 
 __all__ = [
@@ -23,6 +22,7 @@ __all__ = [
     "PaymentMatchResult",
     "PaymentsReconciliationSummary",
     "PaymentMatchingService",
-    "create_payment_matcher",
+    "PaymentsReconciliationService",
     "PaymentsReconciliationController",
+    "create_payment_matcher",
 ]

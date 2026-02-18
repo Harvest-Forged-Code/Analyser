@@ -12,7 +12,7 @@ from budget_analyser.api.dependencies import (
     get_recategorize_controller,
     invalidate_reports,
 )
-from budget_analyser.features.recategorize.controller import (
+from budget_analyser.features.recategorize.service import (
     RecategorizeController,
 )
 

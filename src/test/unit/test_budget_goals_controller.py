@@ -6,18 +6,18 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from budget_analyser.features.budget_goals.controller import BudgetGoalsController
-from budget_analyser.features.budget_goals.repository import BudgetGoalsRepository
+from budget_analyser.features.budget_goals.models import BudgetGoalsModel
+from budget_analyser.features.budget_goals.service import BudgetGoalsService
 
 
 @pytest.fixture()
-def controller(tmp_path: Path) -> BudgetGoalsController:
-    """Create a controller backed by a temporary database."""
-    repo = BudgetGoalsRepository(db_path=tmp_path / "test.db")
-    return BudgetGoalsController(repository=repo)
+def controller(tmp_path: Path) -> BudgetGoalsService:
+    """Create a service backed by a temporary database."""
+    model = BudgetGoalsModel(db_path=tmp_path / "test.db")
+    return BudgetGoalsService(model=model)
 
 
-def test_set_and_get_budget(controller: BudgetGoalsController) -> None:
+def test_set_and_get_budget(controller: BudgetGoalsService) -> None:
     goal = controller.set_budget("Food", 500.0)
     assert goal.category == "Food"
 
@@ -26,24 +26,24 @@ def test_set_and_get_budget(controller: BudgetGoalsController) -> None:
     assert fetched.monthly_limit == 500.0
 
 
-def test_get_all_budgets(controller: BudgetGoalsController) -> None:
+def test_get_all_budgets(controller: BudgetGoalsService) -> None:
     controller.set_budget("Food", 500.0)
     controller.set_budget("Transport", 200.0)
     assert len(controller.get_all_budgets()) == 2
 
 
-def test_delete_budget(controller: BudgetGoalsController) -> None:
+def test_delete_budget(controller: BudgetGoalsService) -> None:
     controller.set_budget("Food", 500.0)
     assert controller.delete_budget("Food") is True
     assert controller.get_budget("Food") is None
 
 
-def test_set_budget_for_year(controller: BudgetGoalsController) -> None:
+def test_set_budget_for_year(controller: BudgetGoalsService) -> None:
     goals = controller.set_budget_for_year("Food", 500.0, 2025)
     assert len(goals) == 12
 
 
-def test_earnings_goal_map(controller: BudgetGoalsController) -> None:
+def test_earnings_goal_map(controller: BudgetGoalsService) -> None:
     controller.set_earnings_goal("salary", 5000.0, "ALL")
     controller.set_earnings_goal("salary", 6000.0, "2025-01")
     controller.set_earnings_goal("bonus", 200.0, "2025-01")
@@ -56,7 +56,7 @@ def test_earnings_goal_map(controller: BudgetGoalsController) -> None:
 
 
 def test_calculate_budget_progress(
-    controller: BudgetGoalsController,
+    controller: BudgetGoalsService,
 ) -> None:
     controller.set_budget("Food", 500.0)
     expenses = pd.DataFrame({
@@ -71,7 +71,7 @@ def test_calculate_budget_progress(
 
 
 def test_get_categories_over_budget(
-    controller: BudgetGoalsController,
+    controller: BudgetGoalsService,
 ) -> None:
     controller.set_budget("Food", 200.0)
     controller.set_budget("Transport", 500.0)
@@ -90,8 +90,8 @@ def test_get_categories_over_budget(
 
 def test_get_budget_goals_summary(tmp_path: Path) -> None:
     """Summary returns correct totals and counts."""
-    repo = BudgetGoalsRepository(db_path=tmp_path / "test.db")
-    ctrl = BudgetGoalsController(repository=repo)
+    model = BudgetGoalsModel(db_path=tmp_path / "test.db")
+    ctrl = BudgetGoalsService(model=model)
     ctrl.set_budget("Food", 500, "ALL")
     ctrl.set_budget("Transport", 200, "ALL")
     ctrl.set_budget("Food", 600, "2025-12")
@@ -104,8 +104,8 @@ def test_get_budget_goals_summary(tmp_path: Path) -> None:
 
 def test_get_earnings_goals_summary(tmp_path: Path) -> None:
     """Summary returns correct totals and counts."""
-    repo = BudgetGoalsRepository(db_path=tmp_path / "test.db")
-    ctrl = BudgetGoalsController(repository=repo)
+    model = BudgetGoalsModel(db_path=tmp_path / "test.db")
+    ctrl = BudgetGoalsService(model=model)
     ctrl.set_earnings_goal("Salary", 5000, "ALL")
     ctrl.set_earnings_goal("Bonus", 1000, "ALL")
     ctrl.set_earnings_goal("Salary", 5500, "2025-12")
@@ -118,8 +118,8 @@ def test_get_earnings_goals_summary(tmp_path: Path) -> None:
 
 def test_get_progress_summary(tmp_path: Path) -> None:
     """Progress summary returns correct status counts."""
-    repo = BudgetGoalsRepository(db_path=tmp_path / "test.db")
-    ctrl = BudgetGoalsController(repository=repo)
+    model = BudgetGoalsModel(db_path=tmp_path / "test.db")
+    ctrl = BudgetGoalsService(model=model)
     ctrl.set_budget("Food", 500, "ALL")
     ctrl.set_budget("Transport", 200, "ALL")
 
@@ -138,8 +138,8 @@ def test_get_progress_summary(tmp_path: Path) -> None:
 
 def test_get_category_progress_history(tmp_path: Path) -> None:
     """History returns progress for each month."""
-    repo = BudgetGoalsRepository(db_path=tmp_path / "test.db")
-    ctrl = BudgetGoalsController(repository=repo)
+    model = BudgetGoalsModel(db_path=tmp_path / "test.db")
+    ctrl = BudgetGoalsService(model=model)
     ctrl.set_budget("Food", 500, "ALL")
 
     expenses = pd.DataFrame({

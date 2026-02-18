@@ -19,7 +19,7 @@ from budget_analyser.api.serializers import (
     AddRecurringRequest,
 )
 from budget_analyser.core.models import MonthlyReports
-from budget_analyser.features.recurring.controller import RecurringController
+from budget_analyser.features.recurring.service import RecurringService
 
 router = APIRouter(prefix="/api/recurring", tags=["recurring"])
 
@@ -62,13 +62,13 @@ def _df_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
 def get_all_recurring_transactions(
     *,
     active_only: bool = Query(False),
-    controller: RecurringController = Depends(get_recurring_controller),
+    controller: RecurringService = Depends(get_recurring_controller),
 ) -> list[RecurringTransactionSchema]:
     """List all recurring transactions.
 
     Args:
         active_only: If True, return only active recurring transactions.
-        controller: Injected RecurringController.
+        controller: Injected RecurringService.
 
     Returns:
         List of RecurringTransactionSchema.
@@ -95,13 +95,13 @@ def get_all_recurring_transactions(
 def add_recurring_transaction(
     *,
     body: AddRecurringRequest,
-    controller: RecurringController = Depends(get_recurring_controller),
+    controller: RecurringService = Depends(get_recurring_controller),
 ) -> dict[str, str]:
     """Add a new recurring transaction.
 
     Args:
         body: AddRecurringRequest with transaction details.
-        controller: Injected RecurringController.
+        controller: Injected RecurringService.
 
     Returns:
         Success message.
@@ -120,13 +120,13 @@ def add_recurring_transaction(
 def delete_recurring_transaction(
     *,
     recurring_id: int,
-    controller: RecurringController = Depends(get_recurring_controller),
+    controller: RecurringService = Depends(get_recurring_controller),
 ) -> dict[str, str]:
     """Delete a recurring transaction.
 
     Args:
         recurring_id: Recurring transaction ID.
-        controller: Injected RecurringController.
+        controller: Injected RecurringService.
 
     Returns:
         Success message.
@@ -139,13 +139,13 @@ def delete_recurring_transaction(
 def deactivate_recurring_transaction(
     *,
     recurring_id: int,
-    controller: RecurringController = Depends(get_recurring_controller),
+    controller: RecurringService = Depends(get_recurring_controller),
 ) -> dict[str, str]:
     """Deactivate a recurring transaction.
 
     Args:
         recurring_id: Recurring transaction ID.
-        controller: Injected RecurringController.
+        controller: Injected RecurringService.
 
     Returns:
         Success message.
@@ -158,13 +158,13 @@ def deactivate_recurring_transaction(
 def get_recurring_summary(
     *,
     reports: list[MonthlyReports] = Depends(get_reports),
-    controller: RecurringController = Depends(get_recurring_controller),
+    controller: RecurringService = Depends(get_recurring_controller),
 ) -> dict[str, Any]:
     """Get summary of recurring transactions status.
 
     Args:
         reports: Injected reports cache.
-        controller: Injected RecurringController.
+        controller: Injected RecurringService.
 
     Returns:
         Dict with recurring summary metrics.
@@ -186,13 +186,13 @@ def get_recurring_summary(
 def detect_recurring_transactions(
     *,
     reports: list[MonthlyReports] = Depends(get_reports),
-    controller: RecurringController = Depends(get_recurring_controller),
+    controller: RecurringService = Depends(get_recurring_controller),
 ) -> list[dict[str, Any]]:
     """Detect potential recurring transactions from historical data.
 
     Args:
         reports: Injected reports cache.
-        controller: Injected RecurringController.
+        controller: Injected RecurringService.
 
     Returns:
         List of detected recurring transaction records.
@@ -206,13 +206,13 @@ def detect_recurring_transactions(
 def check_recurring_anomalies(
     *,
     reports: list[MonthlyReports] = Depends(get_reports),
-    controller: RecurringController = Depends(get_recurring_controller),
+    controller: RecurringService = Depends(get_recurring_controller),
 ) -> list[dict[str, Any]]:
     """Check for anomalies in recurring transactions.
 
     Args:
         reports: Injected reports cache.
-        controller: Injected RecurringController.
+        controller: Injected RecurringService.
 
     Returns:
         List of anomaly records.

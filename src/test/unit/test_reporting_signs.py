@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from budget_analyser.domain.reporting import ReportService
+from budget_analyser.features.reporting import ReportService
 
 
 def test_report_service_normalizes_signs() -> None:

@@ -14,14 +14,14 @@ from budget_analyser.api.dependencies import (
     get_cashflow_mapper_controller,
     invalidate_reports,
 )
-from budget_analyser.features.mappers.mapper_controller import (
-    MapperController,
+from budget_analyser.features.mappers.service import (
+    MapperService,
 )
-from budget_analyser.features.mappers.sub_category_controller import (
-    SubCategoryMapperController,
+from budget_analyser.features.mappers.sub_category_service import (
+    SubCategoryMapperService,
 )
-from budget_analyser.features.mappers.cashflow_controller import (
-    CashflowMapperController,
+from budget_analyser.features.mappers.cashflow_service import (
+    CashflowMapperService,
 )
 
 router = APIRouter(prefix="/api/mappers", tags=["mappers"])
@@ -34,12 +34,12 @@ router = APIRouter(prefix="/api/mappers", tags=["mappers"])
 
 @router.get("/unmapped")
 def list_unmapped_transactions(
-    *, controller: MapperController = Depends(get_mapper_controller),
+    *, controller: MapperService = Depends(get_mapper_controller),
 ) -> list[dict]:
     """List all unmapped transactions.
 
     Args:
-        controller: Injected MapperController.
+        controller: Injected MapperService.
 
     Returns:
         List of unmapped transaction records.
@@ -57,12 +57,12 @@ def list_unmapped_transactions(
 
 @router.get("/unmapped-descriptions")
 def list_unmapped_descriptions(
-    *, controller: MapperController = Depends(get_mapper_controller),
+    *, controller: MapperService = Depends(get_mapper_controller),
 ) -> list[str]:
     """List unique unmapped descriptions.
 
     Args:
-        controller: Injected MapperController.
+        controller: Injected MapperService.
 
     Returns:
         List of unmapped description strings.
@@ -72,12 +72,12 @@ def list_unmapped_descriptions(
 
 @router.get("/sub-categories")
 def list_sub_categories(
-    *, controller: MapperController = Depends(get_mapper_controller),
+    *, controller: MapperService = Depends(get_mapper_controller),
 ) -> list[str]:
     """List all available sub-categories.
 
     Args:
-        controller: Injected MapperController.
+        controller: Injected MapperService.
 
     Returns:
         List of sub-category strings.
@@ -87,12 +87,12 @@ def list_sub_categories(
 
 @router.get("/categories")
 def list_categories(
-    *, controller: MapperController = Depends(get_mapper_controller),
+    *, controller: MapperService = Depends(get_mapper_controller),
 ) -> list[str]:
     """List all available categories.
 
     Args:
-        controller: Injected MapperController.
+        controller: Injected MapperService.
 
     Returns:
         List of category strings.
@@ -105,14 +105,14 @@ def add_descriptions_to_sub_category(
     *,
     sub_category: str,
     descriptions: list[str],
-    controller: MapperController = Depends(get_mapper_controller),
+    controller: MapperService = Depends(get_mapper_controller),
 ) -> dict[str, str]:
     """Add transaction descriptions to a sub-category mapping.
 
     Args:
         sub_category: Target sub-category.
         descriptions: List of descriptions to add.
-        controller: Injected MapperController.
+        controller: Injected MapperService.
 
     Returns:
         Success message.
@@ -129,14 +129,14 @@ def create_sub_category(
     *,
     sub_category: str,
     category: str,
-    controller: MapperController = Depends(get_mapper_controller),
+    controller: MapperService = Depends(get_mapper_controller),
 ) -> dict[str, str]:
     """Create a new sub-category under a category.
 
     Args:
         sub_category: New sub-category name.
         category: Parent category name.
-        controller: Injected MapperController.
+        controller: Injected MapperService.
 
     Returns:
         Success message.
@@ -155,12 +155,12 @@ def create_sub_category(
 
 @router.post("/save")
 def save_category_mappings(
-    *, controller: MapperController = Depends(get_mapper_controller),
+    *, controller: MapperService = Depends(get_mapper_controller),
 ) -> dict[str, str]:
     """Save category mappings to disk and invalidate reports.
 
     Args:
-        controller: Injected MapperController.
+        controller: Injected MapperService.
 
     Returns:
         Success message.
@@ -178,14 +178,14 @@ def save_category_mappings(
 @router.get("/sub-category-mapping")
 def get_sub_category_mapping(
     *,
-    controller: SubCategoryMapperController = Depends(
+    controller: SubCategoryMapperService = Depends(
         get_sub_category_mapper_controller,
     ),
 ) -> dict[str, list[str]]:
     """Get the full sub-category to category mapping.
 
     Args:
-        controller: Injected SubCategoryMapperController.
+        controller: Injected SubCategoryMapperService.
 
     Returns:
         Dict mapping category to list of sub-categories.
@@ -201,7 +201,7 @@ def modify_sub_category_mapping(
     category: str | None = None,
     sub_categories: list[str] | None = None,
     target_category: str | None = None,
-    controller: SubCategoryMapperController = Depends(
+    controller: SubCategoryMapperService = Depends(
         get_sub_category_mapper_controller,
     ),
 ) -> dict[str, str]:
@@ -213,7 +213,7 @@ def modify_sub_category_mapping(
         category: Category for "add" action.
         sub_categories: Sub-categories for "move" action.
         target_category: Target category for "move" action.
-        controller: Injected SubCategoryMapperController.
+        controller: Injected SubCategoryMapperService.
 
     Returns:
         Success message.
@@ -261,14 +261,14 @@ def modify_sub_category_mapping(
 @router.post("/sub-category-mapping/save")
 def save_sub_category_mapping(
     *,
-    controller: SubCategoryMapperController = Depends(
+    controller: SubCategoryMapperService = Depends(
         get_sub_category_mapper_controller,
     ),
 ) -> dict[str, str]:
     """Save sub-category mapping to disk.
 
     Args:
-        controller: Injected SubCategoryMapperController.
+        controller: Injected SubCategoryMapperService.
 
     Returns:
         Success message.
@@ -285,14 +285,14 @@ def save_sub_category_mapping(
 @router.get("/cashflow")
 def get_cashflow_mapping(
     *,
-    controller: CashflowMapperController = Depends(
+    controller: CashflowMapperService = Depends(
         get_cashflow_mapper_controller,
     ),
 ) -> dict[str, list[str]]:
     """Get the full cashflow mapping (earnings/expenses -> categories).
 
     Args:
-        controller: Injected CashflowMapperController.
+        controller: Injected CashflowMapperService.
 
     Returns:
         Dict with "earnings" and "expenses" lists.
@@ -305,7 +305,7 @@ def add_category_to_cashflow(
     *,
     name: str,
     flow: str,
-    controller: CashflowMapperController = Depends(
+    controller: CashflowMapperService = Depends(
         get_cashflow_mapper_controller,
     ),
 ) -> dict[str, str]:
@@ -314,7 +314,7 @@ def add_category_to_cashflow(
     Args:
         name: Category name.
         flow: "earnings" or "expenses".
-        controller: Injected CashflowMapperController.
+        controller: Injected CashflowMapperService.
 
     Returns:
         Success message.
@@ -334,7 +334,7 @@ def move_categories_in_cashflow(
     *,
     action: str,
     categories: list[str],
-    controller: CashflowMapperController = Depends(
+    controller: CashflowMapperService = Depends(
         get_cashflow_mapper_controller,
     ),
 ) -> dict[str, str]:
@@ -343,7 +343,7 @@ def move_categories_in_cashflow(
     Args:
         action: "to_earnings" or "to_expenses".
         categories: List of category names to move.
-        controller: Injected CashflowMapperController.
+        controller: Injected CashflowMapperService.
 
     Returns:
         Success message.
@@ -372,14 +372,14 @@ def move_categories_in_cashflow(
 @router.post("/cashflow/save")
 def save_cashflow_mapping(
     *,
-    controller: CashflowMapperController = Depends(
+    controller: CashflowMapperService = Depends(
         get_cashflow_mapper_controller,
     ),
 ) -> dict[str, str]:
     """Save cashflow mapping to disk.
 
     Args:
-        controller: Injected CashflowMapperController.
+        controller: Injected CashflowMapperService.
 
     Returns:
         Success message.

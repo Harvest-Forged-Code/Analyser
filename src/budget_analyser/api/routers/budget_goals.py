@@ -25,10 +25,10 @@ from budget_analyser.api.serializers import (
     SetEarningsGoalRequest,
 )
 from budget_analyser.core.models import MonthlyReports
-from budget_analyser.features.budget_goals.controller import (
-    BudgetGoalsController,
+from budget_analyser.features.budget_goals.service import (
+    BudgetGoalsService,
 )
-from budget_analyser.features.reporting.expenses_controller import (
+from budget_analyser.features.reporting.expenses_service import (
     ExpensesStatsController,
 )
 
@@ -37,14 +37,14 @@ router = APIRouter(prefix="/api/budget-goals", tags=["budget-goals"])
 
 @router.get("", response_model=list[BudgetGoalSchema])
 def get_all_budgets(
-    *, controller: BudgetGoalsController = Depends(
+    *, controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> list[BudgetGoalSchema]:
     """List all budget goals.
 
     Args:
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         List of BudgetGoalSchema.
@@ -65,7 +65,7 @@ def get_all_budgets(
 def set_budget(
     *,
     body: SetBudgetRequest,
-    controller: BudgetGoalsController = Depends(
+    controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> dict[str, str]:
@@ -73,7 +73,7 @@ def set_budget(
 
     Args:
         body: SetBudgetRequest with category, monthly_limit, year_month.
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         Success message.
@@ -91,7 +91,7 @@ def delete_budget(
     *,
     category: str = Query(...),
     year_month: str = Query("ALL"),
-    controller: BudgetGoalsController = Depends(
+    controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> dict[str, str]:
@@ -100,7 +100,7 @@ def delete_budget(
     Args:
         category: Budget category.
         year_month: Year-month or "ALL".
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         Success message.
@@ -113,7 +113,7 @@ def delete_budget(
 def set_budget_for_year(
     *,
     body: SetBudgetYearRequest,
-    controller: BudgetGoalsController = Depends(
+    controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> dict[str, str]:
@@ -121,7 +121,7 @@ def set_budget_for_year(
 
     Args:
         body: SetBudgetYearRequest with category, monthly_limit, year.
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         Success message.
@@ -136,14 +136,14 @@ def set_budget_for_year(
 
 @router.get("/summary", response_model=BudgetGoalsSummarySchema)
 def get_budget_goals_summary(
-    *, controller: BudgetGoalsController = Depends(
+    *, controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> BudgetGoalsSummarySchema:
     """Get aggregate summary of all budget goals.
 
     Args:
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         BudgetGoalsSummarySchema with totals and counts.
@@ -161,14 +161,14 @@ def get_budget_goals_summary(
     response_model=EarningsGoalsSummarySchema,
 )
 def get_earnings_goals_summary(
-    *, controller: BudgetGoalsController = Depends(
+    *, controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> EarningsGoalsSummarySchema:
     """Get aggregate summary of all earnings goals.
 
     Args:
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         EarningsGoalsSummarySchema with totals and counts.
@@ -189,7 +189,7 @@ def get_category_progress_history(
     *,
     category: str,
     reports: list[MonthlyReports] = Depends(get_reports),
-    budget_controller: BudgetGoalsController = Depends(
+    budget_controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> list[CategoryProgressPointSchema]:
@@ -198,7 +198,7 @@ def get_category_progress_history(
     Args:
         category: Expense category name.
         reports: Injected reports cache.
-        budget_controller: Injected BudgetGoalsController.
+        budget_controller: Injected BudgetGoalsService.
 
     Returns:
         List of CategoryProgressPointSchema, one per available month.
@@ -249,7 +249,7 @@ def get_progress_summary(
     *,
     year_month: str,
     reports: list[MonthlyReports] = Depends(get_reports),
-    budget_controller: BudgetGoalsController = Depends(
+    budget_controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> ProgressSummarySchema:
@@ -258,7 +258,7 @@ def get_progress_summary(
     Args:
         year_month: Year-month string (e.g., "2024-01").
         reports: Injected reports cache.
-        budget_controller: Injected BudgetGoalsController.
+        budget_controller: Injected BudgetGoalsService.
 
     Returns:
         ProgressSummarySchema with status counts and totals.
@@ -295,7 +295,7 @@ def get_budget_progress(
     expenses_controller: ExpensesStatsController = Depends(
         get_expenses_stats_controller,
     ),
-    budget_controller: BudgetGoalsController = Depends(
+    budget_controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> list[BudgetProgressSchema]:
@@ -305,7 +305,7 @@ def get_budget_progress(
         year_month: Year-month string (e.g., "2024-01").
         reports: Injected reports cache.
         expenses_controller: Injected ExpensesStatsController.
-        budget_controller: Injected BudgetGoalsController.
+        budget_controller: Injected BudgetGoalsService.
 
     Returns:
         List of BudgetProgressSchema.
@@ -343,14 +343,14 @@ def get_budget_progress(
 
 @router.get("/earnings", response_model=list[EarningsGoalSchema])
 def get_all_earnings_goals(
-    *, controller: BudgetGoalsController = Depends(
+    *, controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> list[EarningsGoalSchema]:
     """List all earnings goals.
 
     Args:
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         List of EarningsGoalSchema.
@@ -371,7 +371,7 @@ def get_all_earnings_goals(
 def set_earnings_goal(
     *,
     body: SetEarningsGoalRequest,
-    controller: BudgetGoalsController = Depends(
+    controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> dict[str, str]:
@@ -379,7 +379,7 @@ def set_earnings_goal(
 
     Args:
         body: SetEarningsGoalRequest with sub_category, expected_amount, year_month.
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         Success message.
@@ -397,7 +397,7 @@ def delete_earnings_goal(
     *,
     sub_category: str = Query(...),
     year_month: str = Query("ALL"),
-    controller: BudgetGoalsController = Depends(
+    controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> dict[str, str]:
@@ -406,7 +406,7 @@ def delete_earnings_goal(
     Args:
         sub_category: Earnings sub-category.
         year_month: Year-month or "ALL".
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         Success message.
@@ -421,7 +421,7 @@ def delete_earnings_goal(
 def get_earnings_goal_map(
     *,
     year_month: str = Query("ALL"),
-    controller: BudgetGoalsController = Depends(
+    controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
 ) -> dict[str, float]:
@@ -429,7 +429,7 @@ def get_earnings_goal_map(
 
     Args:
         year_month: Year-month or "ALL".
-        controller: Injected BudgetGoalsController.
+        controller: Injected BudgetGoalsService.
 
     Returns:
         Dict mapping sub-category to expected amount.

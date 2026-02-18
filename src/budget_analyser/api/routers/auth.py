@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from budget_analyser.api.dependencies import get_settings_controller
 from budget_analyser.api.serializers import LoginRequest
-from budget_analyser.features.settings.controller import SettingsController
+from budget_analyser.features.settings.service import SettingsService as SettingsController
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

@@ -12,7 +12,7 @@ from budget_analyser.api.dependencies import (
     get_prefs,
 )
 from budget_analyser.api.serializers import ChangePasswordRequest
-from budget_analyser.features.settings.controller import SettingsController
+from budget_analyser.features.settings.service import SettingsService
 from budget_analyser.settings.preferences import AppPreferences
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -20,45 +20,45 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 @router.get("/log-levels")
 def get_log_levels(
-    *, controller: SettingsController = Depends(get_settings_controller),
+    *, service: SettingsService = Depends(get_settings_controller),
 ) -> list[str]:
     """Get available log levels.
 
     Args:
-        controller: Injected SettingsController.
+        service: Injected SettingsService.
 
     Returns:
         List of log level strings.
     """
-    return controller.get_log_levels()
+    return service.get_log_levels()
 
 
 @router.get("/log-level")
 def get_current_log_level(
-    *, controller: SettingsController = Depends(get_settings_controller),
+    *, service: SettingsService = Depends(get_settings_controller),
 ) -> dict[str, str]:
     """Get the current log level.
 
     Args:
-        controller: Injected SettingsController.
+        service: Injected SettingsService.
 
     Returns:
         Dict with current log_level.
     """
-    return {"log_level": controller.get_current_log_level()}
+    return {"log_level": service.get_current_log_level()}
 
 
 @router.put("/log-level")
 def set_log_level(
     *,
     level: str,
-    controller: SettingsController = Depends(get_settings_controller),
+    service: SettingsService = Depends(get_settings_controller),
 ) -> dict[str, str]:
     """Set the application log level.
 
     Args:
         level: Log level string (DEBUG, INFO, WARNING, ERROR, CRITICAL).
-        controller: Injected SettingsController.
+        service: Injected SettingsService.
 
     Returns:
         Success message.
@@ -67,7 +67,7 @@ def set_log_level(
         HTTPException: If log level is invalid.
     """
     try:
-        controller.apply_log_level(level)
+        service.apply_log_level(level)
         return {"message": f"Log level set to {level}"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -77,13 +77,13 @@ def set_log_level(
 def change_password(
     *,
     body: ChangePasswordRequest,
-    controller: SettingsController = Depends(get_settings_controller),
+    service: SettingsService = Depends(get_settings_controller),
 ) -> dict[str, str]:
     """Change the login password.
 
     Args:
         body: ChangePasswordRequest with current, new, and confirmation.
-        controller: Injected SettingsController.
+        service: Injected SettingsService.
 
     Returns:
         Success message.
@@ -92,7 +92,7 @@ def change_password(
         HTTPException: If password change fails.
     """
     try:
-        controller.change_password(
+        service.change_password(
             current_password=body.current,
             new_password=body.new_password,
             confirm_password=body.confirm,

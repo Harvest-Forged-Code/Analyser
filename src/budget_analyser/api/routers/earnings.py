@@ -11,8 +11,8 @@ import pandas as pd
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from budget_analyser.api.dependencies import get_earnings_stats_controller
-from budget_analyser.features.reporting.earnings_controller import (
-    EarningsStatsController,
+from budget_analyser.features.reporting.earnings_service import (
+    EarningsStatsService,
 )
 from budget_analyser.features.reporting.models import (
     EarningsDashboard,
@@ -43,14 +43,14 @@ def _df_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
 
 @router.get("/months")
 def get_available_months(
-    *, controller: EarningsStatsController = Depends(
+    *, controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> list[str]:
     """List all available months with earnings data.
 
     Args:
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         List of month strings (e.g., "2024-01").
@@ -62,7 +62,7 @@ def get_available_months(
 def get_dashboard(
     *,
     period: str = Query(...),
-    controller: EarningsStatsController = Depends(
+    controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> dict[str, Any]:
@@ -70,7 +70,7 @@ def get_dashboard(
 
     Args:
         period: Month period string (e.g., "2026-02").
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         EarningsDashboard fields as a dict.
@@ -103,7 +103,7 @@ def get_dashboard(
 def get_trend(
     *,
     months: int = Query(12, ge=1, le=60),
-    controller: EarningsStatsController = Depends(
+    controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -111,7 +111,7 @@ def get_trend(
 
     Args:
         months: Number of recent months (default 12).
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         List of dicts with period, label, total.
@@ -133,7 +133,7 @@ def get_trend(
 def get_source_trend(
     *,
     months: int = Query(6, ge=1, le=24),
-    controller: EarningsStatsController = Depends(
+    controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -141,7 +141,7 @@ def get_source_trend(
 
     Args:
         months: Number of recent months (default 6).
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         List of dicts with sub_category and monthly data.
@@ -169,7 +169,7 @@ def get_source_trend(
 def get_month_table(
     *,
     period: str,
-    controller: EarningsStatsController = Depends(
+    controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> dict[str, Any]:
@@ -177,7 +177,7 @@ def get_month_table(
 
     Args:
         period: Month period string (e.g., "2024-01").
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         Dict with rows, actual_total, expected_total.
@@ -216,7 +216,7 @@ def get_month_transactions(
     *,
     period: str,
     sub_category: str | None = Query(None),
-    controller: EarningsStatsController = Depends(
+    controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -225,7 +225,7 @@ def get_month_transactions(
     Args:
         period: Month period string (e.g., "2024-01").
         sub_category: Optional sub-category filter.
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         List of transaction records.
@@ -247,7 +247,7 @@ def get_month_transactions(
 def get_year_table(
     *,
     year: int,
-    controller: EarningsStatsController = Depends(
+    controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -255,7 +255,7 @@ def get_year_table(
 
     Args:
         year: Year as integer.
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         List of monthly earnings records.
@@ -276,7 +276,7 @@ def get_year_table(
 def get_year_breakdown(
     *,
     year: int,
-    controller: EarningsStatsController = Depends(
+    controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -284,7 +284,7 @@ def get_year_breakdown(
 
     Args:
         year: Year as integer.
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         List of sub-category breakdown records.
@@ -307,7 +307,7 @@ def get_year_transactions(
     year: int,
     month: int | None = Query(None),
     sub_category: str | None = Query(None),
-    controller: EarningsStatsController = Depends(
+    controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -317,7 +317,7 @@ def get_year_transactions(
         year: Year as integer.
         month: Optional month filter (1-12).
         sub_category: Optional sub-category filter.
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         List of transaction records.
@@ -341,7 +341,7 @@ def get_range_table(
     *,
     start_date: str = Query(...),
     end_date: str = Query(...),
-    controller: EarningsStatsController = Depends(
+    controller: EarningsStatsService = Depends(
         get_earnings_stats_controller,
     ),
 ) -> list[dict[str, Any]]:
@@ -350,7 +350,7 @@ def get_range_table(
     Args:
         start_date: Start date in ISO format (YYYY-MM-DD).
         end_date: End date in ISO format (YYYY-MM-DD).
-        controller: Injected EarningsStatsController.
+        controller: Injected EarningsStatsService.
 
     Returns:
         List of earnings records.

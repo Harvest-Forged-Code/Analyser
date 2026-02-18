@@ -2,7 +2,7 @@
 
 import pytest
 
-from budget_analyser.domain.mapping_validation import (
+from budget_analyser.features.mappers.validation import (
     MappingValidationService,
     ValidationIssue,
     ValidationReport,

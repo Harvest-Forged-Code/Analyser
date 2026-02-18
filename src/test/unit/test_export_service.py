@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from budget_analyser.domain.export_service import (
+from budget_analyser.features.export import (
     ExportColumn,
     ExportConfig,
     CsvExporter,

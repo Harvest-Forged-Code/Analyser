@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from datetime import datetime
 
-from budget_analyser.domain.payment_matching import (
+from budget_analyser.features.payments import (
     PaymentMatchingService,
     PaymentMatchResult,
     PaymentPair,

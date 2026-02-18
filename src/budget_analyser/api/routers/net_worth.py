@@ -14,19 +14,19 @@ from budget_analyser.api.serializers import (
     AddAccountRequest,
     UpdateBalanceRequest,
 )
-from budget_analyser.features.net_worth.controller import NetWorthController
+from budget_analyser.features.net_worth.service import NetWorthService
 
 router = APIRouter(prefix="/api/net-worth", tags=["net-worth"])
 
 
 @router.get("/accounts", response_model=list[AccountSchema])
 def get_all_accounts(
-    *, controller: NetWorthController = Depends(get_net_worth_controller),
+    *, controller: NetWorthService = Depends(get_net_worth_controller),
 ) -> list[AccountSchema]:
     """List all financial accounts.
 
     Args:
-        controller: Injected NetWorthController.
+        controller: Injected NetWorthService.
 
     Returns:
         List of AccountSchema.
@@ -49,13 +49,13 @@ def get_all_accounts(
 def add_account(
     *,
     body: AddAccountRequest,
-    controller: NetWorthController = Depends(get_net_worth_controller),
+    controller: NetWorthService = Depends(get_net_worth_controller),
 ) -> dict[str, str]:
     """Add a new financial account.
 
     Args:
         body: AddAccountRequest with account details.
-        controller: Injected NetWorthController.
+        controller: Injected NetWorthService.
 
     Returns:
         Success message.
@@ -80,14 +80,14 @@ def update_account_balance(
     *,
     account_id: int,
     body: UpdateBalanceRequest,
-    controller: NetWorthController = Depends(get_net_worth_controller),
+    controller: NetWorthService = Depends(get_net_worth_controller),
 ) -> dict[str, str]:
     """Update the balance of an existing account.
 
     Args:
         account_id: Account ID.
         body: UpdateBalanceRequest with new balance.
-        controller: Injected NetWorthController.
+        controller: Injected NetWorthService.
 
     Returns:
         Success message.
@@ -108,13 +108,13 @@ def update_account_balance(
 def delete_account(
     *,
     account_id: int,
-    controller: NetWorthController = Depends(get_net_worth_controller),
+    controller: NetWorthService = Depends(get_net_worth_controller),
 ) -> dict[str, str]:
     """Delete an account.
 
     Args:
         account_id: Account ID.
-        controller: Injected NetWorthController.
+        controller: Injected NetWorthService.
 
     Returns:
         Success message.
@@ -131,12 +131,12 @@ def delete_account(
 
 @router.get("/summary", response_model=NetWorthSummarySchema)
 def get_net_worth_summary(
-    *, controller: NetWorthController = Depends(get_net_worth_controller),
+    *, controller: NetWorthService = Depends(get_net_worth_controller),
 ) -> NetWorthSummarySchema:
     """Calculate net worth summary.
 
     Args:
-        controller: Injected NetWorthController.
+        controller: Injected NetWorthService.
 
     Returns:
         NetWorthSummarySchema with totals and account details.

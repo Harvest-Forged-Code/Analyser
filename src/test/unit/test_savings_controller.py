@@ -4,7 +4,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from budget_analyser.features.savings.controller import (
+from budget_analyser.features.savings.service import (
     SavingsController,
 )
 

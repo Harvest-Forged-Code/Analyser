@@ -1,6 +1,6 @@
 import pandas as pd
 
-from budget_analyser.domain.statement_formatter import (
+from budget_analyser.features.ingestion.formatters import (
     CitiStatementFormatter,
     DefaultStatementFormatter,
     DiscoverStatementFormatter,

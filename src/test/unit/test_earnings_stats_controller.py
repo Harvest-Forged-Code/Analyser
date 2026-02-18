@@ -6,8 +6,8 @@ from typing import Dict
 import pandas as pd
 from pytest import approx
 
-from budget_analyser.controller.earnings_stats_controller import EarningsStatsController, EarningsRow
-from budget_analyser.controller.controllers import MonthlyReports
+from budget_analyser.features.reporting import EarningsStatsController, EarningsRow
+from budget_analyser.core.models import MonthlyReports
 
 
 class _StubBudgetController:

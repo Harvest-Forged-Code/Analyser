@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from budget_analyser.core.models import MonthlyReports
-from budget_analyser.features.reporting.earnings_controller import (
+from budget_analyser.features.reporting.earnings_service import (
     EarningsStatsController,
 )
 

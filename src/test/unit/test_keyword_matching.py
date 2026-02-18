@@ -2,7 +2,7 @@
 
 import pytest
 
-from budget_analyser.domain.keyword_matching import (
+from budget_analyser.features.ingestion.categorization import (
     MatchResult,
     calculate_match_score,
     match_by_keywords_scored,

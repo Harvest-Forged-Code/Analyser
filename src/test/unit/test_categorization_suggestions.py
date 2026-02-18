@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from budget_analyser.domain.categorization_suggestions import (
+from budget_analyser.features.mappers import (
     CategorizationSuggestionEngine,
     Suggestion,
     SuggestionResult,

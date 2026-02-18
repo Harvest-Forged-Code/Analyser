@@ -14,7 +14,7 @@ from budget_analyser.api.dependencies import (
 )
 from budget_analyser.api.serializers import SavingsMetricsSchema
 from budget_analyser.core.models import MonthlyReports
-from budget_analyser.features.savings.controller import SavingsController
+from budget_analyser.features.savings.service import SavingsService
 
 router = APIRouter(prefix="/api/savings", tags=["savings"])
 
@@ -56,14 +56,14 @@ def get_savings_metrics(
     *,
     year: int | None = Query(None),
     reports: list[MonthlyReports] = Depends(get_reports),
-    controller: SavingsController = Depends(get_savings_controller),
+    service: SavingsService = Depends(get_savings_controller),
 ) -> SavingsMetricsSchema:
     """Calculate savings metrics.
 
     Args:
         year: Optional year filter.
         reports: Injected reports cache.
-        controller: Injected SavingsController.
+        service: Injected SavingsService.
 
     Returns:
         SavingsMetricsSchema with totals and rates.
@@ -76,7 +76,7 @@ def get_savings_metrics(
     earnings_df = _all_earnings_df(filtered_reports)
     expenses_df = _all_expenses_df(filtered_reports)
 
-    metrics = controller.calculate_savings_metrics(
+    metrics = service.calculate_savings_metrics(
         earnings_df=earnings_df,
         expenses_df=expenses_df,
     )
@@ -96,14 +96,14 @@ def get_monthly_savings(
     *,
     year: int,
     reports: list[MonthlyReports] = Depends(get_reports),
-    controller: SavingsController = Depends(get_savings_controller),
+    service: SavingsService = Depends(get_savings_controller),
 ) -> list[dict[str, float | str]]:
     """Calculate monthly savings breakdown for a year.
 
     Args:
         year: Year as integer.
         reports: Injected reports cache.
-        controller: Injected SavingsController.
+        service: Injected SavingsService.
 
     Returns:
         List of monthly savings records.
@@ -113,7 +113,7 @@ def get_monthly_savings(
     earnings_df = _all_earnings_df(year_reports)
     expenses_df = _all_expenses_df(year_reports)
 
-    monthly_savings = controller.calculate_monthly_savings(
+    monthly_savings = service.calculate_monthly_savings(
         earnings_df=earnings_df,
         expenses_df=expenses_df,
         year=year,

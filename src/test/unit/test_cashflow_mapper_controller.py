@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from budget_analyser.controller.cashflow_mapper_controller import CashflowMapperController
+from budget_analyser.features.mappers import CashflowMapperController
 
 
 class _StubStore:

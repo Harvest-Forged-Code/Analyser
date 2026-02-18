@@ -1,9 +1,8 @@
-"""Upload router for Budget Analyser API.
-
-Provides endpoints for CSV statement upload and validation.
-"""
+"""Upload router for Budget Analyser API."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -14,8 +13,14 @@ from budget_analyser.api.dependencies import (
 from budget_analyser.api.serializers import (
     UploadResultSchema,
     UploadRequest,
+    ValidationResultSchema,
+    UploadStatsSchema,
+    UploadHistoryEntrySchema,
+    ValidateRequest,
 )
-from budget_analyser.features.ingestion.controller import UploadController
+from budget_analyser.features.ingestion.service import (
+    UploadService as UploadController,
+)
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
@@ -24,45 +29,33 @@ router = APIRouter(prefix="/api/upload", tags=["upload"])
 def get_available_banks(
     *,
     account_type: str,
-    controller: UploadController = Depends(get_upload_controller),
+    controller: UploadController = Depends(
+        get_upload_controller,
+    ),
 ) -> list[str]:
-    """List available banks for a given account type.
-
-    Args:
-        account_type: Account type (e.g., "checking", "credit").
-        controller: Injected UploadController.
-
-    Returns:
-        List of bank names.
-
-    Raises:
-        HTTPException: If account type is invalid.
-    """
+    """List available banks for a given account type."""
     try:
         return controller.get_available_banks(account_type)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(
+            status_code=400, detail=str(e),
+        ) from e
 
 
 @router.get("/missing")
 def get_missing_statements(
-    *, controller: UploadController = Depends(get_upload_controller),
+    *,
+    controller: UploadController = Depends(
+        get_upload_controller,
+    ),
 ) -> list[dict[str, str]]:
-    """Get list of missing statement periods.
-
-    Args:
-        controller: Injected UploadController.
-
-    Returns:
-        List of missing statement info dicts.
-    """
+    """Get list of missing statement files."""
     missing = controller.get_missing_statements()
     return [
         {
-            "account_type": m.account_type,
-            "bank_name": m.bank_name,
-            "period": str(m.period),
-            "expected_file": m.expected_file,
+            "bank_name": m[0],
+            "account_type": m[1],
+            "expected_file": m[2],
         }
         for m in missing
     ]
@@ -70,58 +63,104 @@ def get_missing_statements(
 
 @router.get("/status")
 def get_bank_upload_status(
-    *, controller: UploadController = Depends(get_upload_controller),
-) -> dict[str, dict[str, list[str]]]:
-    """Get upload status by account type and bank.
-
-    Args:
-        controller: Injected UploadController.
-
-    Returns:
-        Nested dict with uploaded periods by account type and bank.
-    """
+    *,
+    controller: UploadController = Depends(
+        get_upload_controller,
+    ),
+) -> list[dict[str, object]]:
+    """Get upload status for all configured banks."""
     status = controller.get_bank_upload_status()
-    # Convert pd.Period objects to strings
-    return {
-        account_type: {
-            bank: [str(p) for p in periods]
-            for bank, periods in banks.items()
+    return [
+        {
+            "bank_name": s[0],
+            "account_type": s[1],
+            "is_uploaded": s[2],
         }
-        for account_type, banks in status.items()
-    }
+        for s in status
+    ]
 
 
-@router.post("/validate")
+@router.post("/validate", response_model=ValidationResultSchema)
 def validate_csv(
     *,
-    file_path: str,
-    bank_name: str,
-    controller: UploadController = Depends(get_upload_controller),
-) -> dict[str, bool | str | int]:
-    """Validate a CSV file before upload.
-
-    Args:
-        file_path: Path to the CSV file.
-        bank_name: Bank name for formatter selection.
-        controller: Injected UploadController.
-
-    Returns:
-        Dict with validation result and metadata.
-
-    Raises:
-        HTTPException: If validation fails.
-    """
+    body: ValidateRequest,
+    controller: UploadController = Depends(
+        get_upload_controller,
+    ),
+) -> ValidationResultSchema:
+    """Validate a CSV file before upload."""
     try:
-        result = controller.validate_csv(file_path, bank_name)
-        return {
-            "valid": result.valid,
-            "message": result.message,
-            "row_count": result.row_count,
-            "date_range": result.date_range,
-        }
+        is_valid, message, _missing_cols = (
+            controller.validate_csv(
+                Path(body.file_path), body.bank_name,
+            )
+        )
+        return ValidationResultSchema(
+            valid=is_valid,
+            message=message,
+        )
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(
-            status_code=400, detail=f"Validation error: {e}",
+            status_code=400,
+            detail=f"Validation error: {e}",
+        ) from e
+
+
+@router.get("/stats", response_model=UploadStatsSchema)
+def get_upload_stats(
+    *,
+    controller: UploadController = Depends(
+        get_upload_controller,
+    ),
+) -> UploadStatsSchema:
+    """Return aggregate upload statistics."""
+    try:
+        stats = controller.get_upload_stats()
+        return UploadStatsSchema(
+            total_transactions=stats.total_transactions,
+            total_accounts=stats.total_accounts,
+            last_upload_date=stats.last_upload_date,
+            total_uploads=stats.total_uploads,
+            total_duplicates_skipped=(
+                stats.total_duplicates_skipped
+            ),
+            duplicate_rate=stats.duplicate_rate,
+        )
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get stats: {e}",
+        ) from e
+
+
+@router.get(
+    "/history",
+    response_model=list[UploadHistoryEntrySchema],
+)
+def get_upload_history(
+    *,
+    controller: UploadController = Depends(
+        get_upload_controller,
+    ),
+) -> list[UploadHistoryEntrySchema]:
+    """Return recent upload history."""
+    try:
+        entries = controller.get_recent_history(limit=10)
+        return [
+            UploadHistoryEntrySchema(
+                file_name=e.file_name,
+                bank_name=e.bank_name,
+                account_type=e.account_type,
+                uploaded_at=e.uploaded_at,
+                transactions_inserted=e.transactions_inserted,
+                duplicates_skipped=e.duplicates_skipped,
+            )
+            for e in entries
+        ]
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get history: {e}",
         ) from e
 
 
@@ -129,31 +168,19 @@ def validate_csv(
 def upload_statement(
     *,
     body: UploadRequest,
-    controller: UploadController = Depends(get_upload_controller),
+    controller: UploadController = Depends(
+        get_upload_controller,
+    ),
 ) -> UploadResultSchema:
-    """Upload and process a bank statement CSV file.
-
-    Args:
-        body: UploadRequest with file_path, bank_name, account_type.
-        controller: Injected UploadController.
-
-    Returns:
-        UploadResultSchema with processing results.
-
-    Raises:
-        HTTPException: If upload fails.
-    """
+    """Upload and process a bank statement CSV file."""
     try:
         result = controller.upload_statement(
-            file_path=body.file_path,
+            source_path=Path(body.file_path),
             bank_name=body.bank_name,
             account_type=body.account_type,
         )
-
-        # Invalidate reports after successful upload
         if result.success:
             invalidate_reports()
-
         return UploadResultSchema(
             success=result.success,
             message=result.message,
@@ -163,5 +190,6 @@ def upload_statement(
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(
-            status_code=400, detail=f"Upload failed: {e}",
+            status_code=400,
+            detail=f"Upload failed: {e}",
         ) from e

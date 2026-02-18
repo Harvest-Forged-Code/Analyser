@@ -17,12 +17,12 @@ from budget_analyser.api.dependencies import (
 )
 from budget_analyser.api.serializers import DashboardSummaryResponse
 from budget_analyser.core.models import MonthlyReports
-from budget_analyser.features.budget_goals.controller import (
-    BudgetGoalsController,
+from budget_analyser.features.budget_goals.service import (
+    BudgetGoalsService,
 )
-from budget_analyser.features.net_worth.controller import NetWorthController
-from budget_analyser.features.recurring.controller import RecurringController
-from budget_analyser.features.savings.controller import SavingsController
+from budget_analyser.features.net_worth.service import NetWorthService
+from budget_analyser.features.recurring.service import RecurringService
+from budget_analyser.features.savings.service import SavingsService
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -49,25 +49,25 @@ def _all_expenses_df(reports: list[MonthlyReports]) -> pd.DataFrame:
 def get_dashboard_summary(
     *,
     reports: list[MonthlyReports] = Depends(get_reports),
-    budget_goals_controller: BudgetGoalsController = Depends(
+    budget_goals_controller: BudgetGoalsService = Depends(
         get_budget_goals_controller,
     ),
-    net_worth_controller: NetWorthController = Depends(
+    net_worth_service: NetWorthService = Depends(
         get_net_worth_controller,
     ),
-    recurring_controller: RecurringController = Depends(
+    recurring_service: RecurringService = Depends(
         get_recurring_controller,
     ),
-    savings_controller: SavingsController = Depends(get_savings_controller),
+    savings_service: SavingsService = Depends(get_savings_controller),
 ) -> DashboardSummaryResponse:
     """Aggregate KPIs for the dashboard summary.
 
     Args:
         reports: Injected reports cache.
-        budget_goals_controller: Injected BudgetGoalsController.
-        net_worth_controller: Injected NetWorthController.
-        recurring_controller: Injected RecurringController.
-        savings_controller: Injected SavingsController.
+        budget_goals_controller: Injected BudgetGoalsService.
+        net_worth_service: Injected NetWorthService.
+        recurring_service: Injected RecurringService.
+        savings_service: Injected SavingsService.
 
     Returns:
         DashboardSummaryResponse with all KPIs.
@@ -79,13 +79,13 @@ def get_dashboard_summary(
     expenses_df = _all_expenses_df(reports)
 
     # Savings metrics
-    savings_metrics = savings_controller.calculate_savings_metrics(
+    savings_metrics = savings_service.calculate_savings_metrics(
         earnings_df=earnings_df,
         expenses_df=expenses_df,
     )
 
     # Net worth
-    net_worth_summary = net_worth_controller.get_net_worth_summary()
+    net_worth_summary = net_worth_service.get_net_worth_summary()
 
     # Budget progress (count categories over budget)
     budgets = budget_goals_controller.get_all_budgets()
@@ -94,7 +94,7 @@ def get_dashboard_summary(
 
     # Recurring transactions
     recurring_active = len(
-        recurring_controller.get_all_recurring_transactions(active_only=True)
+        recurring_service.get_all_recurring_transactions(active_only=True)
     )
 
     return DashboardSummaryResponse(

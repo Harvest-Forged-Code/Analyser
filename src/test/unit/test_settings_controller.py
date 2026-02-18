@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from budget_analyser.features.settings.controller import (
+from budget_analyser.features.settings.service import (
     SettingsController,
 )
 

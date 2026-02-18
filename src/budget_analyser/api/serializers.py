@@ -414,6 +414,37 @@ class UploadResultSchema(BaseModel):
     duplicates_skipped: int = 0
 
 
+class ValidationResultSchema(BaseModel):
+    """Serialized ValidationResult."""
+
+    valid: bool
+    message: str
+    row_count: int = 0
+    date_range: str = ""
+
+
+class UploadStatsSchema(BaseModel):
+    """Serialized UploadStats."""
+
+    total_transactions: int = 0
+    total_accounts: int = 0
+    last_upload_date: str | None = None
+    total_uploads: int = 0
+    total_duplicates_skipped: int = 0
+    duplicate_rate: float = 0.0
+
+
+class UploadHistoryEntrySchema(BaseModel):
+    """Serialized UploadHistoryEntry."""
+
+    file_name: str
+    bank_name: str
+    account_type: str
+    uploaded_at: str
+    transactions_inserted: int = 0
+    duplicates_skipped: int = 0
+
+
 # ===================================================================
 # features/export/models.py
 # ===================================================================
@@ -498,6 +529,13 @@ class AddRecurringRequest(BaseModel):
     frequency: str = "monthly"
     category: str = ""
     sub_category: str = ""
+
+
+class ValidateRequest(BaseModel):
+    """Request body for CSV validation."""
+
+    file_path: str
+    bank_name: str
 
 
 class UploadRequest(BaseModel):

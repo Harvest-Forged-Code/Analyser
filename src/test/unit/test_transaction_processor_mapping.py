@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from budget_analyser.domain.category_mappers import CategoryMappers
-from budget_analyser.domain.transaction_processing import TransactionProcessor
+from budget_analyser.features.ingestion.categorization import CategoryMappers, TransactionProcessor
 
 
 def test_rental_trip_maps_to_luxury_not_needs() -> None:

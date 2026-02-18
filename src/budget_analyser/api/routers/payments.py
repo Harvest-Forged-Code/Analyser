@@ -10,8 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from budget_analyser.api.dependencies import get_payments_controller
 from budget_analyser.api.serializers import PaymentsReconciliationSummarySchema
-from budget_analyser.features.payments.controller import (
-    PaymentsReconciliationController,
+from budget_analyser.features.payments.service import (
+    PaymentsReconciliationService,
 )
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
@@ -37,26 +37,26 @@ def _df_to_records(df: pd.DataFrame) -> list[dict]:
 
 @router.get("/months")
 def get_available_months(
-    *, controller: PaymentsReconciliationController = Depends(
+    *, service: PaymentsReconciliationService = Depends(
         get_payments_controller,
     ),
 ) -> list[str]:
     """List all available months with payment data.
 
     Args:
-        controller: Injected PaymentsReconciliationController.
+        service: Injected PaymentsReconciliationService.
 
     Returns:
         List of month strings (e.g., "2024-01").
     """
-    return [str(p) for p in controller.available_months()]
+    return [str(p) for p in service.available_months()]
 
 
 @router.get("/{period}", response_model=PaymentsReconciliationSummarySchema)
 def get_payment_data(
     *,
     period: str,
-    controller: PaymentsReconciliationController = Depends(
+    service: PaymentsReconciliationService = Depends(
         get_payments_controller,
     ),
 ) -> PaymentsReconciliationSummarySchema:
@@ -64,7 +64,7 @@ def get_payment_data(
 
     Args:
         period: Month period string (e.g., "2024-01").
-        controller: Injected PaymentsReconciliationController.
+        service: Injected PaymentsReconciliationService.
 
     Returns:
         PaymentsReconciliationSummarySchema with payments and confirmations.
@@ -74,7 +74,7 @@ def get_payment_data(
     """
     try:
         period_obj = pd.Period(period)
-        data = controller.data(period_obj)
+        data = service.data(period_obj)
 
         return PaymentsReconciliationSummarySchema(
             period=str(data.period),

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from budget_analyser.domain.category_mappers import CategoryMappers
+from budget_analyser.features.ingestion.categorization import CategoryMappers
 from budget_analyser.features.recategorize.service import (
     RecategorizeService,
     RecategorizeResult,

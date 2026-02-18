@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from budget_analyser.controller import PaymentsReconciliationController
-from budget_analyser.controller.monthly_reports import MonthlyReports
+from budget_analyser.features.payments import PaymentsReconciliationController
+from budget_analyser.core.models import MonthlyReports
 
 
 def _mr(period_str: str, rows: list[dict]) -> MonthlyReports:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from budget_analyser.controller.sub_category_mapper_controller import SubCategoryMapperController
+from budget_analyser.features.mappers import SubCategoryMapperController
 
 
 class _StubStore:

@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from budget_analyser.domain.forecasting import (
+from budget_analyser.features.forecasting import (
     ForecastingService,
     ForecastMethod,
     ForecastResult,
