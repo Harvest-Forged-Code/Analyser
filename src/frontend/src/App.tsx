@@ -4,14 +4,9 @@ import AuthLayout from "@/layouts/auth-layout";
 import AppShell from "@/layouts/app-shell";
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
-import YearlySummaryPage from "@/pages/yearly-summary";
 import EarningsPage from "@/pages/earnings";
 import ExpensesPage from "@/pages/expenses";
-import PaymentsPage from "@/pages/payments";
 import BudgetGoalsPage from "@/pages/budget-goals";
-import SavingsPage from "@/pages/savings";
-import NetWorthPage from "@/pages/net-worth";
-import RecurringPage from "@/pages/recurring";
 import UploadPage from "@/pages/upload";
 import MapperHubPage from "@/pages/mapper-hub";
 import SettingsPage from "@/pages/settings";
@@ -45,14 +40,9 @@ function App() {
         }
       >
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/yearly-summary" element={<YearlySummaryPage />} />
         <Route path="/earnings" element={<EarningsPage />} />
         <Route path="/expenses" element={<ExpensesPage />} />
-        <Route path="/payments" element={<PaymentsPage />} />
         <Route path="/budget-goals" element={<BudgetGoalsPage />} />
-        <Route path="/savings" element={<SavingsPage />} />
-        <Route path="/net-worth" element={<NetWorthPage />} />
-        <Route path="/recurring" element={<RecurringPage />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/mapper-hub" element={<MapperHubPage />} />
         <Route path="/settings" element={<SettingsPage />} />

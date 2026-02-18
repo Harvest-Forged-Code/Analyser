@@ -11,7 +11,7 @@ from budget_analyser.api.dependencies import (
     get_settings_controller,
     get_prefs,
 )
-from budget_analyser.api.serializers import ChangePasswordRequest
+from budget_analyser.api.serializers import ChangePasswordRequest, UpdateConfigRequest
 from budget_analyser.features.settings.service import SettingsService
 from budget_analyser.settings.preferences import AppPreferences
 
@@ -93,9 +93,9 @@ def change_password(
     """
     try:
         service.change_password(
-            current_password=body.current,
-            new_password=body.new_password,
-            confirm_password=body.confirm,
+            current=body.current,
+            new=body.new_password,
+            confirm=body.confirm,
         )
         return {"message": "Password changed successfully"}
     except ValueError as e:
@@ -134,3 +134,43 @@ def set_theme(
     """
     prefs.set_theme(theme)
     return {"message": f"Theme set to {theme}"}
+
+
+@router.get("/config")
+def get_config(
+    *, service: SettingsService = Depends(get_settings_controller),
+) -> dict[str, str]:
+    """Get the raw INI config file content.
+
+    Args:
+        service: Injected SettingsService.
+
+    Returns:
+        Dict with raw INI content string.
+    """
+    return {"content": service.get_raw_config()}
+
+
+@router.put("/config")
+def update_config(
+    *,
+    body: UpdateConfigRequest,
+    service: SettingsService = Depends(get_settings_controller),
+) -> dict[str, str]:
+    """Update the raw INI config file.
+
+    Args:
+        body: UpdateConfigRequest with new INI content.
+        service: Injected SettingsService.
+
+    Returns:
+        Success message.
+
+    Raises:
+        HTTPException: If the INI content is invalid.
+    """
+    try:
+        service.update_raw_config(content=body.content)
+        return {"message": "Configuration saved successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e

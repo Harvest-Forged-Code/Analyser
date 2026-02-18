@@ -40,18 +40,6 @@ from budget_analyser.features.budget_goals.models import (
 from budget_analyser.features.budget_goals.service import (
     BudgetGoalsService,
 )
-from budget_analyser.features.net_worth.models import (
-    NetWorthModel,
-)
-from budget_analyser.features.net_worth.service import (
-    NetWorthService,
-)
-from budget_analyser.features.recurring.models import (
-    RecurringModel,
-)
-from budget_analyser.features.recurring.service import (
-    RecurringService,
-)
 from budget_analyser.features.savings.service import SavingsService
 from budget_analyser.features.ingestion.service import (
     TransactionIngestionService,
@@ -76,9 +64,6 @@ from budget_analyser.features.reporting.earnings_service import (
 from budget_analyser.features.reporting.expenses_service import (
     ExpensesStatsService,
 )
-from budget_analyser.features.payments.service import (
-    PaymentsReconciliationService,
-)
 from budget_analyser.features.recategorize.service import (
     RecategorizeService,
     RecategorizeOrchestrator,
@@ -96,12 +81,9 @@ _db_repository: DatabaseTransactionRepository | None = None
 _upload_service: UploadService | None = None
 
 _budget_goals_service: BudgetGoalsService | None = None
-_net_worth_service: NetWorthService | None = None
-_recurring_service: RecurringService | None = None
 _savings_service: SavingsService | None = None
 _earnings_stats_service: EarningsStatsService | None = None
 _expenses_stats_service: ExpensesStatsService | None = None
-_payments_service: PaymentsReconciliationService | None = None
 _settings_service: SettingsService | None = None
 
 _mapper_service: MapperService | None = None
@@ -163,11 +145,9 @@ def initialize() -> None:
     global \
         _logger, _prefs, _backend_controller, _db_repository, \
         _upload_service, _budget_goals_service, \
-        _net_worth_service, _recurring_service, \
         _savings_service, _earnings_stats_service, \
-        _expenses_stats_service, _payments_service, \
-        _settings_service, _mapper_service, \
-        _sub_category_mapper_service, \
+        _expenses_stats_service, _settings_service, \
+        _mapper_service, _sub_category_mapper_service, \
         _cashflow_mapper_service, \
         _recategorize_service, _reports_cache, _transaction_db  # noqa: PLW0603
 
@@ -274,22 +254,10 @@ def initialize() -> None:
     budget_goals_model = BudgetGoalsModel(
         db_path=budget_db_path, logger=_logger,
     )
-    net_worth_model = NetWorthModel(
-        db_path=budget_db_path, logger=_logger,
-    )
-    recurring_model = RecurringModel(
-        db_path=budget_db_path, logger=_logger,
-    )
 
     # Feature services
     _budget_goals_service = BudgetGoalsService(
         model=budget_goals_model, logger=_logger,
-    )
-    _net_worth_service = NetWorthService(
-        model=net_worth_model,
-    )
-    _recurring_service = RecurringService(
-        model=recurring_model,
     )
     _savings_service = SavingsService()
     _settings_service = SettingsService(_logger, _prefs)
@@ -311,8 +279,8 @@ def _regenerate_reports() -> None:
     """
     global \
         _reports_cache, _earnings_stats_service, \
-        _expenses_stats_service, _payments_service, \
-        _mapper_service, _sub_category_mapper_service, \
+        _expenses_stats_service, _mapper_service, \
+        _sub_category_mapper_service, \
         _cashflow_mapper_service, _recategorize_service  # noqa: PLW0603
 
     assert _db_repository is not None
@@ -342,9 +310,6 @@ def _regenerate_reports() -> None:
         reports, _logger, budget_controller=_budget_goals_service,
     )
     _expenses_stats_service = ExpensesStatsService(
-        reports, _logger,
-    )
-    _payments_service = PaymentsReconciliationService(
         reports, _logger,
     )
 
@@ -431,18 +396,6 @@ def get_budget_goals_service() -> BudgetGoalsService:
     return _budget_goals_service
 
 
-def get_net_worth_service() -> NetWorthService:
-    """Return the NetWorthService."""
-    assert _net_worth_service is not None, "Call initialize() first"
-    return _net_worth_service
-
-
-def get_recurring_service() -> RecurringService:
-    """Return the RecurringService."""
-    assert _recurring_service is not None, "Call initialize() first"
-    return _recurring_service
-
-
 def get_savings_service() -> SavingsService:
     """Return the SavingsService."""
     assert _savings_service is not None, "Call initialize() first"
@@ -463,12 +416,6 @@ def get_expenses_stats_service() -> ExpensesStatsService:
         "Call initialize() first"
     )
     return _expenses_stats_service
-
-
-def get_payments_service() -> PaymentsReconciliationService:
-    """Return the PaymentsReconciliationService."""
-    assert _payments_service is not None, "Call initialize() first"
-    return _payments_service
 
 
 def get_settings_service() -> SettingsService:
@@ -517,12 +464,9 @@ def get_recategorize_service() -> RecategorizeOrchestrator:
 # Backward compatibility aliases
 # ---------------------------------------------------------------------------
 get_budget_goals_controller = get_budget_goals_service
-get_net_worth_controller = get_net_worth_service
-get_recurring_controller = get_recurring_service
 get_savings_controller = get_savings_service
 get_earnings_stats_controller = get_earnings_stats_service
 get_expenses_stats_controller = get_expenses_stats_service
-get_payments_controller = get_payments_service
 get_settings_controller = get_settings_service
 get_upload_controller = get_upload_service
 get_mapper_controller = get_mapper_service

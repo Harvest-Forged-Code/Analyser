@@ -62,3 +62,24 @@ export function useSetTheme() {
     },
   });
 }
+
+export function useConfig() {
+  return useQuery({
+    queryKey: ["settings", "config"],
+    queryFn: async () => {
+      const response = await apiClient.get<{ content: string }>("/settings/config");
+      return response.data;
+    },
+  });
+}
+
+export function useSaveConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (content: string) =>
+      apiClient.put("/settings/config", { content }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings", "config"] });
+    },
+  });
+}

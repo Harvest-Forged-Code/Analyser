@@ -554,6 +554,12 @@ class ChangePasswordRequest(BaseModel):
     confirm: str
 
 
+class UpdateConfigRequest(BaseModel):
+    """Request body for updating raw INI config content."""
+
+    content: str
+
+
 # ===================================================================
 # Response models (API endpoint responses)
 # ===================================================================

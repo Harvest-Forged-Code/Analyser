@@ -1,10 +1,11 @@
 """Settings service.
 
-Manages application settings (log level, password).
+Manages application settings (log level, password, raw INI config).
 """
 
 from __future__ import annotations
 
+import configparser
 import logging
 
 from budget_analyser.settings.preferences import AppPreferences
@@ -150,6 +151,51 @@ class SettingsService:
         self._logger.info(
             "Password updated via SettingsService",
         )
+
+    def get_raw_config(self) -> str:
+        """Read the raw INI config file content.
+
+        Returns:
+            Full content of the INI file as a string.
+
+        Example:
+            >>> content = svc.get_raw_config()
+            >>> print(content)
+            [app]
+            log_level = INFO
+        """
+        return self._prefs.ini_path.read_text(encoding="utf-8")
+
+    def update_raw_config(self, *, content: str) -> None:
+        """Validate and write raw INI content to the config file.
+
+        Creates a `.ini.bak` backup before overwriting. Validates
+        that the content is parseable INI before saving.
+
+        Args:
+            content: Raw INI text to save.
+
+        Raises:
+            ValueError: If the content is not valid INI syntax.
+
+        Example:
+            >>> svc.update_raw_config(content="[app]\\nlog_level = DEBUG\\n")
+        """
+        parser = configparser.ConfigParser(interpolation=None)
+        try:
+            parser.read_string(content)
+        except configparser.Error as e:
+            raise ValueError(f"Invalid INI syntax: {e}") from e
+
+        backup_path = self._prefs.ini_path.with_suffix(".ini.bak")
+        if self._prefs.ini_path.exists():
+            backup_path.write_text(
+                self._prefs.ini_path.read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+
+        self._prefs.ini_path.write_text(content, encoding="utf-8")
+        self._logger.info("INI config updated via SettingsService")
 
 
 SettingsController = SettingsService

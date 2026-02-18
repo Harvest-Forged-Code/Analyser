@@ -1,14 +1,9 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
-  CalendarDays,
   TrendingUp,
   TrendingDown,
-  CreditCard,
   Target,
-  PiggyBank,
-  Wallet,
-  Repeat,
   Upload,
   Map,
   Settings,
@@ -17,6 +12,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Wallet,
 } from "lucide-react";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useThemeStore } from "@/stores/theme-store";
@@ -25,14 +21,9 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/yearly-summary", label: "Yearly Summary", icon: CalendarDays },
   { to: "/earnings", label: "Earnings", icon: TrendingUp },
   { to: "/expenses", label: "Expenses", icon: TrendingDown },
-  { to: "/payments", label: "Payments", icon: CreditCard },
   { to: "/budget-goals", label: "Budget Goals", icon: Target },
-  { to: "/savings", label: "Savings", icon: PiggyBank },
-  { to: "/net-worth", label: "Net Worth", icon: Wallet },
-  { to: "/recurring", label: "Recurring", icon: Repeat },
   { to: "/upload", label: "Upload", icon: Upload },
   { to: "/mapper-hub", label: "Mapper Hub", icon: Map },
   { to: "/settings", label: "Settings", icon: Settings },

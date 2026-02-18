@@ -21,15 +21,9 @@ from budget_analyser.api.routers import (
     earnings,
     expenses,
     budget_goals,
-    net_worth,
-    recurring,
     savings,
-    payments,
-    forecasting,
-    trends,
     mappers,
     upload,
-    export,
     settings,
     recategorize,
 )
@@ -76,15 +70,9 @@ def create_app() -> FastAPI:
     app.include_router(earnings.router)
     app.include_router(expenses.router)
     app.include_router(budget_goals.router)
-    app.include_router(net_worth.router)
-    app.include_router(recurring.router)
     app.include_router(savings.router)
-    app.include_router(payments.router)
-    app.include_router(forecasting.router)
-    app.include_router(trends.router)
     app.include_router(mappers.router)
     app.include_router(upload.router)
-    app.include_router(export.router)
     app.include_router(settings.router)
     app.include_router(recategorize.router)
 
