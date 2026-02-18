@@ -161,7 +161,7 @@ class IniColumnMappingProvider(ColumnMappingProvider):
             Mapping from source CSV column names to canonical
             names.
 
-        Raises:
+        Raises:ste
             configparser.NoSectionError: If the INI mapping
                 section for the account does not exist.
         """

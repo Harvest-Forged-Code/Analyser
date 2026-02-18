@@ -1,12 +1,11 @@
 import { useState, useMemo } from "react";
-import { Map, Save, Plus, AlertCircle, CheckCircle } from "lucide-react";
+import { Map, Plus, AlertCircle, CheckCircle } from "lucide-react";
 import {
   useUnmappedDescriptions,
   useSubCategories,
   useCategories,
   useAddDescriptions,
   useCreateSubCategory,
-  useSaveMappers,
   useSubCategoryMapping,
   useCashflowMapping,
 } from "@/api/hooks/use-mappers";
@@ -37,7 +36,6 @@ export default function MapperHubPage() {
 
   const addDescriptionsMutation = useAddDescriptions();
   const createSubCategoryMutation = useCreateSubCategory();
-  const saveMappersMutation = useSaveMappers();
 
   // State for unmapped descriptions
   const [selectedMappings, setSelectedMappings] = useState<Record<string, string>>({});
@@ -65,8 +63,8 @@ export default function MapperHubPage() {
         delete updated[description];
         return updated;
       });
-    } catch (error) {
-      alert(`Failed to add mapping: ${error}`);
+    } catch {
+      // Error handled via onError toast in useAddDescriptions
     }
   };
 
@@ -90,15 +88,6 @@ export default function MapperHubPage() {
       setNewCashflow("expense");
     } catch (error) {
       alert(`Failed to create sub-category: ${error}`);
-    }
-  };
-
-  const handleSaveAll = async () => {
-    try {
-      await saveMappersMutation.mutateAsync();
-      alert("All mappers saved successfully!");
-    } catch (error) {
-      alert(`Failed to save mappers: ${error}`);
     }
   };
 
@@ -160,12 +149,7 @@ export default function MapperHubPage() {
       <PageHeader
         title="Mapper Hub"
         description="Manage transaction categorization"
-      >
-        <Button onClick={handleSaveAll} disabled={saveMappersMutation.isPending}>
-          <Save className="mr-2 h-4 w-4" />
-          {saveMappersMutation.isPending ? "Saving..." : "Save All"}
-        </Button>
-      </PageHeader>
+      />
 
       <Tabs defaultValue="unmapped" className="space-y-6">
         <TabsList>

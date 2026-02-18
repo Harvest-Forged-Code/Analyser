@@ -12,6 +12,7 @@ from budget_analyser.api.dependencies import (
     get_mapper_controller,
     get_sub_category_mapper_controller,
     get_cashflow_mapper_controller,
+    get_recategorize_controller,
     invalidate_reports,
 )
 from budget_analyser.features.mappers.service import (
@@ -107,7 +108,10 @@ def add_descriptions_to_sub_category(
     descriptions: list[str],
     controller: MapperService = Depends(get_mapper_controller),
 ) -> dict[str, str]:
-    """Add transaction descriptions to a sub-category mapping.
+    """Add descriptions to a sub-category, persist, and recategorize transactions.
+
+    Saves the mapping to disk immediately, then re-applies all keyword
+    mappings to existing DB transactions so changes are reflected at once.
 
     Args:
         sub_category: Target sub-category.
@@ -115,13 +119,27 @@ def add_descriptions_to_sub_category(
         controller: Injected MapperService.
 
     Returns:
-        Success message.
+        Success message including count of recategorized transactions.
     """
-    for desc in descriptions:
-        controller.add_description_to_sub_category(
-            description=desc, sub_category=sub_category,
-        )
-    return {"message": f"Added {len(descriptions)} descriptions"}
+    # 1. Add to in-memory mapping
+    controller.add_descriptions_to_sub_category(
+        sub_category=sub_category,
+        descriptions=descriptions,
+    )
+    # 2. Persist mapping to JSON
+    controller.save()
+    # 3. Reload mappers + refresh _recategorize_service with fresh mappers
+    invalidate_reports()
+    # 4. Recategorize all DB transactions using the freshly loaded mappers
+    result = get_recategorize_controller().run()
+    # 5. Regenerate reports from the now-updated DB
+    invalidate_reports()
+    return {
+        "message": (
+            f"Added {len(descriptions)} descriptions to '{sub_category}', "
+            f"recategorized {result.updated_count} transactions"
+        ),
+    }
 
 
 @router.post("/create-sub-category")

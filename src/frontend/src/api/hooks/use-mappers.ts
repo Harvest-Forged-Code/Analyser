@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import apiClient from "../client";
 
 export function useUnmappedTransactions() {
@@ -49,9 +50,20 @@ export function useAddDescriptions() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { sub_category: string; descriptions: string[] }) =>
-      apiClient.post("/mappers/descriptions", data).then((r) => r.data),
-    onSuccess: () => {
+      apiClient
+        .post("/mappers/add-descriptions", data.descriptions, {
+          params: { sub_category: data.sub_category },
+        })
+        .then((r) => r.data),
+    onSuccess: (data: { message: string }) => {
+      toast.success(data.message ?? "Mapping saved and transactions updated");
       queryClient.invalidateQueries({ queryKey: ["mappers"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (error) => {
+      toast.error(`Failed to add mapping: ${error}`);
     },
   });
 }
@@ -60,7 +72,11 @@ export function useCreateSubCategory() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { sub_category: string; category: string; cashflow: string }) =>
-      apiClient.post("/mappers/sub-category", data).then((r) => r.data),
+      apiClient
+        .post("/mappers/create-sub-category", null, {
+          params: { sub_category: data.sub_category, category: data.category },
+        })
+        .then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["mappers"] });
     },

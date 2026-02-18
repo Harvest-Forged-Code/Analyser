@@ -108,6 +108,7 @@ _mapper_service: MapperService | None = None
 _sub_category_mapper_service: SubCategoryMapperService | None = None
 _cashflow_mapper_service: CashflowMapperService | None = None
 _recategorize_service: RecategorizeOrchestrator | None = None
+_transaction_db: TransactionDatabase | None = None
 
 _reports_cache: list[MonthlyReports] | None = None
 
@@ -168,7 +169,7 @@ def initialize() -> None:
         _settings_service, _mapper_service, \
         _sub_category_mapper_service, \
         _cashflow_mapper_service, \
-        _recategorize_service, _reports_cache  # noqa: PLW0603
+        _recategorize_service, _reports_cache, _transaction_db  # noqa: PLW0603
 
     # Logger
     _logger = _ensure_logger()
@@ -220,6 +221,7 @@ def initialize() -> None:
     transaction_db = TransactionDatabase(
         db_path=settings.database_path, logger=_logger,
     )
+    _transaction_db = transaction_db
     _db_repository = DatabaseTransactionRepository(
         database=transaction_db, logger=_logger,
     )
@@ -311,7 +313,7 @@ def _regenerate_reports() -> None:
         _reports_cache, _earnings_stats_service, \
         _expenses_stats_service, _payments_service, \
         _mapper_service, _sub_category_mapper_service, \
-        _cashflow_mapper_service  # noqa: PLW0603
+        _cashflow_mapper_service, _recategorize_service  # noqa: PLW0603
 
     assert _db_repository is not None
     assert _backend_controller is not None
@@ -367,6 +369,20 @@ def _regenerate_reports() -> None:
     _cashflow_mapper_service = CashflowMapperService(
         cashflow_store, _logger,
     )
+
+    # Rebuild recategorize service so it uses the freshly loaded mappers
+    if _transaction_db is not None:
+        fresh_category_mappers = CategoryMappers(
+            description_to_sub_category=mapping_store.load_desc_to_sub(),
+            sub_category_to_category=mapping_store.load_sub_to_cat(),
+        )
+        _recategorize_service = RecategorizeOrchestrator(
+            database=_transaction_db,
+            service=RecategorizeService(
+                category_mappers=fresh_category_mappers, logger=_logger,
+            ),
+            logger=_logger,
+        )
 
 
 def invalidate_reports() -> None:

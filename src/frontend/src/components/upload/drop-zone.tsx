@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Upload, FileText } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -54,11 +55,12 @@ export default function DropZone({ onFileSelected, selectedFile }: DropZoneProps
           filters: [{ name: "CSV Files", extensions: ["csv"] }],
         });
         if (selected) {
-          onFileSelected(selected as string);
+          const filePath = typeof selected === "string" ? selected : String(selected);
+          onFileSelected(filePath);
         }
-      } catch {
-        // Fall through to file input
-        fileInputRef.current?.click();
+      } catch (err) {
+        console.error("Tauri file dialog failed:", err);
+        toast.error("File picker unavailable. Please restart the app.");
       }
     } else {
       fileInputRef.current?.click();
