@@ -181,6 +181,20 @@ def calculate_progress_summary(
     )
 
 
+def _spending_by_month(expenses_df: pd.DataFrame, category: str) -> dict[str, float]:
+    """Return absolute spending per year-month for a single category."""
+    result: dict[str, float] = {}
+    if expenses_df.empty or "transaction_date" not in expenses_df.columns:
+        return result
+    df = expenses_df.copy()
+    df["_ym"] = pd.to_datetime(df["transaction_date"], errors="coerce").dt.strftime("%Y-%m")
+    cat_df = df[df["category"] == category] if "category" in df.columns else pd.DataFrame()
+    if not cat_df.empty:
+        for ym, amount in cat_df.groupby("_ym")["amount"].sum().items():
+            result[str(ym)] = abs(float(amount))
+    return result
+
+
 def calculate_category_progress_history(
     *,
     category: str,
@@ -212,21 +226,7 @@ def calculate_category_progress_history(
         else:
             month_limits[b.year_month] = b.monthly_limit
 
-    spending_by_month: dict[str, float] = {}
-    if not expenses_df.empty and "transaction_date" in expenses_df.columns:
-        df = expenses_df.copy()
-        df["_ym"] = pd.to_datetime(
-            df["transaction_date"], errors="coerce",
-        ).dt.strftime("%Y-%m")
-        cat_df = (
-            df[df["category"] == category]
-            if "category" in df.columns
-            else pd.DataFrame()
-        )
-        if not cat_df.empty:
-            grouped = cat_df.groupby("_ym")["amount"].sum()
-            for ym, amount in grouped.items():
-                spending_by_month[str(ym)] = abs(float(amount))
+    spending_by_month = _spending_by_month(expenses_df, category)
 
     result: list[CategoryProgressPoint] = []
     for ym in months:
