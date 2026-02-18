@@ -270,6 +270,37 @@ export interface UploadResult {
   duplicates_skipped: number;
 }
 
+export interface ValidationResult {
+  valid: boolean;
+  message: string;
+  row_count: number;
+  date_range: string;
+}
+
+export interface UploadStats {
+  total_transactions: number;
+  total_accounts: number;
+  last_upload_date: string | null;
+  total_uploads: number;
+  total_duplicates_skipped: number;
+  duplicate_rate: number;
+}
+
+export interface UploadHistoryEntry {
+  file_name: string;
+  bank_name: string;
+  account_type: string;
+  uploaded_at: string;
+  transactions_inserted: number;
+  duplicates_skipped: number;
+}
+
+export interface BankUploadStatus {
+  bank_name: string;
+  account_type: string;
+  is_uploaded: boolean;
+}
+
 // Dashboard
 export interface DashboardSummary {
   total_earnings: number;

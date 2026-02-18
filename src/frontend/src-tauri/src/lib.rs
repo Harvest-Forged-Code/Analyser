@@ -74,6 +74,7 @@ fn check_api_health() -> bool {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // Start Python API as sidecar
             let child = start_python_api();

@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import apiClient from "../client";
-import type { UploadResult, UploadRequest } from "../types";
+import type {
+  UploadResult,
+  UploadRequest,
+  UploadStats,
+  ValidationResult,
+  BankUploadStatus,
+} from "../types";
 
 export function useAvailableBanks(accountType: string | undefined) {
   return useQuery({
@@ -15,23 +22,11 @@ export function useAvailableBanks(accountType: string | undefined) {
   });
 }
 
-export function useMissingStatements() {
-  return useQuery({
-    queryKey: ["upload", "missing"],
-    queryFn: async () => {
-      const response = await apiClient.get<Record<string, unknown>[]>(
-        "/upload/missing"
-      );
-      return response.data;
-    },
-  });
-}
-
 export function useUploadStatus() {
   return useQuery({
     queryKey: ["upload", "status"],
     queryFn: async () => {
-      const response = await apiClient.get<Record<string, unknown>>(
+      const response = await apiClient.get<BankUploadStatus[]>(
         "/upload/status"
       );
       return response.data;
@@ -39,24 +34,61 @@ export function useUploadStatus() {
   });
 }
 
+export function useUploadStats() {
+  return useQuery({
+    queryKey: ["upload", "stats"],
+    queryFn: async () => {
+      const response = await apiClient.get<UploadStats>("/upload/stats");
+      return response.data;
+    },
+  });
+}
+
 export function useValidateCsv() {
   return useMutation({
-    mutationFn: (data: { file_path: string; bank_name: string }) =>
-      apiClient.post("/upload/validate", data).then((r) => r.data),
+    mutationFn: async (data: { file_path: string; bank_name: string }) => {
+      const response = await apiClient.post<ValidationResult>(
+        "/upload/validate",
+        data
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.valid) {
+        toast.success("CSV validation passed");
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (error) => {
+      toast.error(`Validation failed: ${error}`);
+    },
   });
 }
 
 export function useUploadStatement() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: UploadRequest) =>
-      apiClient.post<UploadResult>("/upload/statement", data).then((r) => r.data),
-    onSuccess: () => {
+    mutationFn: async (data: UploadRequest) => {
+      const response = await apiClient.post<UploadResult>("/upload", data);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(
+          `Uploaded successfully: ${data.transactions_inserted} transactions added`
+        );
+      } else {
+        toast.error(data.message);
+      }
       queryClient.invalidateQueries({ queryKey: ["upload"] });
       queryClient.invalidateQueries({ queryKey: ["earnings"] });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["mappers"] });
+    },
+    onError: (error) => {
+      toast.error(`Upload failed: ${error}`);
     },
   });
 }

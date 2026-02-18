@@ -20,7 +20,7 @@ export default function CombinedChart({ trend, monthRows }: CombinedChartProps) 
 
   const hasGoals = goalSeries.some((v) => v > 0);
 
-  const series: ApexAxisChartSeries = [
+  const series: ApexOptions["series"] = [
     {
       name: "Income",
       type: "area",
