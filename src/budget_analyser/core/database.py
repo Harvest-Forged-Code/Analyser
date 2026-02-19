@@ -66,7 +66,7 @@ class TransactionDatabase:
 
     Responsibilities:
         - Create and manage the transactions table
-        - Insert transactions with duplicate prevention
+        - Insert transactions into the database
         - Read all transactions for report generation
     """
 
@@ -97,7 +97,11 @@ class TransactionDatabase:
         return conn
 
     def _ensure_table_exists(self) -> None:
-        """Create the transactions table if it doesn't exist."""
+        """Create the transactions table if it doesn't exist.
+
+        Also runs a one-time migration to remove the legacy
+        UNIQUE constraint if it is present on an existing table.
+        """
         create_sql = f"""
         CREATE TABLE IF NOT EXISTS {self.TABLE_NAME} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,13 +112,41 @@ class TransactionDatabase:
             sub_category TEXT DEFAULT '',
             category TEXT DEFAULT '',
             c_or_d TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(transaction_date, description,
-                   amount, from_account)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
         with self._get_connection() as conn:
             conn.execute(create_sql)
+
+            # Migration: remove UNIQUE constraint from existing tables
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE type='table' AND name=?",
+                (self.TABLE_NAME,),
+            ).fetchone()
+            if row and row[0] and "UNIQUE" in (row[0] or "").upper():
+                self._logger.info(
+                    "Migrating %s: removing UNIQUE constraint",
+                    self.TABLE_NAME,
+                )
+                tmp = f"_{self.TABLE_NAME}_old"
+                conn.execute(f"DROP TABLE IF EXISTS {tmp}")
+                conn.execute(
+                    f"ALTER TABLE {self.TABLE_NAME} RENAME TO {tmp}",
+                )
+                conn.execute(create_sql)
+                conn.execute(f"""
+                    INSERT INTO {self.TABLE_NAME}
+                    SELECT id, transaction_date, description,
+                           amount, from_account, sub_category,
+                           category, c_or_d, created_at
+                    FROM {tmp}
+                """)
+                conn.execute(f"DROP TABLE {tmp}")
+                self._logger.info(
+                    "Migration complete: UNIQUE constraint removed",
+                )
+
             conn.execute(f"""
                 CREATE INDEX IF NOT EXISTS
                     idx_transaction_date
@@ -128,7 +160,7 @@ class TransactionDatabase:
     def insert_transactions(
         self, transactions: pd.DataFrame,
     ) -> int:
-        """Insert transactions, skipping duplicates.
+        """Insert transactions into the database.
 
         Args:
             transactions: DataFrame with columns:
@@ -136,19 +168,18 @@ class TransactionDatabase:
                 from_account, sub_category, category, c_or_d
 
         Returns:
-            Number of new transactions inserted.
+            Number of transactions inserted.
         """
         if transactions.empty:
             return 0
 
         insert_sql = f"""
-        INSERT OR IGNORE INTO {self.TABLE_NAME}
+        INSERT INTO {self.TABLE_NAME}
         (transaction_date, description, amount, from_account,
          sub_category, category, c_or_d)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """
 
-        inserted_count = 0
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
@@ -174,8 +205,6 @@ class TransactionDatabase:
                     str(row.get("category", "")),
                     str(row.get("c_or_d", "")),
                 ))
-                if cursor.rowcount > 0:
-                    inserted_count += 1
 
             conn.commit()
         except Exception:
@@ -188,12 +217,9 @@ class TransactionDatabase:
             conn.close()
 
         self._logger.info(
-            "Inserted %d new transactions "
-            "(skipped %d duplicates)",
-            inserted_count,
-            len(transactions) - inserted_count,
+            "Inserted %d transactions", len(transactions),
         )
-        return inserted_count
+        return len(transactions)
 
     def get_all_transactions(self) -> pd.DataFrame:
         """Read all transactions from the database.

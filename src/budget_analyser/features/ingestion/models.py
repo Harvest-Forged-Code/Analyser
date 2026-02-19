@@ -33,22 +33,19 @@ class IngestionResult:
     """Result of a transaction ingestion operation.
 
     Captures the outcome of ingesting one or more CSV files,
-    including how many transactions were processed, inserted,
-    and skipped as duplicates.
+    including how many transactions were processed and inserted.
 
     Attributes:
         success: Whether the ingestion succeeded.
         message: Human-readable status message.
         transactions_processed: Total transactions in the CSV.
-        transactions_inserted: New transactions stored.
-        duplicates_skipped: Transactions already in the DB.
+        transactions_inserted: Transactions stored in the DB.
     """
 
     success: bool
     message: str
     transactions_processed: int = 0
     transactions_inserted: int = 0
-    duplicates_skipped: int = 0
 
 
 @dataclass(frozen=True)
@@ -62,15 +59,13 @@ class UploadResult:
         success: Whether the upload succeeded.
         message: Human-readable status message.
         destination_path: Path where the file was copied.
-        transactions_inserted: New transactions stored.
-        duplicates_skipped: Transactions already in the DB.
+        transactions_inserted: Transactions stored in the DB.
     """
 
     success: bool
     message: str
     destination_path: str | None = None
     transactions_inserted: int = 0
-    duplicates_skipped: int = 0
 
 
 @dataclass(frozen=True)
@@ -99,16 +94,12 @@ class UploadStats:
         total_accounts: Number of unique bank/account combos.
         last_upload_date: ISO timestamp of most recent upload.
         total_uploads: Total number of uploads recorded.
-        total_duplicates_skipped: Cumulative duplicates skipped.
-        duplicate_rate: Percentage of duplicates across uploads.
     """
 
     total_transactions: int
     total_accounts: int
     last_upload_date: str | None
     total_uploads: int
-    total_duplicates_skipped: int
-    duplicate_rate: float
 
 
 @dataclass(frozen=True)
@@ -120,8 +111,7 @@ class UploadHistoryEntry:
         bank_name: Bank/account identifier.
         account_type: Either 'credit' or 'debit'.
         uploaded_at: ISO timestamp of the upload.
-        transactions_inserted: New transactions stored.
-        duplicates_skipped: Transactions already in the DB.
+        transactions_inserted: Transactions stored in the DB.
     """
 
     file_name: str
@@ -129,7 +119,6 @@ class UploadHistoryEntry:
     account_type: str
     uploaded_at: str
     transactions_inserted: int
-    duplicates_skipped: int
 
 
 # -------------------------------------------------------------------
@@ -273,7 +262,6 @@ class UploadHistoryModel:
         ...     bank_name="citi",
         ...     account_type="credit",
         ...     transactions_inserted=50,
-        ...     duplicates_skipped=3,
         ... )
     """
 
@@ -301,7 +289,11 @@ class UploadHistoryModel:
         self._ensure_table_exists()
 
     def _ensure_table_exists(self) -> None:
-        """Create upload_history table if it doesn't exist."""
+        """Create upload_history table if it doesn't exist.
+
+        Also drops the legacy duplicates_skipped column from
+        existing tables if present.
+        """
         with get_connection(self._db_path) as conn:
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {self.TABLE} (
@@ -312,11 +304,33 @@ class UploadHistoryModel:
                     uploaded_at TIMESTAMP
                         DEFAULT CURRENT_TIMESTAMP,
                     transactions_inserted INTEGER
-                        NOT NULL DEFAULT 0,
-                    duplicates_skipped INTEGER
                         NOT NULL DEFAULT 0
                 )
             """)
+
+            # Migration: drop duplicates_skipped column if present
+            columns = {
+                row["name"]
+                for row in conn.execute(
+                    f"PRAGMA table_info({self.TABLE})",
+                ).fetchall()
+            }
+            if "duplicates_skipped" in columns:
+                try:
+                    conn.execute(
+                        f"ALTER TABLE {self.TABLE} "
+                        f"DROP COLUMN duplicates_skipped",
+                    )
+                    self._logger.info(
+                        "Migrated %s: dropped duplicates_skipped",
+                        self.TABLE,
+                    )
+                except Exception:  # pylint: disable=broad-exception-caught
+                    self._logger.warning(
+                        "Could not drop duplicates_skipped "
+                        "column from %s", self.TABLE,
+                    )
+
             conn.commit()
 
     def save_upload(
@@ -326,7 +340,6 @@ class UploadHistoryModel:
         bank_name: str,
         account_type: str,
         transactions_inserted: int,
-        duplicates_skipped: int,
     ) -> None:
         """Record a completed upload in history.
 
@@ -334,20 +347,19 @@ class UploadHistoryModel:
             file_name: Name of the uploaded CSV file.
             bank_name: Bank/account identifier.
             account_type: Either 'credit' or 'debit'.
-            transactions_inserted: New transactions stored.
-            duplicates_skipped: Transactions already in the DB.
+            transactions_inserted: Transactions stored in the DB.
         """
         with get_connection(self._db_path) as conn:
             conn.execute(
                 f"""
                 INSERT INTO {self.TABLE}
                     (file_name, bank_name, account_type,
-                     transactions_inserted, duplicates_skipped)
-                VALUES (?, ?, ?, ?, ?)
+                     transactions_inserted)
+                VALUES (?, ?, ?, ?)
                 """,
                 (
                     file_name, bank_name, account_type,
-                    transactions_inserted, duplicates_skipped,
+                    transactions_inserted,
                 ),
             )
             conn.commit()
@@ -356,16 +368,12 @@ class UploadHistoryModel:
         """Return aggregate stats from upload history.
 
         Returns:
-            UploadStats with totals and duplicate rate.
+            UploadStats with totals.
         """
         with get_connection(self._db_path) as conn:
             row = conn.execute(f"""
                 SELECT
                     COUNT(*) as total_uploads,
-                    COALESCE(SUM(duplicates_skipped), 0)
-                        as total_duplicates,
-                    COALESCE(SUM(transactions_inserted), 0)
-                        as total_inserted,
                     MAX(uploaded_at) as last_upload
                 FROM {self.TABLE}
             """).fetchone()
@@ -385,23 +393,12 @@ class UploadHistoryModel:
                     txn_row["cnt"] if txn_row else 0
                 )
             except Exception:  # pylint: disable=broad-exception-caught
-                total_transactions = (
-                    row["total_inserted"] if row else 0
-                )
+                total_transactions = 0
 
         total_uploads = row["total_uploads"] if row else 0
-        total_dups = row["total_duplicates"] if row else 0
-        total_inserted = row["total_inserted"] if row else 0
         last_upload = row["last_upload"] if row else None
         total_accounts = (
             accounts_row["cnt"] if accounts_row else 0
-        )
-
-        total_processed = total_inserted + total_dups
-        dup_rate = (
-            (total_dups / total_processed * 100.0)
-            if total_processed > 0
-            else 0.0
         )
 
         return UploadStats(
@@ -409,8 +406,6 @@ class UploadHistoryModel:
             total_accounts=total_accounts,
             last_upload_date=last_upload,
             total_uploads=total_uploads,
-            total_duplicates_skipped=total_dups,
-            duplicate_rate=round(dup_rate, 1),
         )
 
     def get_recent_history(
@@ -428,8 +423,7 @@ class UploadHistoryModel:
             rows = conn.execute(
                 f"""
                 SELECT file_name, bank_name, account_type,
-                       uploaded_at, transactions_inserted,
-                       duplicates_skipped
+                       uploaded_at, transactions_inserted
                 FROM {self.TABLE}
                 ORDER BY id DESC
                 LIMIT ?
@@ -446,7 +440,6 @@ class UploadHistoryModel:
                 transactions_inserted=(
                     row["transactions_inserted"]
                 ),
-                duplicates_skipped=row["duplicates_skipped"],
             )
             for row in rows
         ]

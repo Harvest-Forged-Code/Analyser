@@ -108,7 +108,6 @@ class TransactionIngestionService:
         """
         total_processed = 0
         total_inserted = 0
-        total_duplicates = 0
         errors: list[str] = []
 
         for csv_path, account_name, column_mapping in csv_files:
@@ -118,7 +117,6 @@ class TransactionIngestionService:
             if result.success:
                 total_processed += result.transactions_processed
                 total_inserted += result.transactions_inserted
-                total_duplicates += result.duplicates_skipped
             else:
                 errors.append(
                     f"{account_name}: {result.message}",
@@ -133,7 +131,6 @@ class TransactionIngestionService:
                 ),
                 transactions_processed=total_processed,
                 transactions_inserted=total_inserted,
-                duplicates_skipped=total_duplicates,
             )
 
         return IngestionResult(
@@ -144,7 +141,6 @@ class TransactionIngestionService:
             ),
             transactions_processed=total_processed,
             transactions_inserted=total_inserted,
-            duplicates_skipped=total_duplicates,
         )
 
     # ----------------------------------------------------------
@@ -198,12 +194,10 @@ class TransactionIngestionService:
         inserted_count = self._database.insert_transactions(
             processed_df,
         )
-        duplicates = len(processed_df) - inserted_count
 
         self._logger.info(
-            "Ingestion complete: %d processed, "
-            "%d inserted, %d duplicates skipped",
-            len(processed_df), inserted_count, duplicates,
+            "Ingestion complete: %d processed, %d inserted",
+            len(processed_df), inserted_count,
         )
 
         return IngestionResult(
@@ -214,7 +208,6 @@ class TransactionIngestionService:
             ),
             transactions_processed=len(processed_df),
             transactions_inserted=inserted_count,
-            duplicates_skipped=duplicates,
         )
 
 
@@ -395,7 +388,7 @@ class UploadService:
         """Return aggregate upload statistics.
 
         Returns:
-            UploadStats with totals and duplicate rate.
+            UploadStats with totals.
         """
         if self._upload_history_model is None:
             return UploadStats(
@@ -403,8 +396,6 @@ class UploadService:
                 total_accounts=0,
                 last_upload_date=None,
                 total_uploads=0,
-                total_duplicates_skipped=0,
-                duplicate_rate=0.0,
             )
         return self._upload_history_model.get_stats()
 
@@ -553,7 +544,7 @@ class UploadService:
                 message=f"Failed to copy file: {exc}",
             )
 
-        txn_inserted, dup_skipped, ing_msg = (
+        txn_inserted, ing_msg = (
             self._run_ingestion(bank_name, dest_path)
         )
 
@@ -563,7 +554,6 @@ class UploadService:
                 bank_name=bank_name,
                 account_type=account_type,
                 transactions_inserted=txn_inserted,
-                duplicates_skipped=dup_skipped,
             )
 
         return UploadResult(
@@ -574,7 +564,6 @@ class UploadService:
             ),
             destination_path=str(dest_path),
             transactions_inserted=txn_inserted,
-            duplicates_skipped=dup_skipped,
         )
 
     # ----------------------------------------------------------
@@ -638,14 +627,14 @@ class UploadService:
         self,
         bank_name: str,
         dest_path: Path,
-    ) -> tuple[int, int, str]:
+    ) -> tuple[int, str]:
         """Run ingestion if service is available.
 
         Returns:
-            Tuple of ``(inserted, duplicates, message_suffix)``.
+            Tuple of ``(inserted, message_suffix)``.
         """
         if self._ingestion_service is None:
-            return 0, 0, ""
+            return 0, ""
 
         try:
             col_map = self._ini_config.get_column_mapping(
@@ -658,19 +647,14 @@ class UploadService:
             )
             if result.success:
                 self._logger.info(
-                    "Ingestion complete for %s: "
-                    "%d inserted, %d duplicates",
+                    "Ingestion complete for %s: %d inserted",
                     bank_name,
                     result.transactions_inserted,
-                    result.duplicates_skipped,
                 )
                 return (
                     result.transactions_inserted,
-                    result.duplicates_skipped,
                     f" | {result.transactions_inserted} "
-                    f"transactions added to database "
-                    f"({result.duplicates_skipped} "
-                    f"duplicates skipped)",
+                    f"transactions added to database",
                 )
 
             self._logger.warning(
@@ -678,7 +662,7 @@ class UploadService:
                 bank_name, result.message,
             )
             return (
-                0, 0,
+                0,
                 f" | Warning: {result.message}",
             )
         except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -686,7 +670,7 @@ class UploadService:
                 "Failed to ingest transactions: %s", exc,
             )
             return (
-                0, 0,
+                0,
                 " | Warning: Failed to process "
                 f"transactions: {exc}",
             )

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -90,7 +90,6 @@ class TestGetUploadStats:
         assert stats.total_transactions == 0
         assert stats.total_accounts == 0
         assert stats.last_upload_date is None
-        assert stats.duplicate_rate == 0.0
 
     def test_delegates_to_repository(
         self, controller: UploadController,
@@ -101,11 +100,9 @@ class TestGetUploadStats:
             bank_name="citi",
             account_type="credit",
             transactions_inserted=40,
-            duplicates_skipped=5,
         )
         stats = controller.get_upload_stats()
         assert stats.total_uploads == 1
-        assert stats.total_duplicates_skipped == 5
 
 
 class TestGetRecentHistory:
@@ -126,7 +123,6 @@ class TestGetRecentHistory:
             bank_name="discover",
             account_type="credit",
             transactions_inserted=25,
-            duplicates_skipped=2,
         )
         history = controller.get_recent_history(limit=5)
         assert len(history) == 1
@@ -142,7 +138,6 @@ class TestGetRecentHistory:
                 bank_name="citi",
                 account_type="credit",
                 transactions_inserted=i * 10,
-                duplicates_skipped=0,
             )
         history = controller.get_recent_history(limit=2)
         assert len(history) == 2
@@ -229,8 +224,7 @@ class TestUploadStatementRecordsHistory:
             success=True,
             message="OK",
             transactions_processed=60,
-            transactions_inserted=55,
-            duplicates_skipped=5,
+            transactions_inserted=60,
         )
 
         ctrl = UploadController(
@@ -253,10 +247,8 @@ class TestUploadStatementRecordsHistory:
             account_type="credit",
         )
         assert result.success is True
-        assert result.transactions_inserted == 55
-        assert result.duplicates_skipped == 5
+        assert result.transactions_inserted == 60
 
         history = history_repo.get_recent_history(limit=10)
         assert len(history) == 1
-        assert history[0].transactions_inserted == 55
-        assert history[0].duplicates_skipped == 5
+        assert history[0].transactions_inserted == 60

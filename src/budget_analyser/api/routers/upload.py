@@ -121,10 +121,6 @@ def get_upload_stats(
             total_accounts=stats.total_accounts,
             last_upload_date=stats.last_upload_date,
             total_uploads=stats.total_uploads,
-            total_duplicates_skipped=(
-                stats.total_duplicates_skipped
-            ),
-            duplicate_rate=stats.duplicate_rate,
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(
@@ -153,7 +149,6 @@ def get_upload_history(
                 account_type=e.account_type,
                 uploaded_at=e.uploaded_at,
                 transactions_inserted=e.transactions_inserted,
-                duplicates_skipped=e.duplicates_skipped,
             )
             for e in entries
         ]
@@ -186,7 +181,6 @@ def upload_statement(
             message=result.message,
             destination_path=result.destination_path,
             transactions_inserted=result.transactions_inserted,
-            duplicates_skipped=result.duplicates_skipped,
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
         raise HTTPException(

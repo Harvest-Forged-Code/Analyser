@@ -267,7 +267,6 @@ export interface UploadResult {
   message: string;
   destination_path: string | null;
   transactions_inserted: number;
-  duplicates_skipped: number;
 }
 
 export interface ValidationResult {
@@ -277,28 +276,12 @@ export interface ValidationResult {
   date_range: string;
 }
 
-export interface UploadStats {
-  total_transactions: number;
-  total_accounts: number;
-  last_upload_date: string | null;
-  total_uploads: number;
-  total_duplicates_skipped: number;
-  duplicate_rate: number;
-}
-
 export interface UploadHistoryEntry {
   file_name: string;
   bank_name: string;
   account_type: string;
   uploaded_at: string;
   transactions_inserted: number;
-  duplicates_skipped: number;
-}
-
-export interface BankUploadStatus {
-  bank_name: string;
-  account_type: string;
-  is_uploaded: boolean;
 }
 
 // Dashboard

@@ -47,15 +47,11 @@ class TestUploadStats:
             total_accounts=3,
             last_upload_date="2024-06-15",
             total_uploads=10,
-            total_duplicates_skipped=25,
-            duplicate_rate=4.8,
         )
         assert stats.total_transactions == 500
         assert stats.total_accounts == 3
         assert stats.last_upload_date == "2024-06-15"
         assert stats.total_uploads == 10
-        assert stats.total_duplicates_skipped == 25
-        assert stats.duplicate_rate == 4.8
 
     def test_last_upload_date_none(self) -> None:
         stats = UploadStats(
@@ -63,8 +59,6 @@ class TestUploadStats:
             total_accounts=0,
             last_upload_date=None,
             total_uploads=0,
-            total_duplicates_skipped=0,
-            duplicate_rate=0.0,
         )
         assert stats.last_upload_date is None
 
@@ -74,8 +68,6 @@ class TestUploadStats:
             total_accounts=0,
             last_upload_date=None,
             total_uploads=0,
-            total_duplicates_skipped=0,
-            duplicate_rate=0.0,
         )
         with pytest.raises(AttributeError):
             stats.total_transactions = 1  # type: ignore[misc]
@@ -91,14 +83,12 @@ class TestUploadHistoryEntry:
             account_type="credit",
             uploaded_at="2024-06-15 10:30:00",
             transactions_inserted=45,
-            duplicates_skipped=5,
         )
         assert entry.file_name == "citi.csv"
         assert entry.bank_name == "citi"
         assert entry.account_type == "credit"
         assert entry.uploaded_at == "2024-06-15 10:30:00"
         assert entry.transactions_inserted == 45
-        assert entry.duplicates_skipped == 5
 
     def test_frozen(self) -> None:
         entry = UploadHistoryEntry(
@@ -107,7 +97,6 @@ class TestUploadHistoryEntry:
             account_type="credit",
             uploaded_at="2024-06-15",
             transactions_inserted=0,
-            duplicates_skipped=0,
         )
         with pytest.raises(AttributeError):
             entry.file_name = "other.csv"  # type: ignore[misc]

@@ -17,13 +17,11 @@ class TestIngestionResult:
         r = IngestionResult(
             success=True, message="ok",
             transactions_processed=10,
-            transactions_inserted=8,
-            duplicates_skipped=2,
+            transactions_inserted=10,
         )
         assert r.success is True
         assert r.transactions_processed == 10
-        assert r.transactions_inserted == 8
-        assert r.duplicates_skipped == 2
+        assert r.transactions_inserted == 10
 
     def test_failure(self) -> None:
         r = IngestionResult(success=False, message="bad csv")
@@ -39,7 +37,6 @@ class TestUploadResult:
             success=True, message="uploaded",
             destination_path="/tmp/foo.csv",
             transactions_inserted=5,
-            duplicates_skipped=1,
         )
         assert r.success is True
         assert r.destination_path == "/tmp/foo.csv"

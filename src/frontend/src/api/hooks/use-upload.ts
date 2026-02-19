@@ -4,9 +4,7 @@ import apiClient from "../client";
 import type {
   UploadResult,
   UploadRequest,
-  UploadStats,
   ValidationResult,
-  BankUploadStatus,
 } from "../types";
 
 export function useAvailableBanks(accountType: string | undefined) {
@@ -19,28 +17,6 @@ export function useAvailableBanks(accountType: string | undefined) {
       return response.data;
     },
     enabled: !!accountType,
-  });
-}
-
-export function useUploadStatus() {
-  return useQuery({
-    queryKey: ["upload", "status"],
-    queryFn: async () => {
-      const response = await apiClient.get<BankUploadStatus[]>(
-        "/upload/status"
-      );
-      return response.data;
-    },
-  });
-}
-
-export function useUploadStats() {
-  return useQuery({
-    queryKey: ["upload", "stats"],
-    queryFn: async () => {
-      const response = await apiClient.get<UploadStats>("/upload/stats");
-      return response.data;
-    },
   });
 }
 

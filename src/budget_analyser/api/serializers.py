@@ -401,7 +401,6 @@ class IngestionResultSchema(BaseModel):
     message: str
     transactions_processed: int = 0
     transactions_inserted: int = 0
-    duplicates_skipped: int = 0
 
 
 class UploadResultSchema(BaseModel):
@@ -411,7 +410,6 @@ class UploadResultSchema(BaseModel):
     message: str
     destination_path: str | None = None
     transactions_inserted: int = 0
-    duplicates_skipped: int = 0
 
 
 class ValidationResultSchema(BaseModel):
@@ -430,8 +428,6 @@ class UploadStatsSchema(BaseModel):
     total_accounts: int = 0
     last_upload_date: str | None = None
     total_uploads: int = 0
-    total_duplicates_skipped: int = 0
-    duplicate_rate: float = 0.0
 
 
 class UploadHistoryEntrySchema(BaseModel):
@@ -442,7 +438,6 @@ class UploadHistoryEntrySchema(BaseModel):
     account_type: str
     uploaded_at: str
     transactions_inserted: int = 0
-    duplicates_skipped: int = 0
 
 
 # ===================================================================

@@ -30,7 +30,6 @@ class TestSaveUpload:
             bank_name="citi",
             account_type="credit",
             transactions_inserted=50,
-            duplicates_skipped=3,
         )
         history = repo.get_recent_history(limit=10)
         assert len(history) == 1
@@ -38,7 +37,6 @@ class TestSaveUpload:
         assert history[0].bank_name == "citi"
         assert history[0].account_type == "credit"
         assert history[0].transactions_inserted == 50
-        assert history[0].duplicates_skipped == 3
 
 
 class TestGetStats:
@@ -49,8 +47,6 @@ class TestGetStats:
     ) -> None:
         stats = repo.get_stats()
         assert stats.total_uploads == 0
-        assert stats.total_duplicates_skipped == 0
-        assert stats.duplicate_rate == 0.0
         assert stats.last_upload_date is None
         assert stats.total_accounts == 0
 
@@ -62,25 +58,18 @@ class TestGetStats:
             bank_name="citi",
             account_type="credit",
             transactions_inserted=50,
-            duplicates_skipped=5,
         )
         repo.save_upload(
             file_name="discover.csv",
             bank_name="discover",
             account_type="credit",
             transactions_inserted=30,
-            duplicates_skipped=10,
         )
 
         stats = repo.get_stats()
         assert stats.total_uploads == 2
-        assert stats.total_duplicates_skipped == 15
         assert stats.total_accounts == 2
         assert stats.last_upload_date is not None
-
-        # duplicate_rate = 15 / (80 + 15) * 100 = 15.8
-        expected_rate = round(15 / 95 * 100, 1)
-        assert stats.duplicate_rate == expected_rate
 
     def test_stats_same_bank_counts_as_one_account(
         self, repo: UploadHistoryRepository,
@@ -90,14 +79,12 @@ class TestGetStats:
             bank_name="citi",
             account_type="credit",
             transactions_inserted=20,
-            duplicates_skipped=0,
         )
         repo.save_upload(
             file_name="citi_feb.csv",
             bank_name="citi",
             account_type="credit",
             transactions_inserted=25,
-            duplicates_skipped=2,
         )
 
         stats = repo.get_stats()
@@ -122,14 +109,12 @@ class TestGetRecentHistory:
             bank_name="citi",
             account_type="credit",
             transactions_inserted=10,
-            duplicates_skipped=0,
         )
         repo.save_upload(
             file_name="second.csv",
             bank_name="discover",
             account_type="credit",
             transactions_inserted=20,
-            duplicates_skipped=1,
         )
 
         history = repo.get_recent_history(limit=10)
@@ -146,7 +131,6 @@ class TestGetRecentHistory:
                 bank_name="citi",
                 account_type="credit",
                 transactions_inserted=i * 10,
-                duplicates_skipped=0,
             )
 
         history = repo.get_recent_history(limit=3)

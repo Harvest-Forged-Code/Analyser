@@ -65,7 +65,6 @@ export default function UploadForm() {
         message: "Upload failed. Check the file and try again.",
         destination_path: null,
         transactions_inserted: 0,
-        duplicates_skipped: 0,
       });
     }
   };
@@ -175,9 +174,6 @@ export default function UploadForm() {
               <div className="flex gap-4 pt-2">
                 <Badge variant="default">
                   {uploadResult.transactions_inserted} transactions inserted
-                </Badge>
-                <Badge variant="secondary">
-                  {uploadResult.duplicates_skipped} duplicates skipped
                 </Badge>
               </div>
             )}
