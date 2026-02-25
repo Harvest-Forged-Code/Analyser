@@ -45,22 +45,32 @@ jobs:
                   f.write("should_release=false\n")
               exit(0)
 
+          # Read Major.Minor from pyproject.toml
+          toml_version = config["project"]["version"]
+          toml_parts = toml_version.split(".")
+          major = int(toml_parts[0])
+          minor = int(toml_parts[1]) if len(toml_parts) > 1 else 0
+          print(f"pyproject.toml Major.Minor: {major}.{minor}")
+
+          # Find latest tag in this Major.Minor series to determine patch
           try:
               result = subprocess.run(
-                  ["git", "describe", "--tags", "--abbrev=0"],
+                  ["git", "tag", "--list", f"v{major}.{minor}.*", "--sort=-version:refname"],
                   capture_output=True, text=True, check=True
               )
-              latest_tag = result.stdout.strip()
-              print(f"Latest tag: {latest_tag}")
+              matching_tags = [t.strip() for t in result.stdout.strip().splitlines() if t.strip()]
+              if matching_tags:
+                  latest_tag = matching_tags[0]
+                  patch = int(latest_tag.split(".")[-1])
+                  print(f"Latest tag for v{major}.{minor}.*: {latest_tag}")
+              else:
+                  latest_tag = f"v{major}.{minor}.0"
+                  patch = 0
+                  print(f"No tags found for v{major}.{minor}.*, starting patch from 0")
           except subprocess.CalledProcessError:
-              latest_tag = "v1.0.0"
-              print(f"No tags found, starting from: {latest_tag}")
-
-          version_str = latest_tag.lstrip("v")
-          parts = version_str.split(".")
-          major = int(parts[0]) if len(parts) > 0 else 1
-          minor = int(parts[1]) if len(parts) > 1 else 0
-          patch = int(parts[2]) if len(parts) > 2 else 0
+              latest_tag = f"v{major}.{minor}.0"
+              patch = 0
+              print(f"Error listing tags, starting patch from 0")
 
           new_patch = patch + 1
           new_version = f"{major}.{minor}.{new_patch}"
