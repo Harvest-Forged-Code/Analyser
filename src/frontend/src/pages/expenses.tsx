@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, formatPercentage } from "@/lib/utils";
+import { formatCurrency, formatPercentage, findDefaultMonth } from "@/lib/utils";
 import { EXPENSE_CHART_COLORS } from "@/lib/constants";
 import {
   BarChart,
@@ -53,13 +53,14 @@ export default function ExpensesPage() {
   const [selectedMonth, setSelectedMonth] = useState<string | undefined>(undefined);
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
 
-  // Set defaults when data loads
+  // Set defaults when data loads — prefer current month/year
   useMemo(() => {
     if (months && months.length > 0 && selectedMonth === undefined) {
-      setSelectedMonth(months[0]);
+      setSelectedMonth(findDefaultMonth(months));
     }
     if (availableYears.length > 0 && selectedYear === undefined) {
-      setSelectedYear(availableYears[0]);
+      const now = new Date().getFullYear();
+      setSelectedYear(availableYears.includes(now) ? now : availableYears[0]);
     }
   }, [months, availableYears, selectedMonth, selectedYear]);
 
@@ -212,7 +213,7 @@ export default function ExpensesPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CategoryBreakdownTable data={monthData} search={breakdownSearch} />
+                  <CategoryBreakdownTable data={monthData} search={breakdownSearch} period={selectedMonth} />
                 </CardContent>
               </Card>
 

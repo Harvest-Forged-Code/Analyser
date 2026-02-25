@@ -15,6 +15,7 @@ import CombinedChart from "@/components/earnings/combined-chart";
 import BreakdownTable from "@/components/earnings/breakdown-table";
 import TransactionModal from "@/components/earnings/transaction-modal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { findDefaultMonth } from "@/lib/utils";
 
 export default function EarningsPage() {
   const { data: months, isLoading: monthsLoading } = useEarningsMonths();
@@ -32,13 +33,14 @@ export default function EarningsPage() {
   const [selectedMonth, setSelectedMonth] = useState<string | undefined>(undefined);
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
 
-  // Set defaults when data loads
+  // Set defaults when data loads — prefer current month/year
   useMemo(() => {
     if (months && months.length > 0 && selectedMonth === undefined) {
-      setSelectedMonth(months[0]);
+      setSelectedMonth(findDefaultMonth(months));
     }
     if (availableYears.length > 0 && selectedYear === undefined) {
-      setSelectedYear(availableYears[0]);
+      const now = new Date().getFullYear();
+      setSelectedYear(availableYears.includes(now) ? now : availableYears[0]);
     }
   }, [months, availableYears, selectedMonth, selectedYear]);
 

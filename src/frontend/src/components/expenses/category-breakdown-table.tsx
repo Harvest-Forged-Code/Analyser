@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -8,7 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatPercentage, cn } from "@/lib/utils";
+import { useExpensesMonthTransactions } from "@/api/hooks/use-expenses";
 
 interface ExpenseRow {
   category: string;
@@ -25,10 +27,12 @@ interface CategoryGroup {
 interface CategoryBreakdownTableProps {
   data: Record<string, unknown>[];
   search?: string;
+  period?: string;
 }
 
-export default function CategoryBreakdownTable({ data, search = "" }: CategoryBreakdownTableProps) {
+export default function CategoryBreakdownTable({ data, search = "", period }: CategoryBreakdownTableProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [expandedSubs, setExpandedSubs] = useState<Record<string, boolean>>({});
 
   const grandTotal = useMemo(
     () => data.reduce((sum, row) => sum + ((row.amount as number) || 0), 0),
@@ -76,6 +80,9 @@ export default function CategoryBreakdownTable({ data, search = "" }: CategoryBr
   const toggle = (category: string) =>
     setExpanded((prev) => ({ ...prev, [category]: !prev[category] }));
 
+  const toggleSub = (key: string) =>
+    setExpandedSubs((prev) => ({ ...prev, [key]: !prev[key] }));
+
   return (
     <div className="rounded-md border">
         <Table>
@@ -106,6 +113,9 @@ export default function CategoryBreakdownTable({ data, search = "" }: CategoryBr
                     grandTotal={grandTotal}
                     categoryPct={pct}
                     onToggle={() => toggle(group.category)}
+                    expandedSubs={expandedSubs}
+                    onToggleSub={toggleSub}
+                    period={period}
                   />
                 );
               })
@@ -122,12 +132,18 @@ function CategoryGroupRows({
   grandTotal,
   categoryPct,
   onToggle,
+  expandedSubs,
+  onToggleSub,
+  period,
 }: {
   group: CategoryGroup;
   isOpen: boolean;
   grandTotal: number;
   categoryPct: number;
   onToggle: () => void;
+  expandedSubs: Record<string, boolean>;
+  onToggleSub: (key: string) => void;
+  period?: string;
 }) {
   return (
     <>
@@ -161,22 +177,150 @@ function CategoryGroupRows({
       {/* Expanded sub-category rows */}
       {isOpen &&
         group.subCategories.map((sub) => {
+          const subKey = `${group.category}::${sub.sub_category}`;
           const subPct = grandTotal > 0 ? (sub.amount / grandTotal) * 100 : 0;
+          const isSubOpen = expandedSubs[subKey] ?? false;
           return (
-            <TableRow key={`${group.category}-${sub.sub_category}`} className="bg-muted/30">
-              <TableCell />
-              <TableCell className="pl-10 text-muted-foreground">
-                {sub.sub_category}
-              </TableCell>
-              <TableCell className="text-right">
-                {formatCurrency(sub.amount)}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground">
-                {formatPercentage(subPct)}
-              </TableCell>
-            </TableRow>
+            <SubCategoryRow
+              key={subKey}
+              category={group.category}
+              subCategory={sub.sub_category}
+              amount={sub.amount}
+              pct={subPct}
+              isOpen={isSubOpen}
+              onToggle={() => onToggleSub(subKey)}
+              period={period}
+            />
           );
         })}
+    </>
+  );
+}
+
+function SubCategoryRow({
+  category,
+  subCategory,
+  amount,
+  pct,
+  isOpen,
+  onToggle,
+  period,
+}: {
+  category: string;
+  subCategory: string;
+  amount: number;
+  pct: number;
+  isOpen: boolean;
+  onToggle: () => void;
+  period?: string;
+}) {
+  return (
+    <>
+      <TableRow
+        className="bg-muted/30 cursor-pointer hover:bg-muted/50"
+        onClick={onToggle}
+      >
+        <TableCell className="px-2">
+          <ChevronRight
+            className={cn(
+              "ml-4 h-3.5 w-3.5 text-muted-foreground transition-transform",
+              isOpen && "rotate-90",
+            )}
+          />
+        </TableCell>
+        <TableCell className="pl-10 text-muted-foreground">
+          {subCategory}
+        </TableCell>
+        <TableCell className="text-right">
+          {formatCurrency(amount)}
+        </TableCell>
+        <TableCell className="text-right text-muted-foreground">
+          {formatPercentage(pct)}
+        </TableCell>
+      </TableRow>
+      {isOpen && period && (
+        <SubCategoryTransactions
+          period={period}
+          category={category}
+          subCategory={subCategory}
+        />
+      )}
+    </>
+  );
+}
+
+function SubCategoryTransactions({
+  period,
+  category,
+  subCategory,
+}: {
+  period: string;
+  category: string;
+  subCategory: string;
+}) {
+  const { data: transactions, isLoading } = useExpensesMonthTransactions(
+    period,
+    category,
+    subCategory,
+  );
+
+  if (isLoading) {
+    return (
+      <TableRow className="bg-muted/15">
+        <TableCell colSpan={4} className="py-3 text-center">
+          <Loader2 className="inline h-4 w-4 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">Loading transactions...</span>
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  if (!transactions || transactions.length === 0) {
+    return (
+      <TableRow className="bg-muted/15">
+        <TableCell colSpan={4} className="py-3 text-center text-sm text-muted-foreground">
+          No transactions found.
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  return (
+    <>
+      {/* Transaction header */}
+      <TableRow className="bg-muted/15">
+        <TableCell />
+        <TableCell className="pl-14 text-xs font-medium text-muted-foreground" colSpan={3}>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              {transactions.length} transaction{transactions.length !== 1 ? "s" : ""}
+            </Badge>
+          </div>
+        </TableCell>
+      </TableRow>
+      {transactions.map((txn, idx) => {
+        const txnDate = txn.transaction_date as string;
+        const txnDesc = txn.description as string;
+        const txnAmount = Math.abs(txn.amount as number);
+        return (
+          <TableRow
+            key={`txn-${txnDate}-${idx}`}
+            className="bg-muted/15 text-sm"
+          >
+            <TableCell />
+            <TableCell className="pl-14">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-foreground">{txnDesc}</span>
+                <span className="text-xs text-muted-foreground">{txnDate}</span>
+              </div>
+            </TableCell>
+            <TableCell className="text-right">
+              {formatCurrency(txnAmount)}
+            </TableCell>
+            <TableCell />
+          </TableRow>
+        );
+      })}
     </>
   );
 }
