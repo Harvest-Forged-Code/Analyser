@@ -1,3 +1,6 @@
+# Claude Code — pre-commit security clearance token (ephemeral, never commit)
+.claude/.security-cleared
+
 # macOS
 .DS_Store
 **/.DS_Store

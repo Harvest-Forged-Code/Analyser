@@ -37,6 +37,6 @@ export function findDefaultMonth(months: string[]): string | undefined {
   const now = new Date();
   const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   if (months.includes(current)) return current;
-  // Fall back to latest available month (last after sort)
+  // Fall back to the latest available month (last after sort)
     return [...months].sort().slice(-1)[0];
 }
