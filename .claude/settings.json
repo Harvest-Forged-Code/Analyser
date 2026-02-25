@@ -1,0 +1,44 @@
+{
+  "enabledMcpjsonServers": ["gitkraken"],
+  "enabledPlugins": {
+    "playwright@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-check-update.js"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|mcp__gitkraken__git_add_or_commit|mcp__github__push_files|mcp__github__create_or_update_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-commit-security.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gsd-context-monitor.js"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node .claude/hooks/gsd-statusline.js"
+  }
+}

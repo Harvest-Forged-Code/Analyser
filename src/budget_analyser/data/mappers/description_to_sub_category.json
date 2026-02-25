@@ -10,7 +10,12 @@
     "PAYMENT TO CHASE CARD",
     "DISCOVER         E-PAYMENT",
     "WELLS FARGO CARD BILTCRDCRD",
-    "WF Credit Card   AUTO PAY"
+    "WF Credit Card   AUTO PAY",
+    "CHASE CREDIT CRD EPAY ONUS  7383624292      WEB ID: 5760039224",
+    "ORIG CO NAME:APPLECARD GSBANK CO ENTRY DESCR:PAYMENT",
+    "ORIG CO NAME:CITI CARD ONLINE CO ENTRY DESCR:PAYMENT",
+    "ORIG CO NAME:DISCOVER         CO ENTRY DESCR:E-PAYMENT",
+    "ORIG CO NAME:WELLS FARGO CARD CO ENTRY DESCR:CCPYMT"
   ],
   "payment_confirmations": [
     "ONLINE PAYMENT, THANK YOU",
@@ -24,23 +29,29 @@
     "Payment Thank You - Web"
   ],
   "Remittance": [
-    "RIAMONEYTRANSFER"
+    "RIAMONEYTRANSFER",
+    "Remitly United S PAYMENTS",
+    "Rebtel 467-223155574CA"
   ],
   "House-Rent": [
     "BPS*BILT REWARDS B1 NEW YORK NY",
     "BPS*BILT RENT NEW YORK NY",
     "RELIANT PARKING RELIANTPARKINCA",
     "RPS*Griffis South B RD",
-    "RPS*Griffis South B CD 800-7040154 CO"
+    "RPS*Griffis South B CD"
   ],
   "Utilities": [
     "Abi HO",
     "PG&E/EZ-PAY OAKLAND CA",
     "COMCAST-XFINITY  CABLE SVCS"
   ],
-  "Medical": [
+  "Healthcare": [
     "CVS/PHARMACY",
-    "PAMF 3200 KEARNEY ST MF FREMONT CA"
+    "PAMF 3200 KEARNEY ST MF FREMONT CA",
+    "ACUPUNCTURE",
+    "HARMONY THERAPY",
+    "ARII NGUYEN O.D. INC.",
+    "KAISER PHARM 161"
   ],
   "Groceries": [
     "INDIA METRO HYPERMARKET",
@@ -57,7 +68,16 @@
     "INDIA CASH AND CARRY",
     "FRED-MEYER",
     "APNI MANDI",
-    "LUCKY #712 FREMONT"
+    "LUCKY #712 FREMONT",
+    "WM SUPERCENTER #5611 PLEASANTON CA",
+    "SQ *VUE PRODUCE",
+    "SQ *KPOP 1004",
+    "SQ *RAINBOW ORCHARDS",
+    "SQ *E&amp;H FARMS",
+    "SQ *J&amp;J RAMOS FARMS",
+    "SAVEMART #71 FRESNO",
+    "SHOPPERS DRUG MART #94",
+    "NEW INDIA BAZAR"
   ],
   "Gas": [
     "gas",
@@ -68,7 +88,8 @@
   "Maintenance": [
     "SUBARU",
     "AUTO SPA",
-    "PREMIERCANORTH"
+    "PREMIERCANORTH",
+    "BLOSSOM VALLEY COLLISION"
   ],
   "Insurance": [
     "AAA MILPITAS"
@@ -76,12 +97,15 @@
   "Grooming": [
     "GREAT CLIPS",
     "INDIANS BARBER INC",
-    "MM BARBAR SHOP AND HAIR"
+    "MM BARBAR SHOP AND HAIR",
+    "BATH & BODY WORKS 4366",
+    "BATH &amp; BODY WORKS 4366"
   ],
-  "Growth": [
+  "Education": [
     "UDEMY",
     "LEETCODE",
-    "COURSERA"
+    "COURSERA",
+    "TWO WHEEL SAFETY TRAINING"
   ],
   "Subscriptions": [
     "MICROSOFT*MICROSOFT",
@@ -94,9 +118,11 @@
     "JetBrains Americas INC",
     "Costco Annual Membership Renewal",
     "CLEAR  *clearme.com",
-    "CALIFORNIA PURE WATER"
+    "CALIFORNIA PURE WATER",
+    "AMZN Mktp US*RW56T0TU2",
+    "NETFLIX.COM"
   ],
-  "Restaurants": [
+  "Dining": [
     "RESTAURANT",
     "cafe",
     "COFFEE",
@@ -159,7 +185,19 @@
     "MILAN SWEET CENTER",
     "OBU RAMEN HOUSE SAN JOSE CA",
     "TST*ANJAPAR",
-    "TORTAS Y TACOS MI PEQU"
+    "TORTAS Y TACOS MI PEQU",
+    "MANCINIS - MIL37 MILPITAS CAAPPLE PAY ENDING IN 2876",
+    "XING FU TANG",
+    "UBER   *EATS",
+    "TST* ANJAPAR MILPITAS",
+    "TST* PARIS BAGUETTE - MIL",
+    "TST* MYLAPORE - MILPITAS",
+    "RAJDHANI SWEETS",
+    "PANERA BREAD #204481 P",
+    "MILAN SWEETS CENTER",
+    "MCDONALD'S #4397 MILTON CA",
+    "FENG CHA",
+    "OBU RAMEN HOUSE"
   ],
   "Travel": [
     "LYFT",
@@ -168,20 +206,24 @@
     "TRAVEL GUARD GROUP INC HTTPS//WWW.UNWI",
     "CL *Chase Travel",
     "SINGAPOREAIR",
-    "FASTRAK CSC"
+    "FASTRAK CSC",
+    "UNITED AIR 1644045537934CONTINENTAL CANAME: SIVAMOORTH/ECONOMY P DEPART:05/28/2024  TO XXX: XX: CLASS:X : STOP:   TO XXX: XX: CLASS:X : STOP:   TO XXX: XX: CLASS:X : STOP:  YYZ TO SFO: AC: CLASS:G : STOP:",
+    "UBER* TRIP",
+    "LUFTHANSA 2202206051674NEW YORK NYNAME: SIVAMOORTHY/PRABHUKU DEPART:05/28/2024  TO XXX: XX: CLASS:X : STOP:   TO XXX: XX: CLASS:X : STOP:   TO BLR: LH: CLASS:T : STOP:  SFO TO FRA: LH: CLASS:T : STOP:",
+    "InterGlobe Aviation LimitBANGALORE IN"
   ],
-  "Additional_charges": [
+  "Fees": [
     "Interest",
-    "NAYAX AIR "
+    "NAYAX AIR ",
+    "CSC SERVICEWORK"
   ],
   "Cash_out": [
     "Zelle payment to",
     "ATM WITHDRAWAL",
-    "PAYPAL *SCIEDUPRESS"
-  ],
-  "Mistake": [
-    "ACUPUNCTURE",
-    "HARMONY THERAPY"
+    "PAYPAL *SCIEDUPRESS",
+    "CLEAR LAKE SPA MILPITAS CA",
+    "WITHDRAWAL 03/28",
+    "OCEAN SPA MILPITAS CA"
   ],
   "Shopping": [
     "LENSCRAFTERS",
@@ -195,20 +237,29 @@
     "IKEA",
     "MACYS VALLEY FAIR",
     "MARSHALLS ",
-    "MICRO CENTER"
+    "MICRO CENTER",
+    "FEDEX",
+    "PETSMART # 0070",
+    "HCM*US CRICKET STORE",
+    "KHOOBSURAT SAREE PALACE",
+    "DECKERS*HOKA ONE ONE 866-491-3125 CA",
+    "CITIZEN LIVERMORE",
+    "WH SMITH SINGAPORE SINGAPORE SG",
+    "REI #22 SARATOGA",
+    "Ghirardelli Square"
   ],
   "Salary": [
     "Western Digital  PAYROLL",
-    "SANDISK TECHNOLO PAYROLL"
+    "SANDISK TECHNOLO PAYROLL",
+    "WESTERN DIGITAL  DIRECT-PAY                 PPD ID: 2242176753"
   ],
   "Refunded_money": [
     "Zelle payment from"
   ],
   "Donation": [
-    "GoFundMe",
-    "OFFICETIMELINE"
+    "GoFundMe"
   ],
-  "Others_income": [
+  "Other_Incomes": [
     "TEMU.com",
     "ATM CASH DEPOSIT",
     "APPLE GS SAVINGS TRANSFER",
@@ -216,27 +267,6 @@
     "SANDISK STORAGE  DIRECT-PAY",
     "MSPBNA           ACH TRNSFR                 PPD ID: 1391321258",
     "REMOTE ONLINE DEPOSIT #          1"
-  ],
-  "Trip-Rental": [
-    "SFO PARKING",
-    "AIRBNB",
-    "ALAMO RENT-A-CAR",
-    "ALAMO TOLL ",
-    "BUDGET CAR AND TRUCK REN",
-    "BUDGET RENT",
-    "ENTERPRISE RENT-A-CAR",
-    "HOLIDAY INN EXP & SUITES",
-    "HILTON GARDEN INN",
-    "HYATT",
-    "LAZ PARKING"
-  ],
-  "Entertainment": [
-    "FANDANGO",
-    "CINEMARK",
-    "TOPGOLF",
-    "THE MYSTERY SPOT",
-    "BOWLERO",
-    "DAVE &amp; BUSTERS "
   ],
   "Vacation": [
     "ALCATRAZ CRUISES",
@@ -255,37 +285,61 @@
     "EL CAMPESINO",
     "CTLP*EAS Systems",
     "76 - GRANTS PASS UNION",
-    "SQ *J&amp;J RAMOS FARMS",
+    "SQ *J&J RAMOS FARMS",
     "PIKE PLACE MARKET PDA",
     "DUNKIN T1 D26 NORTH LA",
     "HUBS FIVE & TEN FREMONT CA",
     "TJMAXX #0404 FREMONT CA",
     "TCB*MTA METER MTA MCK",
-    "Store",
+    "OFFICETIMELINE",
     "PY *BEACH BREAK BY MARIAN",
     "TST* SAWASDEE SOQUEL CA",
     "CITY OF CAPITOLA 8314757300 CA",
     "GDP*21BC",
-    "PIKE&amp;PINE ST2275"
+    "PIKE&PINE ST2275",
+    "SFO PARKING",
+    "AIRBNB",
+    "ALAMO RENT-A-CAR",
+    "ALAMO TOLL ",
+    "BUDGET CAR AND TRUCK REN",
+    "BUDGET RENT",
+    "ENTERPRISE RENT-A-CAR",
+    "HOLIDAY INN EXP & SUITES",
+    "HILTON GARDEN INN",
+    "HYATT",
+    "LAZ PARKING",
+    "1 HOTEL TORONTO F & B TORONTO CA PHONE NUMBER:  FOLIO NUMBER:  ARRIVE:  DEPART:",
+    "AFRICAN LION SAFARI & GAMCAMBRIDGE CA",
+    "AIR CANADA  0144266737295",
+    "ALAMO CANADA C2AL MISSISSAUGA CA",
+    "BLUE WATER BRIDGE (CAN POINT EDWARD CA",
+    "BLUE WATER BRIDGE TOLL PORT HURON MI",
+    "CANADA AUTO PARKS TORONTO CA",
+    "CANADA WIDE PARKING TORONTO CA",
+    "CHARMINAR LONDON CA",
+    "CN TOWER TICKETING TORONTO CA",
+    "CITY OF SANTA CRUZ LOC",
+    "UDUPI DOSA VEGETARIAN LE LONDON CA",
+    "TST-Planta-Queen Toronto CA",
+    "OH BOMBAY TORONTO CA",
+    "IMPARK00090322A TORONTO CA",
+    "HILTON TORONTO TORONTO CA",
+    "MOTEL 6 LONDON LONDON CA PHONE NUMBER:  FOLIO NUMBER:  ARRIVE:  DEPART:"
   ],
-  "OTP": [
-    "USCIS PHOENIX LOCKBOX",
-    "FEDEX",
-    "FD *CA DMV",
-    "BLOSSOM VALLEY COLLISION",
-    "HCM*US CRICKET STORE",
-    "HRBLOCK RETAIL",
-    "KHOOBSURAT SAREE PALACE",
-    "TWO WHEEL SAFETY TRAINING",
-    "ROBINHOOD        DEBITS     563498831       WEB ID: 5326394001",
-    "Online RealTime payment to Robinhood Securities transaction#: 6325457 REFERENCE#:7006325457RX 05/23",
-    "MANCINIS - MIL37 MILPITAS CAAPPLE PAY ENDING IN 2876",
-    "PETSMART # 0070"
+  "Entertainment": [
+    "FANDANGO",
+    "CINEMARK",
+    "TOPGOLF",
+    "THE MYSTERY SPOT",
+    "BOWLERO",
+    "DAVE &amp; BUSTERS "
   ],
-  "TAX_Payments": [
+  "Taxes": [
     "IRS",
     "USATAXPYMT",
-    "FRANCHISE TAX BO PAYMENTS                   PPD ID: 1282532045"
+    "FRANCHISE TAX BO PAYMENTS                   PPD ID: 1282532045",
+    "HRBLOCK RETAIL",
+    "FRANCHISE TAX BD CASTTAXRFD                 PPD ID: 9282532045"
   ],
   "Farmers_Markets": [
     "SQ *LUJANFARM",
@@ -293,5 +347,14 @@
     "SQ *SF GOURMET FOOD LLC",
     "SQ *BECKMANN'S OLD WORLD",
     "SQ *MAGOWAN'S INFINITE MI"
+  ],
+  "Government": [
+    "USCIS PHOENIX LOCKBOX",
+    "FD *CA DMV"
+  ],
+  "Investments": [
+    "ROBINHOOD        DEBITS     ",
+    "Online RealTime payment to Robinhood Securities transaction#:",
+    "REAL TIME TRANSFER RECD FROM ABA/CONTR BNK-021000021  FROM: Robinhood Securities"
   ]
 }

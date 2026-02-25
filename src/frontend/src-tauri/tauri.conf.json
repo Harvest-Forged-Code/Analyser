@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicegui-org/nicegui/main/examples/fastapi/tauri/src-tauri/../node_modules/@tauri-apps/tauri/schema.json",
+  "productName": "Budget Analyser",
+  "version": "1.0.0",
+  "identifier": "com.budgetanalyser.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Budget Analyser",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 768,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
+  }
+}

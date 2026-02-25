@@ -1,3 +1,16 @@
+# Claude Code — pre-commit security clearance token (ephemeral, never commit)
+.claude/.security-cleared
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Backup files
+*.bak
+
+# Local tool config
+.playwright-mcp/
+
 # pycharm
 .idea
 
@@ -20,8 +33,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/

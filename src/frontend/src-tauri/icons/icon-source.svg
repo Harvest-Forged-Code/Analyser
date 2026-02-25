@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a73e8;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0d47a1;stop-opacity:1"/>
+    </linearGradient>
+    <!-- Wallet body gradient -->
+    <linearGradient id="walletGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#e8eaf6;stop-opacity:1"/>
+    </linearGradient>
+    <!-- Wallet flap gradient -->
+    <linearGradient id="flapGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f5f5f5;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#cfd8dc;stop-opacity:1"/>
+    </linearGradient>
+    <!-- Card gradient -->
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4caf50;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#2e7d32;stop-opacity:1"/>
+    </linearGradient>
+    <!-- Coin gradient -->
+    <radialGradient id="coinGrad" cx="45%" cy="40%" r="50%">
+      <stop offset="0%" style="stop-color:#ffd54f;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#f9a825;stop-opacity:1"/>
+    </radialGradient>
+    <!-- Shadow -->
+    <filter id="shadow" x="-5%" y="-5%" width="115%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#0d47a1" flood-opacity="0.3"/>
+    </filter>
+    <filter id="innerShadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#000000" flood-opacity="0.15"/>
+    </filter>
+    <filter id="coinShadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect x="0" y="0" width="1024" height="1024" rx="220" ry="220" fill="url(#bgGrad)"/>
+
+  <!-- Subtle pattern overlay for depth -->
+  <rect x="0" y="0" width="1024" height="1024" rx="220" ry="220" fill="url(#bgGrad)" opacity="0.05"/>
+
+  <!-- Wallet body (main rectangle) -->
+  <g filter="url(#shadow)">
+    <rect x="182" y="340" width="660" height="400" rx="40" ry="40" fill="url(#walletGrad)"/>
+  </g>
+
+  <!-- Wallet interior line -->
+  <line x1="222" y1="480" x2="802" y2="480" stroke="#b0bec5" stroke-width="2" stroke-dasharray="8,4" opacity="0.5"/>
+
+  <!-- Card peeking from top-left of wallet -->
+  <g filter="url(#innerShadow)">
+    <rect x="220" y="280" width="320" height="200" rx="20" ry="20" fill="url(#cardGrad)" transform="rotate(-5, 380, 380)"/>
+    <!-- Card chip -->
+    <rect x="280" y="340" width="50" height="38" rx="6" ry="6" fill="#c8e6c9" opacity="0.7" transform="rotate(-5, 380, 380)"/>
+    <!-- Card lines -->
+    <rect x="280" y="410" width="180" height="8" rx="4" fill="#ffffff" opacity="0.3" transform="rotate(-5, 380, 380)"/>
+    <rect x="280" y="430" width="120" height="8" rx="4" fill="#ffffff" opacity="0.2" transform="rotate(-5, 380, 380)"/>
+  </g>
+
+  <!-- Wallet flap (top fold) -->
+  <path d="M182,420 L182,380 C182,358 200,340 222,340 L802,340 C824,340 842,358 842,380 L842,440 C842,440 792,410 512,410 C232,410 182,420 182,420 Z"
+        fill="url(#flapGrad)" opacity="0.6"/>
+
+  <!-- Wallet clasp/button -->
+  <circle cx="700" cy="540" r="32" fill="#90a4ae" opacity="0.4"/>
+  <circle cx="700" cy="540" r="22" fill="#78909c" opacity="0.5"/>
+  <circle cx="700" cy="540" r="14" fill="#546e7a" opacity="0.3"/>
+
+  <!-- Bills/cash peeking from top -->
+  <g opacity="0.85">
+    <rect x="340" y="300" width="280" height="60" rx="8" ry="8" fill="#66bb6a" transform="rotate(-2, 480, 330)"/>
+    <rect x="370" y="310" width="40" height="40" rx="20" fill="#43a047" opacity="0.5" transform="rotate(-2, 480, 330)"/>
+    <text x="392" y="340" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" opacity="0.6" text-anchor="middle" transform="rotate(-2, 480, 330)">$</text>
+  </g>
+
+  <!-- Coin on the right side -->
+  <g filter="url(#coinShadow)">
+    <circle cx="740" cy="310" r="72" fill="url(#coinGrad)"/>
+    <circle cx="740" cy="310" r="60" fill="none" stroke="#f57f17" stroke-width="3" opacity="0.4"/>
+    <circle cx="740" cy="310" r="52" fill="none" stroke="#f9a825" stroke-width="1.5" opacity="0.3"/>
+    <text x="740" y="330" font-family="Georgia, serif" font-size="60" font-weight="bold" fill="#e65100" text-anchor="middle" opacity="0.7">$</text>
+  </g>
+
+  <!-- Wallet stitching detail -->
+  <rect x="202" y="600" width="620" height="3" rx="1.5" fill="#90a4ae" opacity="0.2"/>
+
+  <!-- Bottom wallet card slots hint -->
+  <g opacity="0.15">
+    <rect x="240" y="520" width="200" height="12" rx="6" fill="#546e7a"/>
+    <rect x="240" y="548" width="150" height="12" rx="6" fill="#546e7a"/>
+    <rect x="240" y="576" width="170" height="12" rx="6" fill="#546e7a"/>
+  </g>
+
+  <!-- Bottom accent line -->
+  <rect x="240" y="680" width="544" height="4" rx="2" fill="#ffffff" opacity="0.15"/>
+</svg>
