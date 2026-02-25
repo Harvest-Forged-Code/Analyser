@@ -83,3 +83,14 @@ export function useSaveConfig() {
     },
   });
 }
+
+export function useAppVersion() {
+  return useQuery({
+    queryKey: ["app", "version"],
+    queryFn: async () => {
+      const response = await apiClient.get<{ version: string }>("/version");
+      return response.data.version;
+    },
+    staleTime: Infinity,
+  });
+}
