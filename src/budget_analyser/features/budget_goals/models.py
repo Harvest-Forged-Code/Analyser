@@ -372,18 +372,27 @@ class BudgetGoalsModel:
     ) -> bool:
         """Delete a budget goal.
 
+        When year_month is "ALL", deletes all rows for the category.
+        Otherwise deletes only the specific month's row.
+
         Args:
             category: The expense category name.
-            year_month: Specific month or "ALL".
+            year_month: Specific month ("YYYY-MM") or "ALL" for all months.
 
         Returns:
-            True if a goal was deleted.
+            True if any goals were deleted.
         """
         with get_connection(self._db_path) as conn:
-            cursor = conn.execute(f"""
-                DELETE FROM {self.BUDGETS_TABLE}
-                WHERE category = ? AND year_month = ?
-            """, (category, year_month))
+            if year_month == "ALL":
+                cursor = conn.execute(f"""
+                    DELETE FROM {self.BUDGETS_TABLE}
+                    WHERE category = ?
+                """, (category,))
+            else:
+                cursor = conn.execute(f"""
+                    DELETE FROM {self.BUDGETS_TABLE}
+                    WHERE category = ? AND year_month = ?
+                """, (category, year_month))
             conn.commit()
             deleted = cursor.rowcount > 0
 
@@ -546,18 +555,27 @@ class BudgetGoalsModel:
     ) -> bool:
         """Delete an earnings goal.
 
+        When year_month is "ALL", deletes all rows for the sub-category.
+        Otherwise deletes only the specific month's row.
+
         Args:
             sub_category: The earnings sub-category name.
-            year_month: Specific month or "ALL".
+            year_month: Specific month ("YYYY-MM") or "ALL" for all months.
 
         Returns:
-            True if a goal was deleted.
+            True if any goals were deleted.
         """
         with get_connection(self._db_path) as conn:
-            cursor = conn.execute(f"""
-                DELETE FROM {self.EARNINGS_GOALS_TABLE}
-                WHERE sub_category = ? AND year_month = ?
-            """, (sub_category, year_month))
+            if year_month == "ALL":
+                cursor = conn.execute(f"""
+                    DELETE FROM {self.EARNINGS_GOALS_TABLE}
+                    WHERE sub_category = ?
+                """, (sub_category,))
+            else:
+                cursor = conn.execute(f"""
+                    DELETE FROM {self.EARNINGS_GOALS_TABLE}
+                    WHERE sub_category = ? AND year_month = ?
+                """, (sub_category, year_month))
             conn.commit()
             deleted = cursor.rowcount > 0
 

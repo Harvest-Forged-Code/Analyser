@@ -43,7 +43,7 @@ export function useDeleteBudget() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (category: string) =>
-      apiClient.delete(`/budget-goals/${category}`).then((r) => r.data),
+      apiClient.delete("/budget-goals", { params: { category } }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["budget-goals"] });
       queryClient.invalidateQueries({ queryKey: ["budget-goals", "summary"] });
@@ -94,7 +94,7 @@ export function useDeleteEarningsGoal() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (subCategory: string) =>
-      apiClient.delete(`/earnings-goals/${subCategory}`).then((r) => r.data),
+      apiClient.delete("/budget-goals/earnings", { params: { sub_category: subCategory } }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["earnings-goals"] });
       queryClient.invalidateQueries({ queryKey: ["earnings-goals", "summary"] });
@@ -186,6 +186,7 @@ export function useSetBudgetForYear() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["budget-goals"] });
       queryClient.invalidateQueries({ queryKey: ["budget-goals", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-goals", "year"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
@@ -199,6 +200,7 @@ export function useSetEarningsGoalForYear() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["earnings-goals"] });
       queryClient.invalidateQueries({ queryKey: ["earnings-goals", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings-goals", "year"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
