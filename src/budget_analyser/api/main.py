@@ -6,6 +6,7 @@ that wraps existing feature controllers.
 
 from __future__ import annotations
 
+import importlib.metadata
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
@@ -62,6 +63,12 @@ def create_app() -> FastAPI:
     def health() -> dict[str, str]:
         """Return a simple health-check response."""
         return {"status": "healthy"}
+
+    # ----- version endpoint -----
+    @app.get("/api/version")
+    def app_version() -> dict[str, str]:
+        """Return the installed package version."""
+        return {"version": importlib.metadata.version("budget-analyser")}
 
     # ----- register all routers -----
     app.include_router(auth.router)
