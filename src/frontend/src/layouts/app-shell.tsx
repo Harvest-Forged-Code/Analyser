@@ -17,6 +17,7 @@ import {
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useAppVersion } from "@/api/hooks/use-settings";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -33,6 +34,7 @@ export default function AppShell() {
   const { isSidebarCollapsed, toggleSidebar } = useNavigationStore();
   const { theme, toggleTheme } = useThemeStore();
   const { logout } = useAuthStore();
+  const { data: version } = useAppVersion();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -51,11 +53,16 @@ export default function AppShell() {
       >
         {/* Logo */}
         <div className="flex h-16 items-center border-b border-sidebar-border px-4">
-          <Wallet className="h-6 w-6 text-sidebar-primary" />
+          <Wallet className="h-6 w-6 text-sidebar-primary flex-shrink-0" />
           {!isSidebarCollapsed && (
-            <span className="ml-3 text-lg font-semibold text-sidebar-foreground">
-              Budget Analyser
-            </span>
+            <div className="ml-3 flex flex-col min-w-0">
+              <span className="text-lg font-semibold text-sidebar-foreground leading-tight">
+                Budget Analyser
+              </span>
+              <span className="text-xs text-sidebar-foreground/50 leading-tight">
+                {version ? `v${version}` : ""}
+              </span>
+            </div>
           )}
         </div>
 
