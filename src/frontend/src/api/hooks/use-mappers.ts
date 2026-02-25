@@ -14,11 +14,17 @@ export function useUnmappedTransactions() {
   });
 }
 
+export interface UnmappedDescription {
+  description: string;
+  total_amount: number;
+  accounts: string[];
+}
+
 export function useUnmappedDescriptions() {
   return useQuery({
     queryKey: ["mappers", "unmapped-descriptions"],
     queryFn: async () => {
-      const response = await apiClient.get<string[]>(
+      const response = await apiClient.get<UnmappedDescription[]>(
         "/mappers/unmapped-descriptions"
       );
       return response.data;

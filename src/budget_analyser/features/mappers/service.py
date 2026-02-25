@@ -154,6 +154,39 @@ class MapperService:
         out.sort(key=lambda s: s.lower())
         return out
 
+    def list_unmapped_descriptions_with_details(self) -> list[dict]:
+        """Return unique unmapped descriptions with amount and account info.
+
+        Groups unmapped transactions by description and aggregates total
+        amount and unique source accounts for each description.
+
+        Returns:
+            Sorted list of dicts with keys ``description``,
+            ``total_amount``, and ``accounts``.
+        """
+        df = self.list_unmapped_transactions()
+        if df.empty:
+            return []
+        results: list[dict] = []
+        for desc, group in df.groupby("description", sort=False):
+            total_amount = (
+                round(float(group["amount"].sum()), 2)
+                if "amount" in group.columns
+                else 0.0
+            )
+            accounts: list[str] = (
+                sorted(group["from_account"].dropna().astype(str).unique().tolist())
+                if "from_account" in group.columns
+                else []
+            )
+            results.append({
+                "description": str(desc),
+                "total_amount": total_amount,
+                "accounts": accounts,
+            })
+        results.sort(key=lambda x: x["description"].lower())
+        return results
+
     def list_sub_categories(self) -> list[str]:
         """Return sorted list of sub-categories.
 

@@ -8,6 +8,7 @@ import {
   useCreateSubCategory,
   useSubCategoryMapping,
   useCashflowMapping,
+  type UnmappedDescription,
 } from "@/api/hooks/use-mappers";
 import PageHeader from "@/components/page-header";
 import EmptyState from "@/components/empty-state";
@@ -45,8 +46,8 @@ export default function MapperHubPage() {
   const [newCategory, setNewCategory] = useState<string>("");
   const [newCashflow, setNewCashflow] = useState<string>("expense");
 
-  const handleAddMapping = async (description: string) => {
-    const subCategory = selectedMappings[description];
+  const handleAddMapping = async (item: UnmappedDescription) => {
+    const subCategory = selectedMappings[item.description];
     if (!subCategory) {
       alert("Please select a sub-category first");
       return;
@@ -55,12 +56,12 @@ export default function MapperHubPage() {
     try {
       await addDescriptionsMutation.mutateAsync({
         sub_category: subCategory,
-        descriptions: [description],
+        descriptions: [item.description],
       });
       // Clear selection
       setSelectedMappings((prev) => {
         const updated = { ...prev };
-        delete updated[description];
+        delete updated[item.description];
         return updated;
       });
     } catch {
@@ -178,19 +179,29 @@ export default function MapperHubPage() {
                 <Skeleton className="h-96 w-full" />
               ) : unmappedDescriptions && unmappedDescriptions.length > 0 ? (
                 <div className="space-y-4">
-                  {unmappedDescriptions.map((description) => (
+                  {unmappedDescriptions.map((item) => (
                     <div
-                      key={description}
+                      key={item.description}
                       className="flex items-center gap-4 p-4 border rounded-lg"
                     >
-                      <div className="flex-1">
-                        <p className="font-medium">{description}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.description}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-sm text-muted-foreground">
+                            ${Math.abs(item.total_amount).toFixed(2)}
+                          </span>
+                          {item.accounts.map((account) => (
+                            <Badge key={account} variant="secondary" className="text-xs">
+                              {account}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                      <div className="w-64">
+                      <div className="w-64 shrink-0">
                         <Select
-                          value={selectedMappings[description] || ""}
+                          value={selectedMappings[item.description] || ""}
                           onValueChange={(value) =>
-                            setSelectedMappings((prev) => ({ ...prev, [description]: value }))
+                            setSelectedMappings((prev) => ({ ...prev, [item.description]: value }))
                           }
                         >
                           <SelectTrigger>
@@ -212,9 +223,9 @@ export default function MapperHubPage() {
                         </Select>
                       </div>
                       <Button
-                        onClick={() => handleAddMapping(description)}
+                        onClick={() => handleAddMapping(item)}
                         disabled={
-                          !selectedMappings[description] || addDescriptionsMutation.isPending
+                          !selectedMappings[item.description] || addDescriptionsMutation.isPending
                         }
                         size="sm"
                       >

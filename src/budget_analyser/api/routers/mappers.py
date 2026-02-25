@@ -59,16 +59,16 @@ def list_unmapped_transactions(
 @router.get("/unmapped-descriptions")
 def list_unmapped_descriptions(
     *, controller: MapperService = Depends(get_mapper_controller),
-) -> list[str]:
-    """List unique unmapped descriptions.
+) -> list[dict]:
+    """List unique unmapped descriptions with amount and account context.
 
     Args:
         controller: Injected MapperService.
 
     Returns:
-        List of unmapped description strings.
+        List of dicts with ``description``, ``total_amount``, and ``accounts``.
     """
-    return controller.list_unmapped_descriptions()
+    return controller.list_unmapped_descriptions_with_details()
 
 
 @router.get("/sub-categories")

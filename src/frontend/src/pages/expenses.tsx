@@ -7,19 +7,15 @@ import {
   useExpensesYearBreakdown,
 } from "@/api/hooks/use-expenses";
 import PageHeader from "@/components/page-header";
+import MonthYearSelector from "@/components/month-year-selector";
 import ChartCard from "@/components/chart-card";
 import EmptyState from "@/components/empty-state";
+import CategoryBreakdownTable from "@/components/expenses/category-breakdown-table";
 import DataTable, { type ColumnDef } from "@/components/data-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { formatCurrency, formatPercentage } from "@/lib/utils";
 import { EXPENSE_CHART_COLORS } from "@/lib/constants";
 import {
@@ -50,6 +46,9 @@ export default function ExpensesPage() {
     return Array.from(new Set(years)).sort((a, b) => b - a);
   }, [months]);
 
+  const [activeTab, setActiveTab] = useState<string>("monthly");
+  const [breakdownSearch, setBreakdownSearch] = useState("");
+
   // Select first available month/year by default
   const [selectedMonth, setSelectedMonth] = useState<string | undefined>(undefined);
   const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
@@ -64,54 +63,24 @@ export default function ExpensesPage() {
     }
   }, [months, availableYears, selectedMonth, selectedYear]);
 
+  const handleMonthChange = (month: string) => {
+    setSelectedMonth(month);
+    const yearStr = month.split("-")[0];
+    if (yearStr) setSelectedYear(parseInt(yearStr));
+  };
+
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+    if (months) {
+      const firstOfYear = months.find((m) => m.startsWith(year.toString()));
+      if (firstOfYear) setSelectedMonth(firstOfYear);
+    }
+  };
+
   const { data: monthData, isLoading: monthLoading } = useExpensesMonth(selectedMonth);
   const { data: yearData, isLoading: yearLoading } = useExpensesYear(selectedYear);
   const { data: yearBreakdown, isLoading: yearBreakdownLoading } =
     useExpensesYearBreakdown(selectedYear);
-
-  // Column definitions for monthly table
-  const monthlyColumns: ColumnDef<Record<string, unknown>>[] = useMemo(() => {
-    if (!monthData || monthData.length === 0) return [];
-
-    // Calculate total for percentage
-    const total = monthData.reduce((sum, row) => {
-      const amount = row.amount as number;
-      return sum + (amount || 0);
-    }, 0);
-
-    return [
-      {
-        accessorKey: "category",
-        header: "Category",
-        cell: ({ row }) => (
-          <span className="font-medium">{row.getValue("category")}</span>
-        ),
-      },
-      {
-        accessorKey: "sub_category",
-        header: "Sub Category",
-        cell: ({ row }) => <span>{row.getValue("sub_category")}</span>,
-      },
-      {
-        accessorKey: "amount",
-        header: () => <div className="text-right">Amount</div>,
-        cell: ({ row }) => (
-          <div className="text-right font-medium">
-            {formatCurrency(row.getValue("amount"))}
-          </div>
-        ),
-      },
-      {
-        id: "percent_of_total",
-        header: () => <div className="text-right">% of Total</div>,
-        cell: ({ row }) => {
-          const amount = row.getValue("amount") as number;
-          const percentage = total > 0 ? (amount / total) * 100 : 0;
-          return <div className="text-right">{formatPercentage(percentage)}</div>;
-        },
-      },
-    ];
-  }, [monthData]);
 
   // Column definitions for yearly breakdown table
   const yearlyColumns: ColumnDef<Record<string, unknown>>[] = useMemo(() => {
@@ -206,50 +175,44 @@ export default function ExpensesPage() {
       <PageHeader
         title="Expenses"
         description="Analyze your spending patterns"
-      />
+      >
+        <MonthYearSelector
+          months={months}
+          years={availableYears}
+          selectedMonth={selectedMonth ?? null}
+          selectedYear={selectedYear ?? null}
+          onMonthChange={handleMonthChange}
+          onYearChange={handleYearChange}
+          showMonths={activeTab === "monthly"}
+          showYears={activeTab === "yearly"}
+        />
+      </PageHeader>
 
-      <Tabs defaultValue="monthly" className="space-y-6">
+      <Tabs defaultValue="monthly" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="monthly">Monthly</TabsTrigger>
           <TabsTrigger value="yearly">Yearly</TabsTrigger>
         </TabsList>
 
         <TabsContent value="monthly" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Select Month</CardTitle>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {months.map((month) => (
-                      <SelectItem key={month} value={month}>
-                        {month}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-          </Card>
-
           {monthLoading ? (
             <Skeleton className="h-96 w-full" />
           ) : monthData && monthData.length > 0 ? (
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle>Expenses Breakdown</CardTitle>
+                  <div className="flex items-center justify-between gap-4">
+                    <CardTitle>Expenses Breakdown</CardTitle>
+                    <Input
+                      placeholder="Search categories..."
+                      value={breakdownSearch}
+                      onChange={(e) => setBreakdownSearch(e.target.value)}
+                      className="w-[200px]"
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <DataTable
-                    columns={monthlyColumns}
-                    data={monthData}
-                    searchKey="category"
-                    searchPlaceholder="Search categories..."
-                  />
+                  <CategoryBreakdownTable data={monthData} search={breakdownSearch} />
                 </CardContent>
               </Card>
 
@@ -324,29 +287,6 @@ export default function ExpensesPage() {
         </TabsContent>
 
         <TabsContent value="yearly" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Select Year</CardTitle>
-                <Select
-                  value={selectedYear?.toString()}
-                  onValueChange={(val) => setSelectedYear(parseInt(val))}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableYears.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-          </Card>
-
           {yearLoading || yearBreakdownLoading ? (
             <Skeleton className="h-96 w-full" />
           ) : yearData && yearBreakdown && yearBreakdown.length > 0 ? (
