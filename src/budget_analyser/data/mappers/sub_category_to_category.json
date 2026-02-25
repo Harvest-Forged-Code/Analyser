@@ -43,12 +43,9 @@
     "Remittance"
   ],
   "Secondary_Income": [
-    "Others_income"
+    "Other_Incomes"
   ],
-  "Unplanned_Spending's": [
-    "Others_expenses"
-  ],
-  "Refunded_money": [
+  "Refunded_Money": [
     "Refunded_money"
   ]
 }

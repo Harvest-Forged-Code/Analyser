@@ -1,14 +1,17 @@
 {
   "Earnings": [
     "Primary_Income",
-    "Secondary_Income"
+    "Secondary_Income",
+    "Refunded_Money"
   ],
   "Expenses": [
     "Needs",
     "Wants",
     "Luxury",
-    "Remittance",
-    "Unplanned_Spending's",
-    "Refunded_money"
+    "Remittance"
+  ],
+  "Transfer": [
+    "payments_made",
+    "payment_confirmations"
   ]
 }

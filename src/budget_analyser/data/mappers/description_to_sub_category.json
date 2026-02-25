@@ -10,7 +10,12 @@
     "PAYMENT TO CHASE CARD",
     "DISCOVER         E-PAYMENT",
     "WELLS FARGO CARD BILTCRDCRD",
-    "WF Credit Card   AUTO PAY"
+    "WF Credit Card   AUTO PAY",
+    "CHASE CREDIT CRD EPAY ONUS  7383624292      WEB ID: 5760039224",
+    "ORIG CO NAME:APPLECARD GSBANK CO ENTRY DESCR:PAYMENT",
+    "ORIG CO NAME:CITI CARD ONLINE CO ENTRY DESCR:PAYMENT",
+    "ORIG CO NAME:DISCOVER         CO ENTRY DESCR:E-PAYMENT",
+    "ORIG CO NAME:WELLS FARGO CARD CO ENTRY DESCR:CCPYMT"
   ],
   "payment_confirmations": [
     "ONLINE PAYMENT, THANK YOU",
@@ -25,7 +30,7 @@
   ],
   "Remittance": [
     "RIAMONEYTRANSFER",
-    "Remitly United S PAYMENTS   104974137205111 CCD ID: 2452441988",
+    "Remitly United S PAYMENTS",
     "Rebtel 467-223155574CA"
   ],
   "House-Rent": [
@@ -33,7 +38,7 @@
     "BPS*BILT RENT NEW YORK NY",
     "RELIANT PARKING RELIANTPARKINCA",
     "RPS*Griffis South B RD",
-    "RPS*Griffis South B CD 800-7040154 CO"
+    "RPS*Griffis South B CD"
   ],
   "Utilities": [
     "Abi HO",
@@ -71,7 +76,8 @@
     "SQ *E&amp;H FARMS",
     "SQ *J&amp;J RAMOS FARMS",
     "SAVEMART #71 FRESNO",
-    "SHOPPERS DRUG MART #94"
+    "SHOPPERS DRUG MART #94",
+    "NEW INDIA BAZAR"
   ],
   "Gas": [
     "gas",
@@ -251,10 +257,9 @@
     "Zelle payment from"
   ],
   "Donation": [
-    "GoFundMe",
-    "OFFICETIMELINE"
+    "GoFundMe"
   ],
-  "Others_income": [
+  "Other_Incomes": [
     "TEMU.com",
     "ATM CASH DEPOSIT",
     "APPLE GS SAVINGS TRANSFER",
@@ -286,7 +291,7 @@
     "HUBS FIVE & TEN FREMONT CA",
     "TJMAXX #0404 FREMONT CA",
     "TCB*MTA METER MTA MCK",
-    "Store",
+    "OFFICETIMELINE",
     "PY *BEACH BREAK BY MARIAN",
     "TST* SAWASDEE SOQUEL CA",
     "CITY OF CAPITOLA 8314757300 CA",
@@ -318,7 +323,8 @@
     "TST-Planta-Queen Toronto CA",
     "OH BOMBAY TORONTO CA",
     "IMPARK00090322A TORONTO CA",
-    "HILTON TORONTO TORONTO CA"
+    "HILTON TORONTO TORONTO CA",
+    "MOTEL 6 LONDON LONDON CA PHONE NUMBER:  FOLIO NUMBER:  ARRIVE:  DEPART:"
   ],
   "Entertainment": [
     "FANDANGO",
@@ -347,8 +353,8 @@
     "FD *CA DMV"
   ],
   "Investments": [
-    "ROBINHOOD        DEBITS     563498831       WEB ID: 5326394001",
-    "Online RealTime payment to Robinhood Securities transaction#: 6325457 REFERENCE#:7006325457RX 05/23",
-    "REAL TIME TRANSFER RECD FROM ABA/CONTR BNK-021000021  FROM: Robinhood Securities REF: ae44c6507088484a8de6 INFO: TEXT-  IID: 20251224021000021P1BRJPC04670010302 RECD: 11:54:24 TRN: 0773222358GE BREF: 849caecf5bdd498182b11b175f07c4a5"
+    "ROBINHOOD        DEBITS     ",
+    "Online RealTime payment to Robinhood Securities transaction#:",
+    "REAL TIME TRANSFER RECD FROM ABA/CONTR BNK-021000021  FROM: Robinhood Securities"
   ]
 }
