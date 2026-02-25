@@ -31,87 +31,60 @@ from budget_analyser.features.ingestion.formatters import (
 class ReportService:
     """Service that creates report DataFrames from transactions."""
 
-    DEFAULT_EARNINGS_CATEGORIES = {
-        "Primary_Income", "Secondary_Income",
-    }
-    DEFAULT_EXPENSE_CATEGORIES = {
-        "Needs",
-        "Wants",
-        "Luxury",
-        "Remittance",
-        "Unplanned_Spending's",
-        "Refunded_money",
-    }
-    DEFAULT_REFUND_CATEGORY = "Refunded_money"
-
     def __init__(
         self,
         *,
-        cashflow_mapping: Mapping[str, list[str]] | None = None,
-        refund_category: str | None = None,
+        cashflow_mapping: Mapping[str, list[str]],
     ) -> None:
-        """Initialize the report service with cashflow configuration.
+        """Initialize the report service from the cashflow JSON mapping.
 
-        Resolves earnings and expense category sets from the
-        optional cashflow mapping. Falls back to built-in defaults
-        when the mapping is absent or empty.
+        Category sets are derived entirely from the provided mapping —
+        no hardcoded defaults exist. The mapping must contain at least
+        an ``"earnings"`` key or an ``"expenses"`` key.
 
         Args:
-            cashflow_mapping: Optional mapping with ``"earnings"``
-                and ``"expenses"`` keys pointing to category lists.
-                When provided, overrides the default category sets.
-            refund_category: Category name for refunded
-                transactions. Defaults to ``"Refunded_money"``.
+            cashflow_mapping: Mapping with ``"earnings"`` and
+                ``"expenses"`` keys pointing to category lists
+                (loaded from ``cashflow_to_category.json``).
+
+        Raises:
+            ValueError: If the mapping is empty or yields no usable
+                category sets.
 
         Example:
             >>> svc = ReportService(
             ...     cashflow_mapping={
-            ...         "earnings": ["Primary_Income", "Bonus"],
-            ...         "expenses": ["Needs", "Luxury"],
+            ...         "Earnings": ["Primary_Income", "Refunded_money"],
+            ...         "Expenses": ["Needs", "Luxury"],
             ...     },
             ... )
         """
-        earnings_categories = set(
-            self.DEFAULT_EARNINGS_CATEGORIES,
-        )
-        expense_categories = set(
-            self.DEFAULT_EXPENSE_CATEGORIES,
-        )
-        self._refund_category = (
-            refund_category or self.DEFAULT_REFUND_CATEGORY
-        )
-
-        if cashflow_mapping:
-            earnings = self._lookup_flow(
-                cashflow_mapping, "earnings",
-            )
-            expenses = self._lookup_flow(
-                cashflow_mapping, "expenses",
+        if not cashflow_mapping:
+            raise ValueError(
+                "cashflow_mapping is required and must not be empty. "
+                "Check cashflow_to_category.json."
             )
 
-            if earnings:
-                earnings_categories = {
-                    str(cat).strip()
-                    for cat in earnings if str(cat).strip()
-                }
-            if expenses:
-                expense_categories = {
-                    str(cat).strip()
-                    for cat in expenses if str(cat).strip()
-                }
+        earnings = self._lookup_flow(cashflow_mapping, "earnings")
+        expenses = self._lookup_flow(cashflow_mapping, "expenses")
 
-        if not earnings_categories:
-            earnings_categories = set(
-                self.DEFAULT_EARNINGS_CATEGORIES,
-            )
-        if not expense_categories:
-            expense_categories = set(
-                self.DEFAULT_EXPENSE_CATEGORIES,
+        earnings_categories: set[str] = (
+            {str(c).strip() for c in earnings if str(c).strip()}
+            if earnings else set()
+        )
+        expense_categories: set[str] = (
+            {str(c).strip() for c in expenses if str(c).strip()}
+            if expenses else set()
+        )
+
+        if not earnings_categories and not expense_categories:
+            raise ValueError(
+                "cashflow_mapping must define at least one of "
+                "'Earnings' or 'Expenses' category lists."
             )
 
         self._earnings_categories = earnings_categories
         self._expense_categories = expense_categories
-        self._expense_categories.add(self._refund_category)
 
     @staticmethod
     def _lookup_flow(
@@ -218,26 +191,16 @@ class ReportService:
         """
         if "category" in statement.columns:
             categories = statement["category"].fillna("")
-            refund_mask = categories == self._refund_category
             negative_mask = statement["amount"] < 0
             expense_mask = categories.isin(
                 self._expense_categories
                 - self._earnings_categories,
             )
             df = statement[
-                negative_mask | refund_mask | expense_mask
+                negative_mask | expense_mask
             ].copy()
             if not df.empty:
-                refunds = (
-                    df["category"].fillna("")
-                    == self._refund_category
-                )
-                df.loc[~refunds, "amount"] = (
-                    -df.loc[~refunds, "amount"].abs()
-                )
-                df.loc[refunds, "amount"] = (
-                    df.loc[refunds, "amount"].abs()
-                )
+                df["amount"] = -df["amount"].abs()
             return df
 
         df = statement[statement["amount"] < 0].copy()

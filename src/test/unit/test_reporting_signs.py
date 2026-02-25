@@ -4,9 +4,14 @@ import pandas as pd
 
 from budget_analyser.features.reporting import ReportService
 
+_CASHFLOW = {
+    "Earnings": ["Primary_Income", "Secondary_Income", "Refunded_money"],
+    "Expenses": ["Needs", "Wants", "Luxury", "Remittance"],
+}
+
 
 def test_report_service_normalizes_signs() -> None:
-    rs = ReportService()
+    rs = ReportService(cashflow_mapping=_CASHFLOW)
     df = pd.DataFrame(
         {
             "transaction_date": pd.to_datetime([
@@ -34,8 +39,9 @@ def test_report_service_normalizes_signs() -> None:
     assert list(df["amount"]) == [100.0, -50.0, 200.0, -300.0]
 
 
-def test_report_service_limits_earnings_and_offsets_refunds() -> None:
-    rs = ReportService()
+def test_report_service_routes_refunds_to_earnings() -> None:
+    """Refunded_money goes to earnings, not expenses, per cashflow JSON."""
+    rs = ReportService(cashflow_mapping=_CASHFLOW)
     df = pd.DataFrame(
         {
             "transaction_date": pd.to_datetime([
@@ -54,12 +60,12 @@ def test_report_service_limits_earnings_and_offsets_refunds() -> None:
                 "Gift",
                 "Subscription",
             ],
-            "amount": [100.0, -50.0, -40.0, 30.0, 60.0, 25.0],
+            "amount": [100.0, -50.0, -40.0, 30.0, 60.0, -25.0],
             "from_account": ["acc"] * 6,
             "category": [
                 "Primary_Income",
                 "Remittance",
-                "Groceries",
+                "Needs",
                 "Refunded_money",
                 "Secondary_Income",
                 "Wants",
@@ -78,10 +84,12 @@ def test_report_service_limits_earnings_and_offsets_refunds() -> None:
     earn = rs.earnings(statement=df)
     exp = rs.expenses(statement=df)
 
-    # Only Primary_Income and Secondary_Income should be treated as earnings
-    assert set(earn["category"]) == {"Primary_Income", "Secondary_Income"}
-    assert list(earn["amount"]) == [100.0, 60.0]
+    # Refunded_money is an Earnings category — appears in earnings, not expenses
+    assert set(earn["category"]) == {
+        "Primary_Income", "Secondary_Income", "Refunded_money",
+    }
+    assert sorted(earn["amount"].tolist()) == sorted([100.0, 60.0, 30.0])
 
-    # Expenses include negatives, mapped expense categories, and refund credits to offset totals
-    assert list(exp["amount"]) == [-50.0, -40.0, 30.0, -25.0]
-    assert (-exp["amount"]).sum() == 85.0
+    # Expenses contain only expense categories — no refunds
+    assert "Refunded_money" not in exp["category"].values
+    assert (exp["amount"] < 0).all()
