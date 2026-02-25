@@ -25,16 +25,32 @@ You combine the methodology of the `security-audit` skill with domain knowledge 
 
 ## Workflow
 
-### Step 1 — Identify Staged Files
+### Step 1 — Identify Files to Review
 
+The hook blocking message always includes:
+- The list of code files under `"Code files detected:"`
+- The `"Expected clearance hash:"` value
+
+**Preferred: read these directly from the hook's blocking message** — they are already filtered and hashed correctly.
+
+If the hook was triggered by **Bash or GitKraken MCP** (local git), you can also confirm via:
 ```bash
-git diff --cached --name-only --diff-filter=ACM
+git diff --cached --name-only --diff-filter=ACM | \
+  grep -E '\.(py|ts|tsx)$' | grep -v '__pycache__\|\.d\.ts$'
 ```
 
-Focus only on staged files. Compute the staged-files hash for the clearance token:
+If the hook was triggered by **GitHub MCP** (`push_files` or `create_or_update_file`), there are no locally staged files — `git diff --cached` will be empty. Use the file list and hash **exactly as printed by the hook**. Read the files from disk using the `Read` tool.
+
+**Compute the clearance hash** (must match the hook exactly):
 ```bash
-git diff --cached --name-only --diff-filter=ACM | sort | md5sum | awk '{print $1}'
+# Use the file list from the hook output, one path per line, sorted:
+echo "<file1>
+<file2>" | sort | md5 -q 2>/dev/null || \
+echo "<file1>
+<file2>" | sort | md5sum | awk '{print $1}'
 ```
+
+Alternatively, use the `"Expected clearance hash:"` value printed by the hook directly — no recomputation needed if you trust the hook output.
 
 ### Step 2 — Security Review (focused on financial context)
 
@@ -93,7 +109,15 @@ This unblocks the pre-commit hook so the commit can proceed.
 
 ```
 # Write the hash to .claude/.security-cleared
-HASH=$(git diff --cached --name-only --diff-filter=ACM | sort | md5sum | awk '{print $1}')
+# MUST match the hook's hash: only .py/.ts/.tsx files, excluding __pycache__ and .d.ts
+HASH=$(git diff --cached --name-only --diff-filter=ACM | \
+  grep -E '\.(py|ts|tsx)$' | \
+  grep -v '__pycache__\|\.d\.ts$' | \
+  sort | md5 -q 2>/dev/null || \
+  git diff --cached --name-only --diff-filter=ACM | \
+  grep -E '\.(py|ts|tsx)$' | \
+  grep -v '__pycache__\|\.d\.ts$' | \
+  sort | md5sum | awk '{print $1}')
 echo "$HASH" > .claude/.security-cleared
 ```
 
