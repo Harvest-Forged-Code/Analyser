@@ -11,7 +11,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pathlib import Path
+
+from pydantic import BaseModel, Field, field_validator
 
 
 # ===================================================================
@@ -534,11 +536,37 @@ class AddRecurringRequest(BaseModel):
     sub_category: str = ""
 
 
+def _validate_csv_file_path(v: str) -> str:
+    """Reject non-absolute paths and path traversal components.
+
+    Args:
+        v: Raw file_path string from the request body.
+
+    Returns:
+        The original value if it passes all checks.
+
+    Raises:
+        ValueError: If the path is not absolute or contains ``..``.
+    """
+    p = Path(v)
+    if not p.is_absolute():
+        raise ValueError("file_path must be an absolute path")
+    if ".." in p.parts:
+        raise ValueError("file_path must not contain '..' components")
+    return v
+
+
 class ValidateRequest(BaseModel):
     """Request body for CSV validation."""
 
     file_path: str
     bank_name: str
+
+    @field_validator("file_path")
+    @classmethod
+    def file_path_is_safe(cls, v: str) -> str:
+        """Validate file_path is absolute and contains no traversal."""
+        return _validate_csv_file_path(v)
 
 
 class UploadRequest(BaseModel):
@@ -547,6 +575,12 @@ class UploadRequest(BaseModel):
     file_path: str
     bank_name: str
     account_type: str
+
+    @field_validator("file_path")
+    @classmethod
+    def file_path_is_safe(cls, v: str) -> str:
+        """Validate file_path is absolute and contains no traversal."""
+        return _validate_csv_file_path(v)
 
 
 class ChangePasswordRequest(BaseModel):
