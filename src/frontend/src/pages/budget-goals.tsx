@@ -16,8 +16,6 @@ import {
   useDeleteBudget,
   useSetEarningsGoal,
   useDeleteEarningsGoal,
-  useBudgetGoalsSummary,
-  useEarningsGoalsSummary,
   useBudgetProgress,
   useProgressSummary,
   useCategoryProgressHistory,
@@ -50,7 +48,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, formatPercentage } from "@/lib/utils";
+import { formatCurrency, formatPercentage, findDefaultMonth } from "@/lib/utils";
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - 2 + i);
@@ -74,8 +72,6 @@ export default function BudgetGoalsPage() {
   // Spreadsheet queries
   const { data: budgetYearGrid, isLoading: budgetYearLoading } = useBudgetGoalsForYear(budgetYear);
   const { data: earningsYearGrid, isLoading: earningsYearLoading } = useEarningsGoalsForYear(earningsYear);
-  const { data: budgetGoalsSummary } = useBudgetGoalsSummary();
-  const { data: earningsGoalsSummary } = useEarningsGoalsSummary();
 
   // Category dropdown data
   const { data: subCategories } = useSubCategories();
@@ -99,11 +95,11 @@ export default function BudgetGoalsPage() {
   const setBudgetForYearMutation = useSetBudgetForYear();
   const setEarningsForYearMutation = useSetEarningsGoalForYear();
 
-  // Set default selected month for progress tab
+  // Set the default selected month for the progress tab — prefer the current month
   React.useEffect(() => {
     if (availableMonths && availableMonths.length > 0 && !selectedMonth) {
-      const firstMonth = availableMonths[0];
-      if (firstMonth) setSelectedMonth(firstMonth);
+      const defaultMonth = findDefaultMonth(availableMonths);
+      if (defaultMonth) setSelectedMonth(defaultMonth);
     }
   }, [availableMonths, selectedMonth]);
 
@@ -184,31 +180,6 @@ export default function BudgetGoalsPage() {
 
         {/* ── Budget Goals Tab ── */}
         <TabsContent value="budget-goals" className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Budget</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">
-                  {budgetGoalsSummary ? formatCurrency(budgetGoalsSummary.total_monthly_budget) : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground">per month</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Categories</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">
-                  {budgetGoalsSummary ? budgetGoalsSummary.categories_tracked : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground">categories tracked</p>
-              </CardContent>
-            </Card>
-          </div>
-
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <Label>Year:</Label>
@@ -248,7 +219,7 @@ export default function BudgetGoalsPage() {
           <AddGoalDialog
             open={budgetDialogOpen}
             onOpenChange={setBudgetDialogOpen}
-            categories={subCategories ?? []}
+            categories={categories ?? []}
             year={budgetYear}
             onAdd={handleAddBudgetCategory}
             categoryLabel="Category"
@@ -260,31 +231,6 @@ export default function BudgetGoalsPage() {
 
         {/* ── Earnings Goals Tab ── */}
         <TabsContent value="earnings-goals" className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Expected Earnings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">
-                  {earningsGoalsSummary ? formatCurrency(earningsGoalsSummary.total_expected_earnings) : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground">per month</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Sub-categories</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">
-                  {earningsGoalsSummary ? earningsGoalsSummary.sub_categories_tracked : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground">sub-categories tracked</p>
-              </CardContent>
-            </Card>
-          </div>
-
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <Label>Year:</Label>
@@ -324,7 +270,7 @@ export default function BudgetGoalsPage() {
           <AddGoalDialog
             open={earningsDialogOpen}
             onOpenChange={setEarningsDialogOpen}
-            categories={categories ?? []}
+            categories={subCategories ?? []}
             year={earningsYear}
             onAdd={handleAddEarningsCategory}
             categoryLabel="Sub-Category"
@@ -363,7 +309,7 @@ export default function BudgetGoalsPage() {
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="year_month" tick={{ fontSize: 12 }} />
                           <YAxis tickFormatter={(v: number) => `$${v.toFixed(0)}`} tick={{ fontSize: 12 }} />
-                          <Tooltip formatter={(value: number, name: string) => [formatCurrency(value), name === "spent" ? "Spent" : "Budget"]} />
+                          <Tooltip formatter={(value: number | undefined, name: string | undefined) => [formatCurrency(value ?? 0), name === "spent" ? "Spent" : "Budget"]} />
                           <Line type="monotone" dataKey="spent" stroke="#3b82f6" name="spent" strokeWidth={2} dot={{ r: 4 }} />
                           <Line type="monotone" dataKey="budget_limit" stroke="#94a3b8" name="budget_limit" strokeDasharray="5 5" strokeWidth={2} dot={false} />
                         </ComposedChart>
