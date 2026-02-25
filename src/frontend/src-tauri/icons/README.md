@@ -1,25 +1,32 @@
 # Application Icons
 
-This directory should contain application icons in various sizes.
+Budget Analyser uses a modern wallet icon with a blue gradient background, white wallet body, green card with chip, and gold dollar coin.
 
-## Required Icons
+## Icon Files
 
-For a complete icon set, you'll need:
-- `32x32.png` - Small icon
-- `128x128.png` - Medium icon
-- `128x128@2x.png` - Retina medium icon
-- `icon.icns` - macOS icon bundle
-- `icon.ico` - Windows icon bundle
-- `icon.png` - Base icon (1024x1024 recommended)
+| File | Size | Purpose |
+|------|------|---------|
+| `icon-source.svg` | 1024x1024 | Source vector (edit this to change the icon) |
+| `icon-1024.png` | 1024x1024 | High-res source PNG |
+| `icon.png` | 512x512 | Base PNG icon |
+| `icon.icns` | Multi-size | macOS app bundle icon (.dmg) |
+| `icon.ico` | Multi-size | Windows app icon (.exe/.msi) |
+| `32x32.png` | 32x32 | Small icon |
+| `64x64.png` | 64x64 | Medium-small icon |
+| `128x128.png` | 128x128 | Medium icon |
+| `128x128@2x.png` | 256x256 | Retina medium icon |
+| `Square*.png` | Various | Windows Store logos |
+| `StoreLogo.png` | 50x50 | Windows Store logo |
 
-## Temporary Setup
+## Regenerating Icons
 
-Currently using placeholder icons. To add proper icons:
+To regenerate all sizes from the source SVG:
 
-1. Create a 1024x1024 PNG icon for the Budget Analyser application
-2. Use the Tauri icon generator to create all required sizes:
-   ```bash
-   npm run tauri icon /path/to/your/icon.png
-   ```
+```bash
+# 1. Convert SVG to 1024x1024 PNG
+rsvg-convert -w 1024 -h 1024 src-tauri/icons/icon-source.svg -o src-tauri/icons/icon-1024.png
 
-This will automatically generate all required icon formats and sizes.
+# 2. Generate all icon formats
+cd src/frontend
+npx tauri icon src-tauri/icons/icon-1024.png
+```
