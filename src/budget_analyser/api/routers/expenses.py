@@ -18,7 +18,7 @@ from budget_analyser.features.reporting.expenses_service import (
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
 
 
-def _df_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
+def _df_to_records(df: pd.DataFrame | None) -> list[dict[str, Any]]:
     """Convert DataFrame to list of dicts with date serialization.
 
     Args:
@@ -27,12 +27,15 @@ def _df_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
     Returns:
         List of record dictionaries with ISO date strings.
     """
-    if df is None or df.empty:
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
         return []
     result = df.copy()
     for col in result.columns:
         if pd.api.types.is_datetime64_any_dtype(result[col]):
             result[col] = result[col].dt.strftime("%Y-%m-%d")
+        elif hasattr(result[col].dtype, 'freq'):
+            # Convert Period columns (e.g. year_month) to strings
+            result[col] = result[col].astype(str)
     return result.to_dict(orient="records")
 
 
@@ -75,8 +78,16 @@ def get_month_category_breakdown(
     """
     try:
         period_obj = pd.Period(period)
-        df = controller.category_breakdown(period_obj)
-        return _df_to_records(df)
+        breakdown = controller.category_breakdown(period_obj)
+        result = []
+        for cat_name, _cat_total, subcats in breakdown:
+            for sub_name, amount in subcats:
+                result.append({
+                    "category": cat_name,
+                    "sub_category": sub_name,
+                    "amount": amount,
+                })
+        return result
     except (ValueError, KeyError) as e:
         raise HTTPException(
             status_code=404, detail=f"Invalid period or data not found: {e}",
@@ -140,8 +151,8 @@ def get_year_table(
         HTTPException: If year is invalid or data not found.
     """
     try:
-        df = controller.table_for_year(year)
-        return _df_to_records(df)
+        total = controller.total_for_year(year)
+        return [{"year": year, "total": total}]
     except (ValueError, KeyError) as e:
         raise HTTPException(
             status_code=404, detail=f"Invalid year or data not found: {e}",
@@ -169,8 +180,14 @@ def get_year_breakdown(
         HTTPException: If year is invalid or data not found.
     """
     try:
-        df = controller.year_breakdown(year)
-        return _df_to_records(df)
+        breakdown = controller.year_breakdown(year)
+        result = []
+        for period, total, categories in breakdown:
+            row: dict[str, Any] = {"month": str(period), "total": total}
+            for cat_name, cat_total, _ in categories:
+                row[cat_name] = cat_total
+            result.append(row)
+        return result
     except (ValueError, KeyError) as e:
         raise HTTPException(
             status_code=404, detail=f"Invalid year or data not found: {e}",
