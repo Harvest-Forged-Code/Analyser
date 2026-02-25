@@ -36,7 +36,7 @@ class RecategorizeResult:
     updated_count: int = 0
 
 
-class RecategorizeService:
+class RecategorizeService:  # pylint: disable=too-few-public-methods
     """Service that re-applies keyword mappers to stored transactions.
 
     Compares current DB categorization against the latest mapper
@@ -134,7 +134,7 @@ class RecategorizeService:
         )
 
 
-class RecategorizeOrchestrator:
+class RecategorizeOrchestrator:  # pylint: disable=too-few-public-methods
     """Orchestrator that coordinates transaction re-categorization.
 
     Fetches transactions from the database, delegates to the

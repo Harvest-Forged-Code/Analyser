@@ -123,7 +123,7 @@ class ValidationReport:
         return [i for i in self.issues if i.severity == "warning"]
 
 
-class MappingValidationService:
+class MappingValidationService:  # pylint: disable=too-few-public-methods
     """Service to validate category mapping configurations.
 
     Performs comprehensive validation of mapping files to detect:

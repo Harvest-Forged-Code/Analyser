@@ -31,7 +31,7 @@ from budget_analyser.api.routers import (
 
 
 @asynccontextmanager
-async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Initialise shared controllers on startup."""
     dependencies.initialize()
     yield
@@ -43,14 +43,14 @@ def create_app() -> FastAPI:
     Returns:
         A fully-configured FastAPI instance with CORS and all routers.
     """
-    app = FastAPI(
+    fastapi_app = FastAPI(
         title="Budget Analyser API",
         version="0.1.0",
         lifespan=_lifespan,
     )
 
     # CORS - allow all origins for the desktop Tauri shell
-    app.add_middleware(
+    fastapi_app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
         allow_credentials=True,
@@ -59,31 +59,31 @@ def create_app() -> FastAPI:
     )
 
     # ----- health endpoint -----
-    @app.get("/api/health")
+    @fastapi_app.get("/api/health")
     def health() -> dict[str, str]:
         """Return a simple health-check response."""
         return {"status": "healthy"}
 
     # ----- version endpoint -----
-    @app.get("/api/version")
+    @fastapi_app.get("/api/version")
     def app_version() -> dict[str, str]:
         """Return the installed package version."""
         return {"version": importlib.metadata.version("budget-analyser")}
 
     # ----- register all routers -----
-    app.include_router(auth.router)
-    app.include_router(reports.router)
-    app.include_router(dashboard.router)
-    app.include_router(earnings.router)
-    app.include_router(expenses.router)
-    app.include_router(budget_goals.router)
-    app.include_router(savings.router)
-    app.include_router(mappers.router)
-    app.include_router(upload.router)
-    app.include_router(settings.router)
-    app.include_router(recategorize.router)
+    fastapi_app.include_router(auth.router)
+    fastapi_app.include_router(reports.router)
+    fastapi_app.include_router(dashboard.router)
+    fastapi_app.include_router(earnings.router)
+    fastapi_app.include_router(expenses.router)
+    fastapi_app.include_router(budget_goals.router)
+    fastapi_app.include_router(savings.router)
+    fastapi_app.include_router(mappers.router)
+    fastapi_app.include_router(upload.router)
+    fastapi_app.include_router(settings.router)
+    fastapi_app.include_router(recategorize.router)
 
-    return app
+    return fastapi_app
 
 
 app = create_app()

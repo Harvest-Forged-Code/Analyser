@@ -5,6 +5,7 @@ Provides endpoints for budget and earnings goal management.
 
 from __future__ import annotations
 
+import pandas as pd
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from budget_analyser.api.dependencies import (
@@ -270,8 +271,6 @@ def get_category_progress_history(
     Returns:
         List of CategoryProgressPointSchema, one per available month.
     """
-    import pandas as pd
-
     if not reports:
         return []
 
@@ -333,7 +332,6 @@ def get_progress_summary(
     Raises:
         HTTPException: If month not found.
     """
-    import pandas as pd
     period = pd.Period(year_month)
     report = next((r for r in reports if r.month == period), None)
 
@@ -359,7 +357,7 @@ def get_budget_progress(
     *,
     year_month: str,
     reports: list[MonthlyReports] = Depends(get_reports),
-    expenses_controller: ExpensesStatsController = Depends(
+    _expenses_controller: ExpensesStatsController = Depends(
         get_expenses_stats_controller,
     ),
     budget_controller: BudgetGoalsService = Depends(
@@ -371,7 +369,7 @@ def get_budget_progress(
     Args:
         year_month: Year-month string (e.g., "2024-01").
         reports: Injected reports cache.
-        expenses_controller: Injected ExpensesStatsController.
+        _expenses_controller: Injected ExpensesStatsController (unused).
         budget_controller: Injected BudgetGoalsService.
 
     Returns:
@@ -381,7 +379,6 @@ def get_budget_progress(
         HTTPException: If month not found.
     """
     # Find the report for the requested month
-    import pandas as pd
     period = pd.Period(year_month)
     report = next((r for r in reports if r.month == period), None)
 

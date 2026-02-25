@@ -73,7 +73,7 @@ from budget_analyser.features.ingestion.categorization import CategoryMappers
 # ---------------------------------------------------------------------------
 # Module-level singletons (set by ``initialize()``)
 # ---------------------------------------------------------------------------
-
+# pylint: disable=invalid-name
 _logger: logging.Logger | None = None
 _prefs: AppPreferences | None = None
 _backend_controller: BackendController | None = None
@@ -93,6 +93,7 @@ _recategorize_service: RecategorizeOrchestrator | None = None
 _transaction_db: TransactionDatabase | None = None
 
 _reports_cache: list[MonthlyReports] | None = None
+# pylint: enable=invalid-name
 
 
 # ---------------------------------------------------------------------------
@@ -142,14 +143,13 @@ def initialize() -> None:
             missing from the data directory.
         DataSourceError: If JSON mapping files contain invalid data.
     """
+    # pylint: disable=global-statement
     global \
         _logger, _prefs, _backend_controller, _db_repository, \
         _upload_service, _budget_goals_service, \
-        _savings_service, _earnings_stats_service, \
-        _expenses_stats_service, _settings_service, \
-        _mapper_service, _sub_category_mapper_service, \
-        _cashflow_mapper_service, \
-        _recategorize_service, _reports_cache, _transaction_db  # noqa: PLW0603
+        _savings_service, _settings_service, \
+        _recategorize_service, _transaction_db  # noqa: PLW0603
+    # pylint: enable=global-statement
 
     # Logger
     _logger = _ensure_logger()
@@ -277,11 +277,13 @@ def _regenerate_reports() -> None:
 
     Called during init and after cache invalidation.
     """
+    # pylint: disable=global-statement
     global \
         _reports_cache, _earnings_stats_service, \
         _expenses_stats_service, _mapper_service, \
         _sub_category_mapper_service, \
         _cashflow_mapper_service, _recategorize_service  # noqa: PLW0603
+    # pylint: enable=global-statement
 
     assert _db_repository is not None
     assert _backend_controller is not None

@@ -86,7 +86,7 @@ class EarningsSourceTrend:
 
 
 @dataclass(frozen=True)
-class EarningsDashboard:
+class EarningsDashboard:  # pylint: disable=too-many-instance-attributes
     """Aggregated dashboard data for KPI cards.
 
     Attributes:
