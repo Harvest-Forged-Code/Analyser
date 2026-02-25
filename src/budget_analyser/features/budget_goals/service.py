@@ -244,6 +244,41 @@ class BudgetGoalsService:
             goals=goals, year_month=year_month,
         )
 
+    def get_budget_goals_for_year(
+        self, year: int,
+    ) -> dict[str, dict[str, float]]:
+        """Get resolved 12-month budget grid for a year.
+
+        For each category, builds a 12-month dict resolving "ALL" fallback.
+        Month-specific entries override the "ALL" default.
+
+        Args:
+            year: The year to retrieve goals for.
+
+        Returns:
+            Dict mapping category to {year_month: amount} for all 12 months.
+        """
+        goals = self._model.get_all_budget_goals()
+        return _build_year_grid_budget(goals=goals, year=year)
+
+    def get_earnings_goals_for_year(
+        self, year: int,
+    ) -> dict[str, dict[str, float]]:
+        """Get resolved 12-month earnings grid for a year.
+
+        For each sub-category, builds a 12-month dict resolving "ALL"
+        fallback. Month-specific entries override the "ALL" default.
+
+        Args:
+            year: The year to retrieve goals for.
+
+        Returns:
+            Dict mapping sub_category to {year_month: amount} for all
+            12 months.
+        """
+        goals = self._model.get_all_earnings_goals()
+        return _build_year_grid_earnings(goals=goals, year=year)
+
     # ==================== Budget Progress ====================
 
     def calculate_budget_progress(
@@ -615,5 +650,96 @@ def build_earnings_goal_map(
         for goal in goals:
             if goal.year_month == year_month:
                 result[goal.sub_category] = goal.expected_amount
+
+    return result
+
+
+def _build_year_grid_budget(
+    *,
+    goals: list[BudgetGoal],
+    year: int,
+) -> dict[str, dict[str, float]]:
+    """Build a 12-month grid of budget goals for a given year.
+
+    For each category found in the goals, creates an entry for every
+    month in the year. Month-specific values take priority; otherwise
+    falls back to the "ALL" default.
+
+    Args:
+        goals: All budget goals from the model.
+        year: Year to build grid for.
+
+    Returns:
+        Dict of {category: {"YYYY-MM": amount, ...}} with 12 months each.
+    """
+    months = [f"{year}-{m:02d}" for m in range(1, 13)]
+
+    defaults: dict[str, float] = {}
+    overrides: dict[str, dict[str, float]] = {}
+
+    for goal in goals:
+        cat = goal.category
+        if goal.year_month == "ALL":
+            defaults[cat] = goal.monthly_limit
+        elif goal.year_month.startswith(f"{year}-"):
+            overrides.setdefault(cat, {})[goal.year_month] = (
+                goal.monthly_limit
+            )
+
+    all_categories = sorted(set(defaults) | set(overrides))
+    result: dict[str, dict[str, float]] = {}
+    for cat in all_categories:
+        default_val = defaults.get(cat, 0.0)
+        cat_overrides = overrides.get(cat, {})
+        result[cat] = {
+            ym: cat_overrides.get(ym, default_val)
+            for ym in months
+        }
+
+    return result
+
+
+def _build_year_grid_earnings(
+    *,
+    goals: list[EarningsGoal],
+    year: int,
+) -> dict[str, dict[str, float]]:
+    """Build a 12-month grid of earnings goals for a given year.
+
+    For each sub-category found in the goals, creates an entry for
+    every month in the year. Month-specific values take priority;
+    otherwise falls back to the "ALL" default.
+
+    Args:
+        goals: All earnings goals from the model.
+        year: Year to build grid for.
+
+    Returns:
+        Dict of {sub_category: {"YYYY-MM": amount, ...}} with 12
+        months each.
+    """
+    months = [f"{year}-{m:02d}" for m in range(1, 13)]
+
+    defaults: dict[str, float] = {}
+    overrides: dict[str, dict[str, float]] = {}
+
+    for goal in goals:
+        sub = goal.sub_category
+        if goal.year_month == "ALL":
+            defaults[sub] = goal.expected_amount
+        elif goal.year_month.startswith(f"{year}-"):
+            overrides.setdefault(sub, {})[goal.year_month] = (
+                goal.expected_amount
+            )
+
+    all_sub_categories = sorted(set(defaults) | set(overrides))
+    result: dict[str, dict[str, float]] = {}
+    for sub in all_sub_categories:
+        default_val = defaults.get(sub, 0.0)
+        sub_overrides = overrides.get(sub, {})
+        result[sub] = {
+            ym: sub_overrides.get(ym, default_val)
+            for ym in months
+        }
 
     return result

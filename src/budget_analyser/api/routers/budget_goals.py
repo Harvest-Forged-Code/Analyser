@@ -23,6 +23,7 @@ from budget_analyser.api.serializers import (
     SetBudgetRequest,
     SetBudgetYearRequest,
     SetEarningsGoalRequest,
+    SetEarningsYearRequest,
 )
 from budget_analyser.core.models import MonthlyReports
 from budget_analyser.features.budget_goals.service import (
@@ -132,6 +133,72 @@ def set_budget_for_year(
         year=body.year,
     )
     return {"message": "Budget goal set for all months in year"}
+
+
+@router.get("/year/{year}")
+def get_budget_goals_for_year(
+    *,
+    year: int,
+    controller: BudgetGoalsService = Depends(
+        get_budget_goals_controller,
+    ),
+) -> dict[str, dict[str, float]]:
+    """Get resolved 12-month budget goal grid for a year.
+
+    Args:
+        year: Year to retrieve goals for.
+        controller: Injected BudgetGoalsService.
+
+    Returns:
+        Dict mapping category to {year_month: amount}.
+    """
+    return controller.get_budget_goals_for_year(year)
+
+
+@router.get("/earnings/year/{year}")
+def get_earnings_goals_for_year(
+    *,
+    year: int,
+    controller: BudgetGoalsService = Depends(
+        get_budget_goals_controller,
+    ),
+) -> dict[str, dict[str, float]]:
+    """Get resolved 12-month earnings goal grid for a year.
+
+    Args:
+        year: Year to retrieve goals for.
+        controller: Injected BudgetGoalsService.
+
+    Returns:
+        Dict mapping sub_category to {year_month: amount}.
+    """
+    return controller.get_earnings_goals_for_year(year)
+
+
+@router.post("/earnings/year")
+def set_earnings_goal_for_year(
+    *,
+    body: SetEarningsYearRequest,
+    controller: BudgetGoalsService = Depends(
+        get_budget_goals_controller,
+    ),
+) -> dict[str, str]:
+    """Set earnings goal for all months in a year.
+
+    Args:
+        body: SetEarningsYearRequest with sub_category,
+            expected_amount, year.
+        controller: Injected BudgetGoalsService.
+
+    Returns:
+        Success message.
+    """
+    controller.set_earnings_goal_for_year(
+        sub_category=body.sub_category,
+        expected_amount=body.expected_amount,
+        year=body.year,
+    )
+    return {"message": "Earnings goal set for all months in year"}
 
 
 @router.get("/summary", response_model=BudgetGoalsSummarySchema)
@@ -335,7 +402,7 @@ def get_budget_progress(
             spent=p.spent,
             remaining=p.remaining,
             percentage=p.percentage,
-            status=p.status.value,
+            status=p.status,
         )
         for p in progress_list
     ]

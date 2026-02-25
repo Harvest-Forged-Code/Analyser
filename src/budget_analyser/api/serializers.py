@@ -501,6 +501,14 @@ class SetEarningsGoalRequest(BaseModel):
     year_month: str = "ALL"
 
 
+class SetEarningsYearRequest(BaseModel):
+    """Request body for setting an earnings goal for a specific year."""
+
+    sub_category: str
+    expected_amount: float
+    year: int
+
+
 class AddAccountRequest(BaseModel):
     """Request body for adding a financial account."""
 

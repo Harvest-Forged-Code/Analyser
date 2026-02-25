@@ -14,6 +14,8 @@ from budget_analyser.features.budget_goals.models import (
     ProgressSummary,
 )
 from budget_analyser.features.budget_goals.service import (
+    _build_year_grid_budget,
+    _build_year_grid_earnings,
     build_earnings_goal_map,
     calculate_budget_goals_summary,
     calculate_budget_progress,
@@ -350,3 +352,102 @@ def test_category_history_month_specific_override() -> None:
     )
     assert result[0].budget_limit == 500.0  # ALL default
     assert result[1].budget_limit == 700.0  # Month override
+
+
+# ==================== _build_year_grid_budget ====================
+
+
+def test_year_grid_budget_resolves_all_fallback() -> None:
+    """ALL default fills all 12 months when no month-specific entries exist."""
+    goals = [
+        BudgetGoal(id=1, category="Food", monthly_limit=500, year_month="ALL"),
+    ]
+    result = _build_year_grid_budget(goals=goals, year=2026)
+    assert len(result) == 1
+    assert "Food" in result
+    assert len(result["Food"]) == 12
+    assert all(v == 500.0 for v in result["Food"].values())
+    assert result["Food"]["2026-01"] == 500.0
+    assert result["Food"]["2026-12"] == 500.0
+
+
+def test_year_grid_budget_month_override_takes_priority() -> None:
+    """Month-specific entry overrides the ALL default for that month."""
+    goals = [
+        BudgetGoal(id=1, category="Food", monthly_limit=500, year_month="ALL"),
+        BudgetGoal(id=2, category="Food", monthly_limit=700, year_month="2026-12"),
+    ]
+    result = _build_year_grid_budget(goals=goals, year=2026)
+    assert result["Food"]["2026-01"] == 500.0
+    assert result["Food"]["2026-12"] == 700.0
+
+
+def test_year_grid_budget_multiple_categories() -> None:
+    """Multiple categories each get their own 12-month row."""
+    goals = [
+        BudgetGoal(id=1, category="Food", monthly_limit=500, year_month="ALL"),
+        BudgetGoal(id=2, category="Transport", monthly_limit=200, year_month="ALL"),
+    ]
+    result = _build_year_grid_budget(goals=goals, year=2026)
+    assert len(result) == 2
+    assert all(v == 500.0 for v in result["Food"].values())
+    assert all(v == 200.0 for v in result["Transport"].values())
+
+
+def test_year_grid_budget_ignores_other_years() -> None:
+    """Month overrides from other years are not included."""
+    goals = [
+        BudgetGoal(id=1, category="Food", monthly_limit=500, year_month="ALL"),
+        BudgetGoal(id=2, category="Food", monthly_limit=700, year_month="2025-12"),
+    ]
+    result = _build_year_grid_budget(goals=goals, year=2026)
+    # 2025-12 override should not affect 2026
+    assert all(v == 500.0 for v in result["Food"].values())
+
+
+def test_year_grid_budget_empty_goals() -> None:
+    """Empty goals list returns empty grid."""
+    result = _build_year_grid_budget(goals=[], year=2026)
+    assert result == {}
+
+
+def test_year_grid_budget_only_month_specific_no_all_default() -> None:
+    """Category with only month-specific entries uses 0 for other months."""
+    goals = [
+        BudgetGoal(id=1, category="Gifts", monthly_limit=300, year_month="2026-12"),
+    ]
+    result = _build_year_grid_budget(goals=goals, year=2026)
+    assert result["Gifts"]["2026-12"] == 300.0
+    assert result["Gifts"]["2026-01"] == 0.0
+
+
+# ==================== _build_year_grid_earnings ====================
+
+
+def test_year_grid_earnings_resolves_all_fallback() -> None:
+    """ALL default fills all 12 months for earnings goals."""
+    goals = [
+        EarningsGoal(id=1, sub_category="Salary", expected_amount=5000, year_month="ALL"),
+    ]
+    result = _build_year_grid_earnings(goals=goals, year=2026)
+    assert len(result) == 1
+    assert "Salary" in result
+    assert len(result["Salary"]) == 12
+    assert all(v == 5000.0 for v in result["Salary"].values())
+
+
+def test_year_grid_earnings_month_override_takes_priority() -> None:
+    """Month-specific earnings entry overrides ALL default."""
+    goals = [
+        EarningsGoal(id=1, sub_category="Salary", expected_amount=5000, year_month="ALL"),
+        EarningsGoal(id=2, sub_category="Salary", expected_amount=6000, year_month="2026-12"),
+    ]
+    result = _build_year_grid_earnings(goals=goals, year=2026)
+    assert result["Salary"]["2026-01"] == 5000.0
+    assert result["Salary"]["2026-12"] == 6000.0
+
+
+def test_year_grid_earnings_empty_goals() -> None:
+    """Empty earnings goals returns empty grid."""
+    result = _build_year_grid_earnings(goals=[], year=2026)
+    assert result == {}

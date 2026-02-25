@@ -315,6 +315,20 @@ export interface SetEarningsGoalRequest {
   year_month?: string;
 }
 
+export type YearGrid = Record<string, Record<string, number>>;
+
+export interface SetBudgetYearRequest {
+  category: string;
+  monthly_limit: number;
+  year: number;
+}
+
+export interface SetEarningsYearRequest {
+  sub_category: string;
+  expected_amount: number;
+  year: number;
+}
+
 export interface AddAccountRequest {
   name: string;
   account_type: string;

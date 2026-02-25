@@ -10,6 +10,9 @@ import type {
   CategoryProgressPoint,
   SetBudgetRequest,
   SetEarningsGoalRequest,
+  YearGrid,
+  SetBudgetYearRequest,
+  SetEarningsYearRequest,
 } from "../types";
 
 export function useBudgetGoals() {
@@ -30,6 +33,7 @@ export function useSetBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["budget-goals"] });
       queryClient.invalidateQueries({ queryKey: ["budget-goals", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-goals", "year"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
@@ -43,6 +47,7 @@ export function useDeleteBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["budget-goals"] });
       queryClient.invalidateQueries({ queryKey: ["budget-goals", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-goals", "year"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
@@ -79,6 +84,7 @@ export function useSetEarningsGoal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["earnings-goals"] });
       queryClient.invalidateQueries({ queryKey: ["earnings-goals", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings-goals", "year"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
@@ -92,6 +98,7 @@ export function useDeleteEarningsGoal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["earnings-goals"] });
       queryClient.invalidateQueries({ queryKey: ["earnings-goals", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings-goals", "year"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
@@ -144,5 +151,55 @@ export function useCategoryProgressHistory(category: string | undefined) {
       return response.data;
     },
     enabled: !!category,
+  });
+}
+
+export function useBudgetGoalsForYear(year: number) {
+  return useQuery({
+    queryKey: ["budget-goals", "year", year],
+    queryFn: async () => {
+      const response = await apiClient.get<YearGrid>(
+        `/budget-goals/year/${year}`
+      );
+      return response.data;
+    },
+  });
+}
+
+export function useEarningsGoalsForYear(year: number) {
+  return useQuery({
+    queryKey: ["earnings-goals", "year", year],
+    queryFn: async () => {
+      const response = await apiClient.get<YearGrid>(
+        `/budget-goals/earnings/year/${year}`
+      );
+      return response.data;
+    },
+  });
+}
+
+export function useSetBudgetForYear() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SetBudgetYearRequest) =>
+      apiClient.post("/budget-goals/year", data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["budget-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-goals", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useSetEarningsGoalForYear() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SetEarningsYearRequest) =>
+      apiClient.post("/budget-goals/earnings/year", data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["earnings-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings-goals", "summary"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
