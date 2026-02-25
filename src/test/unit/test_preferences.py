@@ -7,6 +7,7 @@ from budget_analyser.settings.preferences import (
     DEFAULT_LOG_LEVEL,
     DEFAULT_PASSWORD,
     DEFAULT_THEME,
+    _hash_password_sha256,
 )
 
 
@@ -40,6 +41,41 @@ def test_log_level_round_trip(tmp_path: Path) -> None:
     except ValueError:
         raised = True
     assert raised is True
+
+
+def test_new_password_stored_as_pbkdf2(tmp_path: Path) -> None:
+    ini = tmp_path / "budget_analyser.ini"
+    prefs = AppPreferences(ini)
+    prefs.set_password("mysecret")
+    stored = prefs.get_password_hash()
+    assert stored is not None
+    assert stored.startswith("pbkdf2$"), (
+        f"Expected pbkdf2 format, got: {stored[:20]}"
+    )
+
+
+def test_legacy_sha256_hash_still_verifies(tmp_path: Path) -> None:
+    ini = tmp_path / "budget_analyser.ini"
+    # Manually write a legacy sha256 hash to the INI
+    legacy_hash = _hash_password_sha256("oldpass")
+    import configparser
+    parser = configparser.ConfigParser()
+    parser.add_section("app")
+    parser.set("app", "password_hash", legacy_hash)
+    with ini.open("w") as f:
+        parser.write(f)
+
+    prefs = AppPreferences(ini)
+    assert prefs.verify_password("oldpass") is True
+    assert prefs.verify_password("wrongpass") is False
+
+
+def test_pbkdf2_password_round_trip(tmp_path: Path) -> None:
+    ini = tmp_path / "budget_analyser.ini"
+    prefs = AppPreferences(ini)
+    prefs.set_password("str0ngP@ss!")
+    assert prefs.verify_password("str0ngP@ss!") is True
+    assert prefs.verify_password("wrong") is False
 
 
 def test_theme_default_and_round_trip(tmp_path: Path) -> None:

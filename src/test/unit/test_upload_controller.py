@@ -208,6 +208,87 @@ class TestUploadStatementRecordsHistory:
         )
         assert result.success is True
 
+class TestPathTraversalSecurity:
+    """Verify service-level path traversal protections."""
+
+    def _make_controller(
+        self,
+        tmp_path: Path,
+        mock_ini_config: MagicMock,
+    ) -> UploadController:
+        statements = tmp_path / "statements"
+        statements.mkdir()
+        return UploadController(
+            logger=logging.getLogger("test"),
+            ini_config=mock_ini_config,
+            statements_dir=statements,
+        )
+
+    def test_validate_csv_rejects_path_with_dotdot(
+        self,
+        tmp_path: Path,
+        mock_ini_config: MagicMock,
+    ) -> None:
+        ctrl = self._make_controller(tmp_path, mock_ini_config)
+        traversal = tmp_path / ".." / "evil.csv"
+        is_valid, msg, _ = ctrl.validate_csv(traversal, "citi")
+        assert is_valid is False
+        assert "traversal" in msg.lower() or "invalid" in msg.lower() or ".." in msg
+
+    def test_validate_csv_rejects_relative_path(
+        self,
+        tmp_path: Path,
+        mock_ini_config: MagicMock,
+    ) -> None:
+        ctrl = self._make_controller(tmp_path, mock_ini_config)
+        relative = Path("relative/path.csv")
+        is_valid, msg, _ = ctrl.validate_csv(relative, "citi")
+        assert is_valid is False
+
+    def test_upload_statement_rejects_source_with_dotdot(
+        self,
+        tmp_path: Path,
+        mock_ini_config: MagicMock,
+    ) -> None:
+        ctrl = self._make_controller(tmp_path, mock_ini_config)
+        traversal = tmp_path / ".." / "evil.csv"
+        result = ctrl.upload_statement(
+            source_path=traversal,
+            bank_name="citi",
+            account_type="credit",
+        )
+        assert result.success is False
+
+    def test_upload_statement_rejects_dest_outside_statements_dir(
+        self,
+        tmp_path: Path,
+        mock_ini_config: MagicMock,
+    ) -> None:
+        # dest_filename from ini config contains traversal
+        mock_ini_config.get_statement_filename.return_value = (
+            "../../evil.csv"
+        )
+        statements = tmp_path / "statements"
+        statements.mkdir()
+        ctrl = UploadController(
+            logger=logging.getLogger("test"),
+            ini_config=mock_ini_config,
+            statements_dir=statements,
+        )
+        # Create a valid-looking source file
+        csv_file = tmp_path / "legit.csv"
+        csv_file.write_text(
+            "Date,Description,Amount\n2024-01-01,Test,10.00\n",
+        )
+        result = ctrl.upload_statement(
+            source_path=csv_file,
+            bank_name="citi",
+            account_type="credit",
+        )
+        assert result.success is False
+        assert "path" in result.message.lower() or "invalid" in result.message.lower()
+
+
     def test_upload_with_ingestion_records_counts(
         self,
         tmp_path: Path,

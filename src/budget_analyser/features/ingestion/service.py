@@ -434,6 +434,9 @@ class UploadService:
         Returns:
             Tuple of ``(is_valid, message, missing_columns)``.
         """
+        path_err = self._check_source_path(file_path)
+        if path_err:
+            return False, path_err, []
         if not file_path.exists():
             return False, f"File not found: {file_path}", []
         if file_path.suffix.lower() != ".csv":
@@ -525,6 +528,19 @@ class UploadService:
             )
 
         dest_path = self._statements_dir / dest_filename
+
+        try:
+            dest_path.resolve().relative_to(
+                self._statements_dir.resolve(),
+            )
+        except ValueError:
+            return UploadResult(
+                success=False,
+                message=(
+                    "Invalid destination path: "
+                    "outside statements directory"
+                ),
+            )
 
         try:
             self._statements_dir.mkdir(
@@ -674,6 +690,28 @@ class UploadService:
                 " | Warning: Failed to process "
                 f"transactions: {exc}",
             )
+
+    @staticmethod
+    def _check_source_path(path: Path) -> str | None:
+        """Return an error message if path is unsafe, else None.
+
+        Guards against path traversal and relative paths at the
+        service boundary, independent of API-level validation.
+
+        Args:
+            path: The file path to validate.
+
+        Returns:
+            Error message string, or None if path is acceptable.
+        """
+        if not path.is_absolute():
+            return "File path must be absolute"
+        if ".." in path.parts:
+            return (
+                "File path must not contain traversal "
+                "components (..)"
+            )
+        return None
 
 
 # -------------------------------------------------------------------
