@@ -131,8 +131,6 @@ jobs:
             label: Windows
           - os: macos-latest
             label: macOS_AppleSilicon
-          - os: macos-13
-            label: macOS_Intel
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -168,73 +166,36 @@ jobs:
         run: |
           VERSION="${{ needs.version-and-tag.outputs.version }}"
           cd src/frontend/src-tauri
-          if command -v python3 &>/dev/null; then
-            python3 -c "
-          import json, sys
+          python3 -c "
+          import json
           with open('tauri.conf.json', 'r') as f:
               conf = json.load(f)
           conf['version'] = '$VERSION'
           with open('tauri.conf.json', 'w') as f:
               json.dump(conf, f, indent=2)
           "
-          fi
           echo "Updated tauri.conf.json to version $VERSION"
 
-      - name: Build Tauri app
+      - name: Build Tauri app and upload to release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: src/frontend
           tauriScript: npm run tauri
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: tauri-${{ matrix.label }}
-          path: |
-            src/frontend/src-tauri/target/release/bundle/**/*.dmg
-            src/frontend/src-tauri/target/release/bundle/**/*.app
-            src/frontend/src-tauri/target/release/bundle/**/*.exe
-            src/frontend/src-tauri/target/release/bundle/**/*.msi
-
-  create-release:
-    needs: [version-and-tag, build-tauri]
-    if: needs.version-and-tag.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts
-          merge-multiple: true
-
-      - name: List artifacts
-        run: find ./artifacts -type f | head -50
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ needs.version-and-tag.outputs.version }}
-          name: Budget Analyser v${{ needs.version-and-tag.outputs.version }}
-          body: |
+          tagName: v${{ needs.version-and-tag.outputs.version }}
+          releaseName: Budget Analyser v${{ needs.version-and-tag.outputs.version }}
+          releaseBody: |
             ${{ needs.version-and-tag.outputs.changelog }}
 
             ---
 
             ### Downloads
-            - **Windows**: `.msi` installer or `.exe`
+            - **Windows**: `.exe` installer
             - **macOS (Apple Silicon)**: `.dmg` for M1/M2/M3/M4 Macs
-            - **macOS (Intel)**: `.dmg` for pre-2020 Macs
 
             ### Prerequisites
             - Python 3.12+ with [uv](https://docs.astral.sh/uv/) installed
             - Run `uv sync` in the project directory to set up the Python backend
 
             > **macOS Gatekeeper**: On first launch, right-click the app → "Open" → "Open" to bypass the unsigned app warning.
-          files: |
-            ./artifacts/**/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
