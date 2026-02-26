@@ -10,3 +10,4 @@ export * from "./use-payments";
 export * from "./use-upload";
 export * from "./use-mappers";
 export * from "./use-settings";
+export * from "./use-update-check";

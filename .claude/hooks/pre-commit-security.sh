@@ -116,7 +116,10 @@ if [ "$USE_GIT_CACHE" = "true" ]; then
 fi
 
 # Nothing to review
-[ -z "$CODE_FILES" ] && exit 0
+if [ -z "$CODE_FILES" ]; then
+  echo "✅ Security check complete: no reviewable code files staged — skipped. [$SOURCE_LABEL]"
+  exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # Compute hash from sorted file list (same logic the agent uses to clear)
@@ -133,7 +136,10 @@ if [ -f "$CLEARANCE_FILE" ]; then
   STORED_HASH=$(tr -d '[:space:]' < "$CLEARANCE_FILE")
   if [ "$STORED_HASH" = "$STAGED_HASH" ]; then
     rm -f "$CLEARANCE_FILE"
-    echo "✅ Security review clearance verified. Proceeding with commit. [$SOURCE_LABEL]"
+    TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+    LOG_FILE="$GIT_ROOT/.claude/security-hook.log"
+    echo "[$TIMESTAMP] ✅ Security check complete: financial-security-reviewer cleared $(echo "$CODE_FILES" | wc -l | tr -d ' ') file(s). [$SOURCE_LABEL]" >> "$LOG_FILE"
+    echo "✅ Security check complete: financial-security-reviewer cleared all staged files. Proceeding with commit. [$SOURCE_LABEL]"
     exit 0
   fi
 fi

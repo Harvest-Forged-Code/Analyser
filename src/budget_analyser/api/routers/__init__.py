@@ -19,4 +19,5 @@ __all__ = [
     "upload",
     "settings",
     "recategorize",
+    "updates",
 ]

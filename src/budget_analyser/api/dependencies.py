@@ -69,6 +69,8 @@ from budget_analyser.features.recategorize.service import (
     RecategorizeOrchestrator,
 )
 from budget_analyser.features.ingestion.categorization import CategoryMappers
+from budget_analyser.features.auto_update.service import AutoUpdateService
+from budget_analyser.version import get_version
 
 # ---------------------------------------------------------------------------
 # Module-level singletons (set by ``initialize()``)
@@ -91,6 +93,7 @@ _sub_category_mapper_service: SubCategoryMapperService | None = None
 _cashflow_mapper_service: CashflowMapperService | None = None
 _recategorize_service: RecategorizeOrchestrator | None = None
 _transaction_db: TransactionDatabase | None = None
+_auto_update_service: AutoUpdateService | None = None
 
 _reports_cache: list[MonthlyReports] | None = None
 # pylint: enable=invalid-name
@@ -148,7 +151,8 @@ def initialize() -> None:
         _logger, _prefs, _backend_controller, _db_repository, \
         _upload_service, _budget_goals_service, \
         _savings_service, _settings_service, \
-        _recategorize_service, _transaction_db  # noqa: PLW0603
+        _recategorize_service, _transaction_db, \
+        _auto_update_service  # noqa: PLW0603
     # pylint: enable=global-statement
 
     # Logger
@@ -261,6 +265,14 @@ def initialize() -> None:
     )
     _savings_service = SavingsService()
     _settings_service = SettingsService(_logger, _prefs)
+
+    # Auto-update service
+    _auto_update_service = AutoUpdateService(
+        github_owner="Harvest-Forged-Code",
+        github_repo="Analyser",
+        current_version=get_version(),
+        logger=_logger,
+    )
 
     # Generate initial reports from database (if data exists)
     _regenerate_reports()
@@ -460,6 +472,12 @@ def get_recategorize_service() -> RecategorizeOrchestrator:
         "Call initialize() first"
     )
     return _recategorize_service
+
+
+def get_auto_update_service() -> AutoUpdateService:
+    """Return the AutoUpdateService."""
+    assert _auto_update_service is not None, "Call initialize() first"
+    return _auto_update_service
 
 
 # ---------------------------------------------------------------------------
