@@ -1,5 +1,7 @@
 {
-  "enabledMcpjsonServers": ["gitkraken"],
+  "enabledMcpjsonServers": [
+    "gitkraken"
+  ],
   "enabledPlugins": {
     "playwright@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true
