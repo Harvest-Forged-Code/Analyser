@@ -17,7 +17,10 @@ import {
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useUpdateStore } from "@/stores/update-store";
 import { useAppVersion } from "@/api/hooks/use-settings";
+import { useUpdateCheck } from "@/api/hooks/use-update-check";
+import { UpdateNotificationDialog } from "@/components/update-notification-dialog";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -36,6 +39,17 @@ export default function AppShell() {
   const { logout } = useAuthStore();
   const { data: version } = useAppVersion();
   const navigate = useNavigate();
+
+  // Auto-update check
+  const { data: updateResult } = useUpdateCheck();
+  const { skippedVersion, dismissedForSession, skipVersion, dismissForSession } =
+    useUpdateStore();
+
+  const showUpdateDialog =
+    updateResult?.update_available === true &&
+    updateResult.release != null &&
+    !dismissedForSession &&
+    skippedVersion !== updateResult.latest_version;
 
   const handleLogout = () => {
     logout();
@@ -135,6 +149,17 @@ export default function AppShell() {
           <Outlet />
         </div>
       </main>
+
+      {/* Update notification */}
+      {showUpdateDialog && updateResult.release && (
+        <UpdateNotificationDialog
+          open={showUpdateDialog}
+          currentVersion={updateResult.current_version}
+          release={updateResult.release}
+          onSkip={() => skipVersion(updateResult.latest_version)}
+          onDismiss={dismissForSession}
+        />
+      )}
     </div>
   );
 }

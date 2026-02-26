@@ -355,3 +355,20 @@ export interface ChangePasswordRequest {
   new_password: string;
   confirm: string;
 }
+
+// Auto-update
+export interface ReleaseInfo {
+  tag_name: string;
+  version: string;
+  name: string;
+  body: string;
+  html_url: string;
+  published_at: string;
+}
+
+export interface UpdateCheckResult {
+  update_available: boolean;
+  current_version: string;
+  latest_version: string;
+  release: ReleaseInfo | null;
+}
