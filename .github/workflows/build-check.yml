@@ -1,0 +1,82 @@
+name: Build Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version string to use (e.g. 1.0.99)"
+        required: false
+        default: "0.0.0-build-check"
+
+permissions:
+  contents: read
+
+jobs:
+  build-tauri:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            artifact_glob: "src/frontend/src-tauri/target/release/bundle/nsis/*.exe"
+          - os: macos-latest
+            label: macOS_AppleSilicon
+            artifact_glob: "src/frontend/src-tauri/target/release/bundle/dmg/*.dmg"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend dependencies
+        working-directory: src/frontend
+        run: npm ci
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src/frontend/src-tauri
+
+      - name: Set version in tauri.conf.json
+        shell: bash
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          cd src/frontend/src-tauri
+          python3 -c "
+          import json
+          with open('tauri.conf.json', 'r') as f:
+              conf = json.load(f)
+          conf['version'] = '$VERSION'
+          with open('tauri.conf.json', 'w') as f:
+              json.dump(conf, f, indent=2)
+          "
+          echo "Set tauri.conf.json version to $VERSION"
+
+      - name: Build Tauri app
+        working-directory: src/frontend
+        run: npm run tauri build
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: budget-analyser-${{ matrix.label }}
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: error
+          retention-days: 7
