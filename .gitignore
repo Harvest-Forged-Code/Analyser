@@ -51,6 +51,8 @@ MANIFEST
 *.manifest
 *.spec
 !scripts/budget_analyser.spec
+!budget-analyser-api.spec
+*.spec.bak
 
 # Installer logs
 pip-log.txt
