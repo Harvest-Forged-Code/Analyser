@@ -9,6 +9,9 @@
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
+  "bundle": {
+    "externalBin": ["binaries/budget-analyser-api"]
+  },
   "app": {
     "windows": [
       {

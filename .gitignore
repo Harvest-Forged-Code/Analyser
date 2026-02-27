@@ -183,3 +183,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .claude/security-hook.log
+
+# Sidecar binaries (built by CI, not committed)
+src/frontend/src-tauri/binaries/*
+!src/frontend/src-tauri/binaries/.gitkeep
