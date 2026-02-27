@@ -6,7 +6,6 @@ that wraps existing feature controllers.
 
 from __future__ import annotations
 
-import importlib.metadata
 import os
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
@@ -17,6 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from budget_analyser.api import dependencies
+from budget_analyser.version import get_version
 from budget_analyser.settings.seeding import seed_data_directory
 from budget_analyser.api.routers import (
     auth,
@@ -75,7 +75,7 @@ def create_app() -> FastAPI:
     @fastapi_app.get("/api/version")
     def app_version() -> dict[str, str]:
         """Return the installed package version."""
-        return {"version": importlib.metadata.version("budget-analyser")}
+        return {"version": get_version()}
 
     # ----- register all routers -----
     fastapi_app.include_router(auth.router)
