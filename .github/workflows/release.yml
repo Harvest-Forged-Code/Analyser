@@ -180,9 +180,11 @@ jobs:
           - os: windows-latest
             label: Windows
             triple: x86_64-pc-windows-msvc
+            bundles: "nsis"
           - os: macos-latest
             label: macOS_AppleSilicon
             triple: aarch64-apple-darwin
+            bundles: "app,dmg"
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -245,7 +247,7 @@ jobs:
         with:
           projectPath: src/frontend
           tauriScript: npm run tauri
-          args: --bundles app,dmg,nsis
+          args: --bundles ${{ matrix.bundles }}
           tagName: v${{ needs.version-and-tag.outputs.version }}
           releaseName: Budget Analyser v${{ needs.version-and-tag.outputs.version }}
           releaseBody: |

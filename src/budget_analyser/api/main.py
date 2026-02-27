@@ -98,7 +98,7 @@ app = create_app()
 
 if __name__ == "__main__":
     uvicorn.run(
-        "budget_analyser.api.main:app",
+        app,
         host="127.0.0.1",
         port=8741,
         reload=False,

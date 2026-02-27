@@ -94,10 +94,12 @@ jobs:
           - os: windows-latest
             label: Windows
             triple: x86_64-pc-windows-msvc
+            bundles: "nsis"
             artifact_glob: "src/frontend/src-tauri/target/release/bundle/nsis/*.exe"
           - os: macos-latest
             label: macOS_AppleSilicon
             triple: aarch64-apple-darwin
+            bundles: "app,dmg"
             artifact_glob: "src/frontend/src-tauri/target/release/bundle/dmg/*.dmg"
 
     runs-on: ${{ matrix.os }}
@@ -155,7 +157,7 @@ jobs:
 
       - name: Build Tauri app
         working-directory: src/frontend
-        run: npm run tauri build -- --bundles app,dmg,nsis
+        run: npm run tauri build -- --bundles ${{ matrix.bundles }}
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
