@@ -245,6 +245,7 @@ jobs:
         with:
           projectPath: src/frontend
           tauriScript: npm run tauri
+          args: --bundles app,dmg,nsis
           tagName: v${{ needs.version-and-tag.outputs.version }}
           releaseName: Budget Analyser v${{ needs.version-and-tag.outputs.version }}
           releaseBody: |
