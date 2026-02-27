@@ -12,20 +12,101 @@ permissions:
   contents: read
 
 jobs:
+  # ── Step 1: Build PyInstaller sidecar binary per platform ─────────────────
+  build-python:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            triple: aarch64-apple-darwin
+          - os: macos-13
+            triple: x86_64-apple-darwin
+          - os: windows-latest
+            triple: x86_64-pc-windows-msvc
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies (including pyinstaller)
+        run: uv sync --group dev
+
+      - name: Build sidecar binary
+        run: uv run pyinstaller budget-analyser-api.spec --clean --distpath dist-sidecar
+
+      - name: Smoke-test sidecar binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p /tmp/ba-test
+          BUDGET_ANALYSER_DATA_DIR=/tmp/ba-test ./dist-sidecar/budget-analyser-api &
+          SIDECAR_PID=$!
+          sleep 5
+          curl --fail http://127.0.0.1:8741/api/health
+          kill $SIDECAR_PID
+        shell: bash
+
+      - name: Smoke-test sidecar binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $env:BUDGET_ANALYSER_DATA_DIR = "$env:TEMP\ba-test"
+          New-Item -ItemType Directory -Force -Path $env:BUDGET_ANALYSER_DATA_DIR
+          $proc = Start-Process -FilePath "dist-sidecar\budget-analyser-api.exe" -PassThru
+          Start-Sleep -Seconds 5
+          Invoke-RestMethod http://127.0.0.1:8741/api/health
+          Stop-Process -Id $proc.Id
+        shell: pwsh
+
+      - name: Stage binary with target triple name (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p src/frontend/src-tauri/binaries
+          cp dist-sidecar/budget-analyser-api \
+             src/frontend/src-tauri/binaries/budget-analyser-api-${{ matrix.triple }}
+          chmod +x src/frontend/src-tauri/binaries/budget-analyser-api-${{ matrix.triple }}
+        shell: bash
+
+      - name: Stage binary with target triple name (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          New-Item -ItemType Directory -Force -Path src/frontend/src-tauri/binaries
+          Copy-Item "dist-sidecar\budget-analyser-api.exe" `
+            "src\frontend\src-tauri\binaries\budget-analyser-api-${{ matrix.triple }}.exe"
+        shell: pwsh
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-${{ matrix.triple }}
+          path: src/frontend/src-tauri/binaries/
+          if-no-files-found: error
+
+  # ── Step 2: Build Tauri installer per platform ────────────────────────────
   build-tauri:
+    needs: build-python
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
             label: Windows
+            triple: x86_64-pc-windows-msvc
             artifact_glob: "src/frontend/src-tauri/target/release/bundle/nsis/*.exe"
           - os: macos-latest
             label: macOS_AppleSilicon
+            triple: aarch64-apple-darwin
+            artifact_glob: "src/frontend/src-tauri/target/release/bundle/dmg/*.dmg"
+          - os: macos-13
+            label: macOS_Intel
+            triple: x86_64-apple-darwin
             artifact_glob: "src/frontend/src-tauri/target/release/bundle/dmg/*.dmg"
 
     runs-on: ${{ matrix.os }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +135,16 @@ jobs:
         with:
           workspaces: src/frontend/src-tauri
 
+      - name: Download sidecar binary
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-${{ matrix.triple }}
+          path: src/frontend/src-tauri/binaries/
+
+      - name: Make sidecar executable (Unix)
+        if: runner.os != 'Windows'
+        run: chmod +x src/frontend/src-tauri/binaries/budget-analyser-api-${{ matrix.triple }}
+
       - name: Set version in tauri.conf.json
         shell: bash
         run: |
@@ -67,7 +158,6 @@ jobs:
           with open('tauri.conf.json', 'w') as f:
               json.dump(conf, f, indent=2)
           "
-          echo "Set tauri.conf.json version to $VERSION"
 
       - name: Build Tauri app
         working-directory: src/frontend
