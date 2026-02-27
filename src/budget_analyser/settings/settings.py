@@ -106,15 +106,11 @@ class Settings:
 def load_settings() -> Settings:
     """Load application settings from environment (and optional `.env`).
 
-    Purpose:
-        Provide an explicit and testable way to construct `Settings`.
-
-    Steps:
-        1. Resolve the repository root.
-        2. Load `.env` if present.
-        3. Read settings from environment, falling back to repo-local defaults.
+    When ``BUDGET_ANALYSER_DATA_DIR`` is set, all paths are derived from it.
+    Individual path env vars are still honoured when the data-dir var is absent.
 
     Environment variables:
+    - BUDGET_ANALYSER_DATA_DIR (takes precedence — sets all paths under one root)
     - BUDGET_ANALYSER_STATEMENT_DIR
     - BUDGET_ANALYSER_INI_CONFIG_PATH
     - BUDGET_ANALYSER_DESCRIPTION_TO_SUB_CATEGORY_PATH
@@ -123,29 +119,35 @@ def load_settings() -> Settings:
     - BUDGET_ANALYSER_DATABASE_PATH
     - BUDGET_ANALYSER_LOG_LEVEL
     """
-    # Determine project root and apply `.env` overrides.
     root = _project_root()
     pkg_root = _package_root()
     _load_dotenv(root / ".env")
 
-    # Read statement directory from env (default: `src/budget_analyser/data/statements`).
+    data_dir_str = os.environ.get("BUDGET_ANALYSER_DATA_DIR", "")
+    if data_dir_str:
+        data_dir = Path(data_dir_str)
+        return Settings(
+            statement_dir=data_dir / "statements",
+            ini_config_path=data_dir / "config" / "budget_analyser.ini",
+            description_to_sub_category_path=data_dir / "mappers" / "description_to_sub_category.json",
+            sub_category_to_category_path=data_dir / "mappers" / "sub_category_to_category.json",
+            cashflow_to_category_path=data_dir / "mappers" / "cashflow_to_category.json",
+            database_path=data_dir / "budget_analyser.db",
+            log_level=os.environ.get("BUDGET_ANALYSER_LOG_LEVEL", "INFO"),
+        )
+
     statement_dir = Path(
         os.environ.get(
             "BUDGET_ANALYSER_STATEMENT_DIR",
             str(pkg_root / "data" / "statements"),
         )
     )
-
-    # Read INI config path from env.
-    # Default: `src/budget_analyser/data/config/budget_analyser.ini`.
     ini_config_path = Path(
         os.environ.get(
             "BUDGET_ANALYSER_INI_CONFIG_PATH",
             str(pkg_root / "data" / "config" / "budget_analyser.ini"),
         )
     )
-
-    # Read JSON mapping paths from env.
     description_to_sub_category_path = Path(
         os.environ.get(
             "BUDGET_ANALYSER_DESCRIPTION_TO_SUB_CATEGORY_PATH",
@@ -158,28 +160,20 @@ def load_settings() -> Settings:
             str(pkg_root / "data" / "mappers" / "sub_category_to_category.json"),
         )
     )
-
-    # Read cashflow mapping path from env.
     cashflow_to_category_path = Path(
         os.environ.get(
             "BUDGET_ANALYSER_CASHFLOW_TO_CATEGORY_PATH",
             str(pkg_root / "data" / "mappers" / "cashflow_to_category.json"),
         )
     )
-
-    # Read database path from env.
-    # Default: `src/budget_analyser/data/budget_analyser.db`.
     database_path = Path(
         os.environ.get(
             "BUDGET_ANALYSER_DATABASE_PATH",
             str(pkg_root / "data" / "budget_analyser.db"),
         )
     )
-
-    # Read log level (default: INFO).
     log_level = os.environ.get("BUDGET_ANALYSER_LOG_LEVEL", "INFO")
 
-    # Construct an immutable settings object.
     return Settings(
         statement_dir=statement_dir,
         ini_config_path=ini_config_path,

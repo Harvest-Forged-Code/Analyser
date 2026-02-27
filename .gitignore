@@ -51,6 +51,8 @@ MANIFEST
 *.manifest
 *.spec
 !scripts/budget_analyser.spec
+!budget-analyser-api.spec
+*.spec.bak
 
 # Installer logs
 pip-log.txt
@@ -181,3 +183,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .claude/security-hook.log
+
+# Sidecar binaries (built by CI, not committed)
+src/frontend/src-tauri/binaries/*
+!src/frontend/src-tauri/binaries/.gitkeep

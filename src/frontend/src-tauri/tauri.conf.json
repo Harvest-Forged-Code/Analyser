@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicegui-org/nicegui/main/examples/fastapi/tauri/src-tauri/../node_modules/@tauri-apps/tauri/schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "Budget Analyser",
   "version": "1.0.0",
   "identifier": "com.budgetanalyser.app",
@@ -8,6 +8,9 @@
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
+  },
+  "bundle": {
+    "externalBin": ["binaries/budget-analyser-api"]
   },
   "app": {
     "windows": [

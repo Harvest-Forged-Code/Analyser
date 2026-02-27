@@ -120,8 +120,60 @@ jobs:
           git tag -a "v$VERSION" -m "Release v$VERSION"
           git push origin "v$VERSION"
 
-  build-tauri:
+  build-python:
     needs: version-and-tag
+    if: needs.version-and-tag.outputs.should_release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            triple: aarch64-apple-darwin
+          - os: macos-13
+            triple: x86_64-apple-darwin
+          - os: windows-latest
+            triple: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies (including pyinstaller)
+        run: uv sync --group dev
+
+      - name: Build sidecar binary
+        run: uv run pyinstaller budget-analyser-api.spec --clean --distpath dist-sidecar
+
+      - name: Stage binary with target triple name (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p src/frontend/src-tauri/binaries
+          cp dist-sidecar/budget-analyser-api \
+             src/frontend/src-tauri/binaries/budget-analyser-api-${{ matrix.triple }}
+          chmod +x src/frontend/src-tauri/binaries/budget-analyser-api-${{ matrix.triple }}
+        shell: bash
+
+      - name: Stage binary with target triple name (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          New-Item -ItemType Directory -Force -Path src/frontend/src-tauri/binaries
+          Copy-Item "dist-sidecar\budget-analyser-api.exe" `
+            "src\frontend\src-tauri\binaries\budget-analyser-api-${{ matrix.triple }}.exe"
+        shell: pwsh
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-sidecar-${{ matrix.triple }}
+          path: src/frontend/src-tauri/binaries/
+          if-no-files-found: error
+
+  build-tauri:
+    needs: [version-and-tag, build-python]
     if: needs.version-and-tag.outputs.should_release == 'true'
     strategy:
       fail-fast: false
@@ -129,8 +181,13 @@ jobs:
         include:
           - os: windows-latest
             label: Windows
+            triple: x86_64-pc-windows-msvc
           - os: macos-latest
             label: macOS_AppleSilicon
+            triple: aarch64-apple-darwin
+          - os: macos-13
+            label: macOS_Intel
+            triple: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -160,6 +217,16 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src/frontend/src-tauri
+
+      - name: Download sidecar binary
+        uses: actions/download-artifact@v4
+        with:
+          name: release-sidecar-${{ matrix.triple }}
+          path: src/frontend/src-tauri/binaries/
+
+      - name: Make sidecar executable (Unix)
+        if: runner.os != 'Windows'
+        run: chmod +x src/frontend/src-tauri/binaries/budget-analyser-api-${{ matrix.triple }}
 
       - name: Update version in tauri.conf.json
         shell: bash
@@ -193,9 +260,8 @@ jobs:
             ### Downloads
             - **Windows**: `.exe` installer
             - **macOS (Apple Silicon)**: `.dmg` for M1/M2/M3/M4 Macs
+            - **macOS (Intel)**: `.dmg` for Intel Macs
 
-            ### Prerequisites
-            - Python 3.12+ with [uv](https://docs.astral.sh/uv/) installed
-            - Run `uv sync` in the project directory to set up the Python backend
+            > **No Python required** — fully self-contained installer.
 
-            > **macOS Gatekeeper**: On first launch, right-click the app → "Open" → "Open" to bypass the unsigned app warning.
+            > **macOS Gatekeeper**: On first launch, right-click the app → "Open" → "Open".
