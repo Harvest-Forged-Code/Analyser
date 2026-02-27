@@ -7,14 +7,17 @@ that wraps existing feature controllers.
 from __future__ import annotations
 
 import importlib.metadata
+import os
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from budget_analyser.api import dependencies
+from budget_analyser.settings.seeding import seed_data_directory
 from budget_analyser.api.routers import (
     auth,
     reports,
@@ -33,7 +36,10 @@ from budget_analyser.api.routers import (
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Initialise shared controllers on startup."""
+    """Seed data directory then initialise shared controllers on startup."""
+    data_dir_env = os.environ.get("BUDGET_ANALYSER_DATA_DIR", "")
+    if data_dir_env:
+        seed_data_directory(Path(data_dir_env))
     dependencies.initialize()
     yield
 
