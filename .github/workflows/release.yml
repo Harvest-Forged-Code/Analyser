@@ -129,8 +129,6 @@ jobs:
         include:
           - os: macos-latest
             triple: aarch64-apple-darwin
-          - os: macos-13
-            triple: x86_64-apple-darwin
           - os: windows-latest
             triple: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
@@ -185,9 +183,6 @@ jobs:
           - os: macos-latest
             label: macOS_AppleSilicon
             triple: aarch64-apple-darwin
-          - os: macos-13
-            label: macOS_Intel
-            triple: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -260,7 +255,6 @@ jobs:
             ### Downloads
             - **Windows**: `.exe` installer
             - **macOS (Apple Silicon)**: `.dmg` for M1/M2/M3/M4 Macs
-            - **macOS (Intel)**: `.dmg` for Intel Macs
 
             > **No Python required** — fully self-contained installer.
 

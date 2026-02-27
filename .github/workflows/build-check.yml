@@ -20,8 +20,6 @@ jobs:
         include:
           - os: macos-latest
             triple: aarch64-apple-darwin
-          - os: macos-13
-            triple: x86_64-apple-darwin
           - os: windows-latest
             triple: x86_64-pc-windows-msvc
 
@@ -100,10 +98,6 @@ jobs:
           - os: macos-latest
             label: macOS_AppleSilicon
             triple: aarch64-apple-darwin
-            artifact_glob: "src/frontend/src-tauri/target/release/bundle/dmg/*.dmg"
-          - os: macos-13
-            label: macOS_Intel
-            triple: x86_64-apple-darwin
             artifact_glob: "src/frontend/src-tauri/target/release/bundle/dmg/*.dmg"
 
     runs-on: ${{ matrix.os }}
