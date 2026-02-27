@@ -155,7 +155,7 @@ jobs:
 
       - name: Build Tauri app
         working-directory: src/frontend
-        run: npm run tauri build
+        run: npm run tauri build -- --bundles app,dmg,nsis
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
