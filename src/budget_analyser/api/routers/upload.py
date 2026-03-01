@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 
 from budget_analyser.api.dependencies import (
     get_upload_controller,
@@ -187,3 +189,85 @@ def upload_statement(
             status_code=400,
             detail=f"Upload failed: {e}",
         ) from e
+
+
+@router.post(
+    "/validate-file",
+    response_model=ValidationResultSchema,
+)
+async def validate_csv_file(
+    *,
+    file: UploadFile,
+    bank_name: str = Form(),
+    controller: UploadController = Depends(
+        get_upload_controller,
+    ),
+) -> ValidationResultSchema:
+    """Validate an uploaded CSV file before processing."""
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=".csv", delete=False,
+        ) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+
+        is_valid, message, _missing_cols = (
+            controller.validate_csv(
+                Path(tmp_path), bank_name,
+            )
+        )
+        return ValidationResultSchema(
+            valid=is_valid,
+            message=message,
+        )
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        raise HTTPException(
+            status_code=400,
+            detail=f"Validation error: {e}",
+        ) from e
+    finally:
+        if tmp_path:
+            os.unlink(tmp_path)
+
+
+@router.post("/file", response_model=UploadResultSchema)
+async def upload_statement_file(
+    *,
+    file: UploadFile,
+    bank_name: str = Form(),
+    account_type: str = Form(),
+    controller: UploadController = Depends(
+        get_upload_controller,
+    ),
+) -> UploadResultSchema:
+    """Upload and process a bank statement CSV via file upload."""
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=".csv", delete=False,
+        ) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+
+        result = controller.upload_statement(
+            source_path=Path(tmp_path),
+            bank_name=bank_name,
+            account_type=account_type,
+        )
+        if result.success:
+            invalidate_reports()
+        return UploadResultSchema(
+            success=result.success,
+            message=result.message,
+            destination_path=result.destination_path,
+            transactions_inserted=result.transactions_inserted,
+        )
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        raise HTTPException(
+            status_code=400,
+            detail=f"Upload failed: {e}",
+        ) from e
+    finally:
+        if tmp_path:
+            os.unlink(tmp_path)

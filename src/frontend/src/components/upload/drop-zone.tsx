@@ -6,10 +6,11 @@ import { cn } from "@/lib/utils";
 
 interface DropZoneProps {
   onFileSelected: (path: string) => void;
+  onFileObjectSelected?: (file: File) => void;
   selectedFile: string | null;
 }
 
-export default function DropZone({ onFileSelected, selectedFile }: DropZoneProps) {
+export default function DropZone({ onFileSelected, onFileObjectSelected, selectedFile }: DropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isTauri = "__TAURI__" in window;
@@ -72,9 +73,10 @@ export default function DropZone({ onFileSelected, selectedFile }: DropZoneProps
       const file = e.target.files?.[0];
       if (file) {
         onFileSelected(file.name);
+        onFileObjectSelected?.(file);
       }
     },
-    [onFileSelected]
+    [onFileSelected, onFileObjectSelected]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -95,10 +97,11 @@ export default function DropZone({ onFileSelected, selectedFile }: DropZoneProps
         const file = e.dataTransfer.files?.[0];
         if (file && file.name.toLowerCase().endsWith(".csv")) {
           onFileSelected(file.name);
+          onFileObjectSelected?.(file);
         }
       }
     },
-    [isTauri, onFileSelected]
+    [isTauri, onFileSelected, onFileObjectSelected]
   );
 
   return (

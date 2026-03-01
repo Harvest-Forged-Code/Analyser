@@ -49,10 +49,10 @@ export function useExpensesYear(year: number | undefined) {
   return useQuery({
     queryKey: ["expenses", "year", year],
     queryFn: async () => {
-      const response = await apiClient.get<Record<string, unknown>>(
+      const response = await apiClient.get<Record<string, unknown>[]>(
         `/expenses/year/${year}`
       );
-      return response.data;
+      return response.data[0] ?? null;
     },
     enabled: !!year,
   });

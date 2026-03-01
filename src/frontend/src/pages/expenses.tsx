@@ -298,7 +298,7 @@ export default function ExpensesPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {Object.entries(yearData).map(([key, value]) => (
+                    {Object.entries(yearData).filter(([key]) => key !== "year").map(([key, value]) => (
                       <div key={key} className="space-y-2">
                         <p className="text-sm text-muted-foreground">
                           {key
