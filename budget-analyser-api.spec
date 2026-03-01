@@ -4,6 +4,9 @@ from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 # Allow importlib.metadata.version("budget-analyser") to work when frozen
 datas = copy_metadata("budget-analyser")
 
+# Bundle VERSION file so frozen builds report the correct release version
+datas += [("VERSION", ".")]
+
 # Bundle seed data (mappers + config) as read-only assets
 datas += [
     ("src/budget_analyser/data/mappers", "data/mappers"),

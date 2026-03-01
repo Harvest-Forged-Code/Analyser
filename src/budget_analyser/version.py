@@ -92,12 +92,14 @@ def _read_version_from_git() -> str | None:
         or no tags exist.
     """
     try:
+        repo_dir = Path(__file__).parent
         result = subprocess.run(
             ["git", "describe", "--tags", "--abbrev=0"],
             capture_output=True,
             text=True,
             check=True,
             timeout=5,
+            cwd=repo_dir,
         )
         tag = result.stdout.strip()
         # Remove 'v' prefix if present

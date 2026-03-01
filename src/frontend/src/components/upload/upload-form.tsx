@@ -4,6 +4,8 @@ import {
   useAvailableBanks,
   useValidateCsv,
   useUploadStatement,
+  useValidateCsvFile,
+  useUploadStatementFile,
 } from "@/api/hooks/use-upload";
 import type { UploadResult } from "@/api/types";
 import DropZone from "./drop-zone";
@@ -24,11 +26,14 @@ export default function UploadForm() {
   const [accountType, setAccountType] = useState<string>("credit");
   const [bankName, setBankName] = useState<string>("");
   const [filePath, setFilePath] = useState<string | null>(null);
+  const [fileObject, setFileObject] = useState<File | null>(null);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
 
   const { data: banks } = useAvailableBanks(accountType);
   const validateMutation = useValidateCsv();
   const uploadMutation = useUploadStatement();
+  const validateFileMutation = useValidateCsvFile();
+  const uploadFileMutation = useUploadStatementFile();
 
   // Reset bank when account type changes
   useEffect(() => {
@@ -44,20 +49,37 @@ export default function UploadForm() {
 
   const handleValidate = async () => {
     if (!filePath || !bankName) return;
-    await validateMutation.mutateAsync({
-      file_path: filePath,
-      bank_name: bankName,
-    });
+    if (fileObject) {
+      await validateFileMutation.mutateAsync({
+        file: fileObject,
+        bank_name: bankName,
+      });
+    } else {
+      await validateMutation.mutateAsync({
+        file_path: filePath,
+        bank_name: bankName,
+      });
+    }
   };
 
   const handleUpload = async () => {
     if (!filePath || !bankName || !accountType) return;
+    const resolvedType = accountType === "checking" ? "debit" : "credit";
     try {
-      const result = await uploadMutation.mutateAsync({
-        file_path: filePath,
-        bank_name: bankName,
-        account_type: accountType === "checking" ? "debit" : "credit",
-      });
+      let result: UploadResult;
+      if (fileObject) {
+        result = await uploadFileMutation.mutateAsync({
+          file: fileObject,
+          bank_name: bankName,
+          account_type: resolvedType,
+        });
+      } else {
+        result = await uploadMutation.mutateAsync({
+          file_path: filePath,
+          bank_name: bankName,
+          account_type: resolvedType,
+        });
+      }
       setUploadResult(result);
     } catch {
       setUploadResult({
@@ -103,11 +125,13 @@ export default function UploadForm() {
                 </SelectTrigger>
                 <SelectContent>
                   {banks && banks.length > 0 ? (
-                    banks.map((bank) => (
-                      <SelectItem key={bank} value={bank}>
-                        {bank}
-                      </SelectItem>
-                    ))
+                    [...banks]
+                      .sort((a, b) => a.localeCompare(b))
+                      .map((bank) => (
+                        <SelectItem key={bank} value={bank}>
+                          {bank.charAt(0).toUpperCase() + bank.slice(1)}
+                        </SelectItem>
+                      ))
                   ) : (
                     <SelectItem value="none" disabled>
                       No banks available
@@ -118,31 +142,39 @@ export default function UploadForm() {
             </div>
           </div>
 
-          <DropZone onFileSelected={setFilePath} selectedFile={filePath} />
+          <DropZone
+            onFileSelected={setFilePath}
+            onFileObjectSelected={setFileObject}
+            selectedFile={filePath}
+          />
 
           <div className="flex gap-2">
             <Button
               onClick={handleValidate}
-              disabled={!canSubmit || validateMutation.isPending}
+              disabled={!canSubmit || validateMutation.isPending || validateFileMutation.isPending}
               variant="outline"
             >
-              {validateMutation.isPending ? (
+              {validateMutation.isPending || validateFileMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <FileCheck className="mr-2 h-4 w-4" />
               )}
-              {validateMutation.isPending ? "Validating..." : "Validate"}
+              {validateMutation.isPending || validateFileMutation.isPending
+                ? "Validating..."
+                : "Validate"}
             </Button>
             <Button
               onClick={handleUpload}
-              disabled={!canSubmit || uploadMutation.isPending}
+              disabled={!canSubmit || uploadMutation.isPending || uploadFileMutation.isPending}
             >
-              {uploadMutation.isPending ? (
+              {uploadMutation.isPending || uploadFileMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Upload className="mr-2 h-4 w-4" />
               )}
-              {uploadMutation.isPending ? "Uploading..." : "Upload"}
+              {uploadMutation.isPending || uploadFileMutation.isPending
+                ? "Uploading..."
+                : "Upload"}
             </Button>
           </div>
         </CardContent>

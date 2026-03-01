@@ -12,6 +12,9 @@ import pandas as pd
 from budget_analyser.features.ingestion.formatters.base import (
     BaseStatementFormatter,
 )
+from budget_analyser.features.ingestion.formatters.apple import (
+    AppleStatementFormatter,
+)
 from budget_analyser.features.ingestion.formatters.citi import (
     CitiStatementFormatter,
 )
@@ -48,6 +51,12 @@ def create_statement_formatter(
         >>> type(formatter).__name__
         'CitiStatementFormatter'
     """
+    if account_name == "apple":
+        return AppleStatementFormatter(
+            account_name=account_name,
+            statement=statement,
+            column_mapping=column_mapping,
+        )
     if account_name == "citi":
         return CitiStatementFormatter(
             account_name=account_name,

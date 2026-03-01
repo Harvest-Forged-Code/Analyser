@@ -140,6 +140,27 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Update version for build
+        shell: bash
+        run: |
+          VERSION="${{ needs.version-and-tag.outputs.version }}"
+          python3 -c "
+          import re
+          with open('pyproject.toml', 'r') as f:
+              content = f.read()
+          content = re.sub(
+              r'^version\s*=\s*\"[^\"]*\"',
+              'version = \"$VERSION\"',
+              content,
+              count=1,
+              flags=re.MULTILINE,
+          )
+          with open('pyproject.toml', 'w') as f:
+              f.write(content)
+          "
+          echo "$VERSION" > VERSION
+          echo "Set version to $VERSION in pyproject.toml and VERSION file"
+
       - name: Install Python dependencies (including pyinstaller)
         run: uv sync --group dev
 
