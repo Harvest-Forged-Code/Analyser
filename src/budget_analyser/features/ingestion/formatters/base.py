@@ -86,12 +86,23 @@ class BaseStatementFormatter(ABC):  # pylint: disable=too-few-public-methods
 
         Behavior:
             - If ``amount`` already exists (case-insensitive), no-op.
+            - If a mapped column will become ``amount`` after rename,
+              no-op (rename handles it).
             - Otherwise derive from ``Debit`` and ``Credit`` columns.
         """
         lowercase_columns = [
             column.lower() for column in self._statement.columns
         ]
         if "amount" in lowercase_columns:
+            return
+
+        # Check if a source column is mapped to "amount"
+        mapped_to_amount = any(
+            target == "amount"
+            and source in self._statement.columns
+            for source, target in self._column_mapping.items()
+        )
+        if mapped_to_amount:
             return
 
         if (

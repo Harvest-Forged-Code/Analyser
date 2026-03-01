@@ -36,6 +36,7 @@ def mock_ini_config() -> MagicMock:
         "Description": "description",
         "Amount": "amount",
     }
+    config.get_csv_column_names.return_value = None
     return config
 
 

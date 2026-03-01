@@ -459,7 +459,9 @@ class UploadService:
                 [],
             )
 
-        ok, err, csv_cols = self._read_csv_columns(file_path)
+        ok, err, csv_cols = self._read_csv_columns(
+            file_path, bank_name,
+        )
         if not ok:
             return False, err, []
 
@@ -601,12 +603,24 @@ class UploadService:
 
     def _read_csv_columns(
         self, file_path: Path,
+        bank_name: str | None = None,
     ) -> tuple[bool, str, list[str]]:
         """Read CSV and return columns or error."""
         try:
-            df = pd.read_csv(
-                file_path, nrows=5, encoding="utf-8-sig",
-            )
+            csv_kwargs: dict[str, object] = {
+                "nrows": 5, "encoding": "utf-8-sig",
+            }
+            if bank_name is not None:
+                col_names = (
+                    self._ini_config
+                    .get_csv_column_names(
+                        account_name=bank_name,
+                    )
+                )
+                if col_names is not None:
+                    csv_kwargs["header"] = None
+                    csv_kwargs["names"] = col_names
+            df = pd.read_csv(file_path, **csv_kwargs)
             if df.empty:
                 return False, "CSV file is empty", []
             return True, "", list(df.columns)
