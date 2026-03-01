@@ -103,11 +103,13 @@ export default function UploadForm() {
                 </SelectTrigger>
                 <SelectContent>
                   {banks && banks.length > 0 ? (
-                    banks.map((bank) => (
-                      <SelectItem key={bank} value={bank}>
-                        {bank}
-                      </SelectItem>
-                    ))
+                    [...banks]
+                      .sort((a, b) => a.localeCompare(b))
+                      .map((bank) => (
+                        <SelectItem key={bank} value={bank}>
+                          {bank.charAt(0).toUpperCase() + bank.slice(1)}
+                        </SelectItem>
+                      ))
                   ) : (
                     <SelectItem value="none" disabled>
                       No banks available
