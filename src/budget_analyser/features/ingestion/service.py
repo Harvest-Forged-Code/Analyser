@@ -49,6 +49,7 @@ class TransactionIngestionService:
         *,
         database: TransactionDatabase,
         category_mappers: CategoryMappers,
+        ini_config: IniAppConfig | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         """Initialize the ingestion service.
@@ -56,10 +57,12 @@ class TransactionIngestionService:
         Args:
             database: TransactionDatabase for persistence.
             category_mappers: Mappers for categorization.
+            ini_config: Optional INI config for headerless CSV support.
             logger: Optional logger for diagnostics.
         """
         self._database = database
         self._category_mappers = category_mappers
+        self._ini_config = ini_config
         self._logger = logger or logging.getLogger(
             "budget_analyser.ingestion",
         )
@@ -158,7 +161,17 @@ class TransactionIngestionService:
             "Loading CSV: %s for account: %s",
             csv_path, account_name,
         )
-        raw_df = pd.read_csv(csv_path, encoding="utf-8-sig")
+        csv_kwargs: dict[str, object] = {
+            "encoding": "utf-8-sig",
+        }
+        if self._ini_config is not None:
+            col_names = self._ini_config.get_csv_column_names(
+                account_name=account_name,
+            )
+            if col_names is not None:
+                csv_kwargs["header"] = None
+                csv_kwargs["names"] = col_names
+        raw_df = pd.read_csv(csv_path, **csv_kwargs)
 
         if raw_df.empty:
             return IngestionResult(

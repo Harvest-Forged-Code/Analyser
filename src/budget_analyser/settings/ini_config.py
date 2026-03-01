@@ -79,6 +79,33 @@ class IniAppConfig:
             raise configparser.NoOptionError(account, section)
         return parser.get(section, account)
 
+    def get_csv_column_names(
+        self, *, account_name: str,
+    ) -> list[str] | None:
+        """Return column names for headerless CSVs, or None if CSV has headers.
+
+        Looks for a ``[{account_name}_options]`` section with
+        ``has_header = false`` and a ``column_names`` key.
+
+        Args:
+            account_name: Account identifier (e.g., ``"wellsfargo"``).
+
+        Returns:
+            List of column names when the CSV has no header row,
+            or ``None`` when the CSV has its own header row.
+        """
+        parser = self._parser()
+        section = f"{account_name}_options"
+        if not parser.has_section(section):
+            return None
+        has_header = parser.get(section, "has_header", fallback="true")
+        if has_header.lower() != "false":
+            return None
+        raw = parser.get(section, "column_names", fallback="")
+        if not raw.strip():
+            return None
+        return [c.strip() for c in raw.split(",")]
+
     def get_column_mapping(self, *, account_name: str) -> Mapping[str, str]:
         """Return source->desired column mapping for an account.
 

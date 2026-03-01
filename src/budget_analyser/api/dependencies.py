@@ -231,6 +231,7 @@ def initialize() -> None:
     ingestion_service = TransactionIngestionService(
         database=transaction_db,
         category_mappers=category_mappers,
+        ini_config=config,
         logger=_logger,
     )
     # Recategorize orchestrator

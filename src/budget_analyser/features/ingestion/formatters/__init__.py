@@ -10,6 +10,9 @@ from budget_analyser.features.ingestion.formatters.base import (
     BaseStatementFormatter,
     REQUIRED_COLUMNS,
 )
+from budget_analyser.features.ingestion.formatters.apple import (
+    AppleStatementFormatter,
+)
 from budget_analyser.features.ingestion.formatters.citi import (
     CitiStatementFormatter,
 )
@@ -26,6 +29,7 @@ from budget_analyser.features.ingestion.formatters.factory import (
 __all__ = [
     "BaseStatementFormatter",
     "REQUIRED_COLUMNS",
+    "AppleStatementFormatter",
     "CitiStatementFormatter",
     "DiscoverStatementFormatter",
     "DefaultStatementFormatter",

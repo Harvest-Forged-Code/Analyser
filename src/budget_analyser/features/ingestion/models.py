@@ -207,9 +207,18 @@ class CsvStatementRepository(StatementRepository):
                         "account=%s file=%s",
                         section, account, str(path.resolve()),
                     )
-                    df = pd.read_csv(
-                        path, encoding="utf-8-sig",
+                    csv_kwargs: dict[str, object] = {
+                        "encoding": "utf-8-sig",
+                    }
+                    col_names = (
+                        self.config.get_csv_column_names(
+                            account_name=account,
+                        )
                     )
+                    if col_names is not None:
+                        csv_kwargs["header"] = None
+                        csv_kwargs["names"] = col_names
+                    df = pd.read_csv(path, **csv_kwargs)
                     statements[account] = df
                     self._log(
                         logging.INFO,
