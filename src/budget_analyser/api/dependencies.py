@@ -70,6 +70,9 @@ from budget_analyser.features.recategorize.service import (
 )
 from budget_analyser.features.ingestion.categorization import CategoryMappers
 from budget_analyser.features.auto_update.service import AutoUpdateService
+from budget_analyser.features.payments.service import (
+    PaymentReconciliationService,
+)
 from budget_analyser.version import get_version
 
 # ---------------------------------------------------------------------------
@@ -94,6 +97,7 @@ _cashflow_mapper_service: CashflowMapperService | None = None
 _recategorize_service: RecategorizeOrchestrator | None = None
 _transaction_db: TransactionDatabase | None = None
 _auto_update_service: AutoUpdateService | None = None
+_payment_reconciliation_service: PaymentReconciliationService | None = None
 
 _reports_cache: list[MonthlyReports] | None = None
 # pylint: enable=invalid-name
@@ -152,7 +156,8 @@ def initialize() -> None:
         _upload_service, _budget_goals_service, \
         _savings_service, _settings_service, \
         _recategorize_service, _transaction_db, \
-        _auto_update_service  # noqa: PLW0603
+        _auto_update_service, \
+        _payment_reconciliation_service  # noqa: PLW0603
     # pylint: enable=global-statement
 
     # Logger
@@ -266,6 +271,11 @@ def initialize() -> None:
     )
     _savings_service = SavingsService()
     _settings_service = SettingsService(_logger, _prefs)
+
+    # Payment reconciliation service
+    _payment_reconciliation_service = PaymentReconciliationService(
+        db_path=settings.database_path, logger=_logger,
+    )
 
     # Auto-update service
     _auto_update_service = AutoUpdateService(
@@ -473,6 +483,14 @@ def get_recategorize_service() -> RecategorizeOrchestrator:
         "Call initialize() first"
     )
     return _recategorize_service
+
+
+def get_payment_reconciliation_service() -> PaymentReconciliationService:
+    """Return the PaymentReconciliationService."""
+    assert _payment_reconciliation_service is not None, (
+        "Call initialize() first"
+    )
+    return _payment_reconciliation_service
 
 
 def get_auto_update_service() -> AutoUpdateService:

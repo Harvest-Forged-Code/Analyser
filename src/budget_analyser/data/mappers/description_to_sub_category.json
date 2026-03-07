@@ -15,7 +15,8 @@
     "ORIG CO NAME:APPLECARD GSBANK CO ENTRY DESCR:PAYMENT",
     "ORIG CO NAME:CITI CARD ONLINE CO ENTRY DESCR:PAYMENT",
     "ORIG CO NAME:DISCOVER         CO ENTRY DESCR:E-PAYMENT",
-    "ORIG CO NAME:WELLS FARGO CARD CO ENTRY DESCR:CCPYMT"
+    "ORIG CO NAME:WELLS FARGO CARD CO ENTRY DESCR:CCPYMT",
+    "CITI CARD ONLINE RETRY PYMT"
   ],
   "payment_confirmations": [
     "ONLINE PAYMENT, THANK YOU",
@@ -77,7 +78,8 @@
     "SQ *J&amp;J RAMOS FARMS",
     "SAVEMART #71 FRESNO",
     "SHOPPERS DRUG MART #94",
-    "NEW INDIA BAZAR"
+    "NEW INDIA BAZAR",
+    "FACTOR75"
   ],
   "Gas": [
     "gas",
@@ -92,7 +94,8 @@
     "BLOSSOM VALLEY COLLISION"
   ],
   "Insurance": [
-    "AAA MILPITAS"
+    "AAA MILPITAS",
+    "CSAA INSURANCE"
   ],
   "Grooming": [
     "GREAT CLIPS",
@@ -121,7 +124,11 @@
     "CALIFORNIA PURE WATER",
     "AMZN Mktp US*RW56T0TU2",
     "NETFLIX.COM",
-    "CLAUDE.AI"
+    "CLAUDE.AI",
+    "ANTHROPIC",
+    "LINKEDINPRE *",
+    "EINTHUSAN",
+    "LINKEDINPREA *"
   ],
   "Dining": [
     "RESTAURANT",
@@ -217,7 +224,9 @@
   "Fees": [
     "Interest",
     "NAYAX AIR ",
-    "CSC SERVICEWORK"
+    "CSC SERVICEWORK",
+    "FOREIGN TRANSACTION FEE",
+    "FRAGOMEN"
   ],
   "Cash_out": [
     "Zelle payment to",
@@ -249,7 +258,9 @@
     "WH SMITH SINGAPORE SINGAPORE SG",
     "REI #22 SARATOGA",
     "Ghirardelli Square",
-    "LEVI'S STORE 156"
+    "LEVI'S STORE 156",
+    "APPLE STORE",
+    "MONTHLY INSTALLMENTS"
   ],
   "Salary": [
     "Western Digital  PAYROLL",

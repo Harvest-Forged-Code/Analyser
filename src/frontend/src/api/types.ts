@@ -103,13 +103,24 @@ export interface SavingsMetrics {
 }
 
 // Payments
-export interface PaymentsReconciliation {
+export interface PaymentPair {
+  status: string;
+  amount: number;
+  source_account: string;
+  destination_account: string | null;
+  payment_date: string;
+  confirmation_date: string | null;
+  payment_made: Record<string, unknown>;
+  payment_confirmation: Record<string, unknown> | null;
+}
+
+export interface ReconciliationSummary {
   period: string;
-  payments_made: Record<string, unknown>[];
-  payment_confirmations: Record<string, unknown>[];
-  total_payments_made: number;
-  total_payment_confirmations: number;
-  difference: number;
+  matched_pairs: PaymentPair[];
+  pending_payments: PaymentPair[];
+  total_matched: number;
+  total_pending: number;
+  match_rate: number;
 }
 
 // Forecasting

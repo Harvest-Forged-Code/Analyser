@@ -166,42 +166,29 @@ class SavingsMetricsSchema(BaseModel):
 class PaymentPairSchema(BaseModel):
     """Serialized PaymentPair."""
 
-    payment_made_id: int
-    payment_confirmed_id: int
+    status: str
     amount: float
-    payment_date: str  # datetime -> ISO str
-    confirmation_date: str
-    days_apart: int
-    confidence: float
-    net_amount: float = 0.0
+    source_account: str
+    destination_account: str | None = None
+    payment_date: str = ""
+    confirmation_date: str | None = None
+    payment_made: dict[str, Any] = Field(default_factory=dict)
+    payment_confirmation: dict[str, Any] | None = None
 
 
-class PaymentMatchResultSchema(BaseModel):
-    """Serialized PaymentMatchResult."""
+class ReconciliationSummarySchema(BaseModel):
+    """Serialized ReconciliationSummary."""
 
-    matched_pairs: list[PaymentPairSchema] = Field(default_factory=list)
-    unmatched_payments: list[dict[str, Any]] = Field(
+    period: str
+    matched_pairs: list[PaymentPairSchema] = Field(
         default_factory=list,
     )
-    unmatched_confirmations: list[dict[str, Any]] = Field(
+    pending_payments: list[PaymentPairSchema] = Field(
         default_factory=list,
     )
-    match_rate: float = 100.0
-    total_matched_amount: float = 0.0
-    total_unmatched_payment_amount: float = 0.0
-    total_unmatched_confirmation_amount: float = 0.0
-    is_fully_matched: bool = True
-
-
-class PaymentsReconciliationSummarySchema(BaseModel):
-    """Serialized PaymentsReconciliationSummary."""
-
-    period: str  # pd.Period -> str
-    payments_made: list[dict[str, Any]]
-    payment_confirmations: list[dict[str, Any]]
-    total_payments_made: float
-    total_payment_confirmations: float
-    difference: float
+    total_matched: float = 0.0
+    total_pending: float = 0.0
+    match_rate: float = 0.0
 
 
 # ===================================================================

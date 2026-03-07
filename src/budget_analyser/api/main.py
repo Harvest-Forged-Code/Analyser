@@ -31,6 +31,7 @@ from budget_analyser.api.routers import (
     settings,
     recategorize,
     updates,
+    payments,
 )
 
 
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     fastapi_app.include_router(settings.router)
     fastapi_app.include_router(recategorize.router)
     fastapi_app.include_router(updates.router)
+    fastapi_app.include_router(payments.router)
 
     return fastapi_app
 
