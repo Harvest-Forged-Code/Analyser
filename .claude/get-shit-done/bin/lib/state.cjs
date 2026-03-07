@@ -4,8 +4,20 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadConfig, getMilestoneInfo, output, error } = require('./core.cjs');
+const { escapeRegex, loadConfig, getMilestoneInfo, getMilestonePhaseFilter, output, error } = require('./core.cjs');
 const { extractFrontmatter, reconstructFrontmatter } = require('./frontmatter.cjs');
+
+// Shared helper: extract a field value from STATE.md content.
+// Supports both **Field:** bold and plain Field: format.
+function stateExtractField(content, fieldName) {
+  const escaped = escapeRegex(fieldName);
+  const boldPattern = new RegExp(`\\*\\*${escaped}:\\*\\*\\s*(.+)`, 'i');
+  const boldMatch = content.match(boldPattern);
+  if (boldMatch) return boldMatch[1].trim();
+  const plainPattern = new RegExp(`^${escaped}:\\s*(.+)`, 'im');
+  const plainMatch = content.match(plainPattern);
+  return plainMatch ? plainMatch[1].trim() : null;
+}
 
 function cmdStateLoad(cwd, raw) {
   const config = loadConfig(cwd);
@@ -65,11 +77,19 @@ function cmdStateGet(cwd, section, raw) {
     // Try to find markdown section or field
     const fieldEscaped = section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Check for **field:** value
-    const fieldPattern = new RegExp(`\\*\\*${fieldEscaped}:\\*\\*\\s*(.*)`, 'i');
-    const fieldMatch = content.match(fieldPattern);
-    if (fieldMatch) {
-      output({ [section]: fieldMatch[1].trim() }, raw, fieldMatch[1].trim());
+    // Check for **field:** value (bold format)
+    const boldPattern = new RegExp(`\\*\\*${fieldEscaped}:\\*\\*\\s*(.*)`, 'i');
+    const boldMatch = content.match(boldPattern);
+    if (boldMatch) {
+      output({ [section]: boldMatch[1].trim() }, raw, boldMatch[1].trim());
+      return;
+    }
+
+    // Check for field: value (plain format)
+    const plainPattern = new RegExp(`^${fieldEscaped}:\\s*(.*)`, 'im');
+    const plainMatch = content.match(plainPattern);
+    if (plainMatch) {
+      output({ [section]: plainMatch[1].trim() }, raw, plainMatch[1].trim());
       return;
     }
 
@@ -106,10 +126,15 @@ function cmdStatePatch(cwd, patches, raw) {
 
     for (const [field, value] of Object.entries(patches)) {
       const fieldEscaped = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = new RegExp(`(\\*\\*${fieldEscaped}:\\*\\*\\s*)(.*)`, 'i');
+      // Try **Field:** bold format first, then plain Field: format
+      const boldPattern = new RegExp(`(\\*\\*${fieldEscaped}:\\*\\*\\s*)(.*)`, 'i');
+      const plainPattern = new RegExp(`(^${fieldEscaped}:\\s*)(.*)`, 'im');
 
-      if (pattern.test(content)) {
-        content = content.replace(pattern, (_match, prefix) => `${prefix}${value}`);
+      if (boldPattern.test(content)) {
+        content = content.replace(boldPattern, (_match, prefix) => `${prefix}${value}`);
+        results.updated.push(field);
+      } else if (plainPattern.test(content)) {
+        content = content.replace(plainPattern, (_match, prefix) => `${prefix}${value}`);
         results.updated.push(field);
       } else {
         results.failed.push(field);
@@ -135,9 +160,15 @@ function cmdStateUpdate(cwd, field, value) {
   try {
     let content = fs.readFileSync(statePath, 'utf-8');
     const fieldEscaped = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern = new RegExp(`(\\*\\*${fieldEscaped}:\\*\\*\\s*)(.*)`, 'i');
-    if (pattern.test(content)) {
-      content = content.replace(pattern, (_match, prefix) => `${prefix}${value}`);
+    // Try **Field:** bold format first, then plain Field: format
+    const boldPattern = new RegExp(`(\\*\\*${fieldEscaped}:\\*\\*\\s*)(.*)`, 'i');
+    const plainPattern = new RegExp(`(^${fieldEscaped}:\\s*)(.*)`, 'im');
+    if (boldPattern.test(content)) {
+      content = content.replace(boldPattern, (_match, prefix) => `${prefix}${value}`);
+      writeStateMd(statePath, content, cwd);
+      output({ updated: true });
+    } else if (plainPattern.test(content)) {
+      content = content.replace(plainPattern, (_match, prefix) => `${prefix}${value}`);
       writeStateMd(statePath, content, cwd);
       output({ updated: true });
     } else {
@@ -152,16 +183,26 @@ function cmdStateUpdate(cwd, field, value) {
 
 function stateExtractField(content, fieldName) {
   const escaped = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(`\\*\\*${escaped}:\\*\\*\\s*(.+)`, 'i');
-  const match = content.match(pattern);
-  return match ? match[1].trim() : null;
+  // Try **Field:** bold format first
+  const boldPattern = new RegExp(`\\*\\*${escaped}:\\*\\*\\s*(.+)`, 'i');
+  const boldMatch = content.match(boldPattern);
+  if (boldMatch) return boldMatch[1].trim();
+  // Fall back to plain Field: format
+  const plainPattern = new RegExp(`^${escaped}:\\s*(.+)`, 'im');
+  const plainMatch = content.match(plainPattern);
+  return plainMatch ? plainMatch[1].trim() : null;
 }
 
 function stateReplaceField(content, fieldName, newValue) {
   const escaped = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(`(\\*\\*${escaped}:\\*\\*\\s*)(.*)`, 'i');
-  if (pattern.test(content)) {
-    return content.replace(pattern, (_match, prefix) => `${prefix}${newValue}`);
+  // Try **Field:** bold format first, then plain Field: format
+  const boldPattern = new RegExp(`(\\*\\*${escaped}:\\*\\*\\s*)(.*)`, 'i');
+  if (boldPattern.test(content)) {
+    return content.replace(boldPattern, (_match, prefix) => `${prefix}${newValue}`);
+  }
+  const plainPattern = new RegExp(`(^${escaped}:\\s*)(.*)`, 'im');
+  if (plainPattern.test(content)) {
+    return content.replace(plainPattern, (_match, prefix) => `${prefix}${newValue}`);
   }
   return null;
 }
@@ -256,9 +297,15 @@ function cmdStateUpdateProgress(cwd, raw) {
   const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(barWidth - filled);
   const progressStr = `[${bar}] ${percent}%`;
 
-  const progressPattern = /(\*\*Progress:\*\*\s*).*/i;
-  if (progressPattern.test(content)) {
-    content = content.replace(progressPattern, (_match, prefix) => `${prefix}${progressStr}`);
+  // Try **Progress:** bold format first, then plain Progress: format
+  const boldProgressPattern = /(\*\*Progress:\*\*\s*).*/i;
+  const plainProgressPattern = /^(Progress:\s*).*/im;
+  if (boldProgressPattern.test(content)) {
+    content = content.replace(boldProgressPattern, (_match, prefix) => `${prefix}${progressStr}`);
+    writeStateMd(statePath, content, cwd);
+    output({ updated: true, percent, completed: totalSummaries, total: totalPlans, bar: progressStr }, raw, progressStr);
+  } else if (plainProgressPattern.test(content)) {
+    content = content.replace(plainProgressPattern, (_match, prefix) => `${prefix}${progressStr}`);
     writeStateMd(statePath, content, cwd);
     output({ updated: true, percent, completed: totalSummaries, total: totalPlans, bar: progressStr }, raw, progressStr);
   } else {
@@ -414,24 +461,17 @@ function cmdStateSnapshot(cwd, raw) {
 
   const content = fs.readFileSync(statePath, 'utf-8');
 
-  // Helper to extract **Field:** value patterns
-  const extractField = (fieldName) => {
-    const pattern = new RegExp(`\\*\\*${fieldName}:\\*\\*\\s*(.+)`, 'i');
-    const match = content.match(pattern);
-    return match ? match[1].trim() : null;
-  };
-
   // Extract basic fields
-  const currentPhase = extractField('Current Phase');
-  const currentPhaseName = extractField('Current Phase Name');
-  const totalPhasesRaw = extractField('Total Phases');
-  const currentPlan = extractField('Current Plan');
-  const totalPlansRaw = extractField('Total Plans in Phase');
-  const status = extractField('Status');
-  const progressRaw = extractField('Progress');
-  const lastActivity = extractField('Last Activity');
-  const lastActivityDesc = extractField('Last Activity Description');
-  const pausedAt = extractField('Paused At');
+  const currentPhase = stateExtractField(content, 'Current Phase');
+  const currentPhaseName = stateExtractField(content, 'Current Phase Name');
+  const totalPhasesRaw = stateExtractField(content, 'Total Phases');
+  const currentPlan = stateExtractField(content, 'Current Plan');
+  const totalPlansRaw = stateExtractField(content, 'Total Plans in Phase');
+  const status = stateExtractField(content, 'Status');
+  const progressRaw = stateExtractField(content, 'Progress');
+  const lastActivity = stateExtractField(content, 'Last Activity');
+  const lastActivityDesc = stateExtractField(content, 'Last Activity Description');
+  const pausedAt = stateExtractField(content, 'Paused At');
 
   // Parse numeric fields
   const totalPhases = totalPhasesRaw ? parseInt(totalPhasesRaw, 10) : null;
@@ -477,9 +517,12 @@ function cmdStateSnapshot(cwd, raw) {
   const sessionMatch = content.match(/##\s*Session\s*\n([\s\S]*?)(?=\n##|$)/i);
   if (sessionMatch) {
     const sessionSection = sessionMatch[1];
-    const lastDateMatch = sessionSection.match(/\*\*Last Date:\*\*\s*(.+)/i);
-    const stoppedAtMatch = sessionSection.match(/\*\*Stopped At:\*\*\s*(.+)/i);
-    const resumeFileMatch = sessionSection.match(/\*\*Resume File:\*\*\s*(.+)/i);
+    const lastDateMatch = sessionSection.match(/\*\*Last Date:\*\*\s*(.+)/i)
+      || sessionSection.match(/^Last Date:\s*(.+)/im);
+    const stoppedAtMatch = sessionSection.match(/\*\*Stopped At:\*\*\s*(.+)/i)
+      || sessionSection.match(/^Stopped At:\s*(.+)/im);
+    const resumeFileMatch = sessionSection.match(/\*\*Resume File:\*\*\s*(.+)/i)
+      || sessionSection.match(/^Resume File:\s*(.+)/im);
 
     if (lastDateMatch) session.last_date = lastDateMatch[1].trim();
     if (stoppedAtMatch) session.stopped_at = stoppedAtMatch[1].trim();
@@ -513,22 +556,16 @@ function cmdStateSnapshot(cwd, raw) {
  * reliably via `state json` instead of fragile regex parsing.
  */
 function buildStateFrontmatter(bodyContent, cwd) {
-  const extractField = (fieldName) => {
-    const pattern = new RegExp(`\\*\\*${fieldName}:\\*\\*\\s*(.+)`, 'i');
-    const match = bodyContent.match(pattern);
-    return match ? match[1].trim() : null;
-  };
-
-  const currentPhase = extractField('Current Phase');
-  const currentPhaseName = extractField('Current Phase Name');
-  const currentPlan = extractField('Current Plan');
-  const totalPhasesRaw = extractField('Total Phases');
-  const totalPlansRaw = extractField('Total Plans in Phase');
-  const status = extractField('Status');
-  const progressRaw = extractField('Progress');
-  const lastActivity = extractField('Last Activity');
-  const stoppedAt = extractField('Stopped At') || extractField('Stopped at');
-  const pausedAt = extractField('Paused At');
+  const currentPhase = stateExtractField(bodyContent, 'Current Phase');
+  const currentPhaseName = stateExtractField(bodyContent, 'Current Phase Name');
+  const currentPlan = stateExtractField(bodyContent, 'Current Plan');
+  const totalPhasesRaw = stateExtractField(bodyContent, 'Total Phases');
+  const totalPlansRaw = stateExtractField(bodyContent, 'Total Plans in Phase');
+  const status = stateExtractField(bodyContent, 'Status');
+  const progressRaw = stateExtractField(bodyContent, 'Progress');
+  const lastActivity = stateExtractField(bodyContent, 'Last Activity');
+  const stoppedAt = stateExtractField(bodyContent, 'Stopped At') || stateExtractField(bodyContent, 'Stopped at');
+  const pausedAt = stateExtractField(bodyContent, 'Paused At');
 
   let milestone = null;
   let milestoneName = null;
@@ -549,8 +586,10 @@ function buildStateFrontmatter(bodyContent, cwd) {
     try {
       const phasesDir = path.join(cwd, '.planning', 'phases');
       if (fs.existsSync(phasesDir)) {
+        const isDirInMilestone = getMilestonePhaseFilter(cwd);
         const phaseDirs = fs.readdirSync(phasesDir, { withFileTypes: true })
-          .filter(e => e.isDirectory()).map(e => e.name);
+          .filter(e => e.isDirectory()).map(e => e.name)
+          .filter(isDirInMilestone);
         let diskTotalPlans = 0;
         let diskTotalSummaries = 0;
         let diskCompletedPhases = 0;
@@ -563,7 +602,9 @@ function buildStateFrontmatter(bodyContent, cwd) {
           diskTotalSummaries += summaries;
           if (plans > 0 && summaries >= plans) diskCompletedPhases++;
         }
-        if (totalPhases === null) totalPhases = phaseDirs.length;
+        totalPhases = isDirInMilestone.phaseCount > 0
+          ? Math.max(phaseDirs.length, isDirInMilestone.phaseCount)
+          : phaseDirs.length;
         completedPhases = diskCompletedPhases;
         totalPlans = diskTotalPlans;
         completedPlans = diskTotalSummaries;

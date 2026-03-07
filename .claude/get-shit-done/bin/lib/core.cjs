@@ -27,6 +27,7 @@ const MODEL_PROFILES = {
   'gsd-verifier':             { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
   'gsd-plan-checker':         { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
   'gsd-integration-checker':  { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
+  'gsd-nyquist-auditor':      { quality: 'sonnet', balanced: 'sonnet', budget: 'haiku' },
 };
 
 // ─── Output helpers ───────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ function loadConfig(cwd) {
     research: true,
     plan_checker: true,
     verifier: true,
-    nyquist_validation: false,
+    nyquist_validation: true,
     parallelization: true,
     brave_search: false,
   };
@@ -84,6 +85,14 @@ function loadConfig(cwd) {
   try {
     const raw = fs.readFileSync(configPath, 'utf-8');
     const parsed = JSON.parse(raw);
+
+    // Migrate deprecated "depth" key to "granularity" with value mapping
+    if ('depth' in parsed && !('granularity' in parsed)) {
+      const depthToGranularity = { quick: 'coarse', standard: 'standard', comprehensive: 'fine' };
+      parsed.granularity = depthToGranularity[parsed.depth] || parsed.depth;
+      delete parsed.depth;
+      try { fs.writeFileSync(configPath, JSON.stringify(parsed, null, 2), 'utf-8'); } catch {}
+    }
 
     const get = (key, nested) => {
       if (parsed[key] !== undefined) return parsed[key];
@@ -124,7 +133,11 @@ function loadConfig(cwd) {
 
 function isGitIgnored(cwd, targetPath) {
   try {
-    execSync('git check-ignore -q -- ' + targetPath.replace(/[^a-zA-Z0-9._\-/]/g, ''), {
+    // --no-index checks .gitignore rules regardless of whether the file is tracked.
+    // Without it, git check-ignore returns "not ignored" for tracked files even when
+    // .gitignore explicitly lists them — a common source of confusion when .planning/
+    // was committed before being added to .gitignore.
+    execSync('git check-ignore -q --no-index -- ' + targetPath.replace(/[^a-zA-Z0-9._\-/]/g, ''), {
       cwd,
       stdio: 'pipe',
     });
@@ -388,7 +401,18 @@ function generateSlugInternal(text) {
 function getMilestoneInfo(cwd) {
   try {
     const roadmap = fs.readFileSync(path.join(cwd, '.planning', 'ROADMAP.md'), 'utf-8');
-    // Strip <details>...</details> blocks so shipped milestones don't interfere
+
+    // First: check for list-format roadmaps using 🚧 (in-progress) marker
+    // e.g. "- 🚧 **v2.1 Belgium** — Phases 24-28 (in progress)"
+    const inProgressMatch = roadmap.match(/🚧\s*\*\*v(\d+\.\d+)\s+([^*]+)\*\*/);
+    if (inProgressMatch) {
+      return {
+        version: 'v' + inProgressMatch[1],
+        name: inProgressMatch[2].trim(),
+      };
+    }
+
+    // Second: heading-format roadmaps — strip shipped milestones in <details> blocks
     const cleaned = roadmap.replace(/<details>[\s\S]*?<\/details>/gi, '');
     // Extract version and name from the same ## heading for consistency
     const headingMatch = cleaned.match(/## .*v(\d+\.\d+)[:\s]+([^\n(]+)/);
@@ -407,6 +431,41 @@ function getMilestoneInfo(cwd) {
   } catch {
     return { version: 'v1.0', name: 'milestone' };
   }
+}
+
+/**
+ * Returns a filter function that checks whether a phase directory belongs
+ * to the current milestone based on ROADMAP.md phase headings.
+ * If no ROADMAP exists or no phases are listed, returns a pass-all filter.
+ */
+function getMilestonePhaseFilter(cwd) {
+  const milestonePhaseNums = new Set();
+  try {
+    const roadmap = fs.readFileSync(path.join(cwd, '.planning', 'ROADMAP.md'), 'utf-8');
+    const phasePattern = /#{2,4}\s*Phase\s+(\d+[A-Z]?(?:\.\d+)*)\s*:/gi;
+    let m;
+    while ((m = phasePattern.exec(roadmap)) !== null) {
+      milestonePhaseNums.add(m[1]);
+    }
+  } catch {}
+
+  if (milestonePhaseNums.size === 0) {
+    const passAll = () => true;
+    passAll.phaseCount = 0;
+    return passAll;
+  }
+
+  const normalized = new Set(
+    [...milestonePhaseNums].map(n => (n.replace(/^0+/, '') || '0').toLowerCase())
+  );
+
+  function isDirInMilestone(dirName) {
+    const m = dirName.match(/^0*(\d+[A-Za-z]?(?:\.\d+)*)/);
+    if (!m) return false;
+    return normalized.has(m[1].toLowerCase());
+  }
+  isDirInMilestone.phaseCount = milestonePhaseNums.size;
+  return isDirInMilestone;
 }
 
 module.exports = {
@@ -428,5 +487,6 @@ module.exports = {
   pathExistsInternal,
   generateSlugInternal,
   getMilestoneInfo,
+  getMilestonePhaseFilter,
   toPosixPath,
 };
