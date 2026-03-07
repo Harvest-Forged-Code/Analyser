@@ -517,6 +517,7 @@ def get_recurring_analytics_service() -> RecurringAnalyticsService:
     return _recurring_analytics_service
 
 
+
 def get_auto_update_service() -> AutoUpdateService:
     """Return the AutoUpdateService."""
     assert _auto_update_service is not None, "Call initialize() first"
