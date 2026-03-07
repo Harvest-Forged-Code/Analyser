@@ -163,6 +163,7 @@ class TransactionIngestionService:
         )
         csv_kwargs: dict[str, object] = {
             "encoding": "utf-8-sig",
+            "index_col": False,
         }
         if self._ini_config is not None:
             col_names = self._ini_config.get_csv_column_names(
@@ -609,6 +610,7 @@ class UploadService:
         try:
             csv_kwargs: dict[str, object] = {
                 "nrows": 5, "encoding": "utf-8-sig",
+                "index_col": False,
             }
             if bank_name is not None:
                 col_names = (

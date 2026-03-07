@@ -209,6 +209,7 @@ class CsvStatementRepository(StatementRepository):
                     )
                     csv_kwargs: dict[str, object] = {
                         "encoding": "utf-8-sig",
+                        "index_col": False,
                     }
                     col_names = (
                         self.config.get_csv_column_names(
