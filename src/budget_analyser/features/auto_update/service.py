@@ -45,7 +45,7 @@ def _parse_version(version_str: str) -> tuple[int, ...]:
     return tuple(parts) if parts else (0,)
 
 
-class AutoUpdateService:
+class AutoUpdateService:  # pylint: disable=too-few-public-methods
     """Check GitHub Releases for newer application versions.
 
     Uses in-memory caching to respect GitHub's unauthenticated
