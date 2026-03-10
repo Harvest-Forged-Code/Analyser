@@ -12,11 +12,15 @@ from budget_analyser.api.dependencies import (
     get_reports,
     get_budget_goals_controller,
     get_savings_controller,
+    get_recurring_analytics_service,
 )
 from budget_analyser.api.serializers import DashboardSummaryResponse
 from budget_analyser.core.models import MonthlyReports
 from budget_analyser.features.budget_goals.service import (
     BudgetGoalsService,
+)
+from budget_analyser.features.recurring.service import (
+    RecurringAnalyticsService,
 )
 from budget_analyser.features.savings.service import SavingsService
 
@@ -49,6 +53,9 @@ def get_dashboard_summary(
         get_budget_goals_controller,
     ),
     savings_service: SavingsService = Depends(get_savings_controller),
+    recurring_service: RecurringAnalyticsService = Depends(
+        get_recurring_analytics_service,
+    ),
 ) -> DashboardSummaryResponse:
     """Aggregate KPIs for the dashboard summary.
 
@@ -85,6 +92,6 @@ def get_dashboard_summary(
         net_worth=0.0,
         budget_categories_over=0,
         budget_categories_total=budget_categories_total,
-        recurring_active=0,
+        recurring_active=recurring_service.get_active_count(),
         has_reports=True,
     )

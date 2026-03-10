@@ -10,6 +10,8 @@ import BudgetGoalsPage from "@/pages/budget-goals";
 import UploadPage from "@/pages/upload";
 import MapperHubPage from "@/pages/mapper-hub";
 import SettingsPage from "@/pages/settings";
+import PaymentsPage from "@/pages/payments";
+import RecurringPage from "@/pages/recurring";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -45,6 +47,8 @@ function App() {
         <Route path="/budget-goals" element={<BudgetGoalsPage />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/mapper-hub" element={<MapperHubPage />} />
+        <Route path="/payments" element={<PaymentsPage />} />
+        <Route path="/recurring" element={<RecurringPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 

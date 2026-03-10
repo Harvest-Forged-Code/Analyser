@@ -3,6 +3,16 @@
     "gitkraken": {
       "command": "/usr/local/bin/gk",
       "args": ["mcp"]
+    },
+    "sqlite": {
+      "command": "/Users/Prabhukumar/.local/bin/uv",
+      "args": [
+        "tool",
+        "run",
+        "mcp-server-sqlite",
+        "--db-path",
+        "/Users/Prabhukumar/Projects/PycharmProjects/Analyser/src/budget_analyser/data/budget_analyser.db"
+      ]
     }
   }
 }

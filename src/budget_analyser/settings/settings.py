@@ -129,7 +129,9 @@ def load_settings() -> Settings:
         return Settings(
             statement_dir=data_dir / "statements",
             ini_config_path=data_dir / "config" / "budget_analyser.ini",
-            description_to_sub_category_path=data_dir / "mappers" / "description_to_sub_category.json",
+            description_to_sub_category_path=(
+                data_dir / "mappers" / "description_to_sub_category.json"
+            ),
             sub_category_to_category_path=data_dir / "mappers" / "sub_category_to_category.json",
             cashflow_to_category_path=data_dir / "mappers" / "cashflow_to_category.json",
             database_path=data_dir / "budget_analyser.db",

@@ -85,11 +85,55 @@ export interface RecurringTransaction {
   id: number | null;
   description: string;
   expected_amount: number;
+  amount_variance: number;
   frequency: string;
   category: string;
   sub_category: string;
-  last_occurrence: string;
+  last_occurrence: string | null;
+  next_expected: string | null;
+  confidence_score: number;
+  user_confirmed: boolean;
+  is_expected: boolean;
   is_active: boolean;
+  detection_method: string;
+}
+
+export interface RecurringDetection {
+  description: string;
+  expected_amount: number;
+  amount_variance: number;
+  frequency: string;
+  category: string;
+  sub_category: string;
+  last_occurrence: string | null;
+  occurrences: number;
+  confidence_score: number;
+  matching_dates: string[];
+}
+
+export interface RecurringAnomaly {
+  id: number | null;
+  recurring_id: number;
+  anomaly_type: string;
+  expected_date: string | null;
+  actual_date: string | null;
+  expected_amount: number | null;
+  actual_amount: number | null;
+  severity: string;
+  message: string;
+  resolved: boolean;
+  detected_at: string | null;
+}
+
+export interface RecurringSummary {
+  total_monthly_cost: number;
+  total_yearly_projection: number;
+  active_count: number;
+  confirmed_count: number;
+  unconfirmed_count: number;
+  by_frequency: Record<string, number>;
+  by_category: Record<string, number>;
+  trend_data: Record<string, number>[];
 }
 
 // Savings
@@ -103,13 +147,24 @@ export interface SavingsMetrics {
 }
 
 // Payments
-export interface PaymentsReconciliation {
+export interface PaymentPair {
+  status: string;
+  amount: number;
+  source_account: string;
+  destination_account: string | null;
+  payment_date: string;
+  confirmation_date: string | null;
+  payment_made: Record<string, unknown>;
+  payment_confirmation: Record<string, unknown> | null;
+}
+
+export interface ReconciliationSummary {
   period: string;
-  payments_made: Record<string, unknown>[];
-  payment_confirmations: Record<string, unknown>[];
-  total_payments_made: number;
-  total_payment_confirmations: number;
-  difference: number;
+  matched_pairs: PaymentPair[];
+  pending_payments: PaymentPair[];
+  total_matched: number;
+  total_pending: number;
+  match_rate: number;
 }
 
 // Forecasting
@@ -342,6 +397,20 @@ export interface AddRecurringRequest {
   frequency?: string;
   category?: string;
   sub_category?: string;
+  is_expected?: boolean;
+}
+
+export interface UpdateRecurringRequest {
+  description?: string;
+  expected_amount?: number;
+  frequency?: string;
+  category?: string;
+  sub_category?: string;
+  is_expected?: boolean;
+}
+
+export interface MarkExpectedRequest {
+  is_expected: boolean;
 }
 
 export interface UploadRequest {

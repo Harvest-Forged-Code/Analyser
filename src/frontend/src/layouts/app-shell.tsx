@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -12,8 +13,12 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
   Wallet,
+  RefreshCw,
+  Repeat,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { useAuthStore } from "@/stores/auth-store";
@@ -28,6 +33,8 @@ const navItems = [
   { to: "/earnings", label: "Earnings", icon: TrendingUp },
   { to: "/expenses", label: "Expenses", icon: TrendingDown },
   { to: "/budget-goals", label: "Budget Goals", icon: Target },
+  { to: "/payments", label: "Payments", icon: CreditCard },
+  { to: "/recurring", label: "Recurring", icon: Repeat },
   { to: "/upload", label: "Upload", icon: Upload },
   { to: "/mapper-hub", label: "Mapper Hub", icon: Map },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -50,6 +57,15 @@ export default function AppShell() {
     updateResult.release != null &&
     !dismissedForSession &&
     skippedVersion !== updateResult.latest_version;
+
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    queryClient.invalidateQueries();
+    setTimeout(() => setIsRefreshing(false), 1000);
+  }, [queryClient]);
 
   const handleLogout = () => {
     logout();
@@ -105,6 +121,14 @@ export default function AppShell() {
 
         {/* Bottom actions */}
         <div className="border-t border-sidebar-border p-2 space-y-1">
+          <button
+            onClick={handleRefresh}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <RefreshCw className={cn("h-5 w-5 flex-shrink-0", isRefreshing && "animate-spin")} />
+            {!isSidebarCollapsed && <span>Refresh</span>}
+          </button>
+
           <button
             onClick={toggleTheme}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"

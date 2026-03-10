@@ -51,7 +51,7 @@ function EditableCell({ value, onSave }: EditableCellProps) {
 
   const handleSave = () => {
     const parsed = parseFloat(editValue);
-    if (!isNaN(parsed) && parsed >= 0 && parsed !== value) {
+    if (!isNaN(parsed) && parsed >= 0) {
       onSave(parsed);
     }
     setEditing(false);

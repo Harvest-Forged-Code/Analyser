@@ -23,6 +23,7 @@ def _bundle_data_dir() -> Path | None:
         or ``None`` when running from source (not frozen).
     """
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        # pylint: disable=protected-access
         return Path(sys._MEIPASS) / "data"  # type: ignore[attr-defined]
     return None
 

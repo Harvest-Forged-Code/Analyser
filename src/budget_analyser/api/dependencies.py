@@ -70,6 +70,13 @@ from budget_analyser.features.recategorize.service import (
 )
 from budget_analyser.features.ingestion.categorization import CategoryMappers
 from budget_analyser.features.auto_update.service import AutoUpdateService
+from budget_analyser.features.payments.service import (
+    PaymentReconciliationService,
+)
+from budget_analyser.features.recurring.models import RecurringModel
+from budget_analyser.features.recurring.service import (
+    RecurringAnalyticsService,
+)
 from budget_analyser.version import get_version
 
 # ---------------------------------------------------------------------------
@@ -94,6 +101,8 @@ _cashflow_mapper_service: CashflowMapperService | None = None
 _recategorize_service: RecategorizeOrchestrator | None = None
 _transaction_db: TransactionDatabase | None = None
 _auto_update_service: AutoUpdateService | None = None
+_payment_reconciliation_service: PaymentReconciliationService | None = None
+_recurring_analytics_service: RecurringAnalyticsService | None = None
 
 _reports_cache: list[MonthlyReports] | None = None
 # pylint: enable=invalid-name
@@ -136,7 +145,7 @@ def _ensure_logger() -> logging.Logger:
 # Initialization
 # ---------------------------------------------------------------------------
 
-def initialize() -> None:
+def initialize() -> None:  # pylint: disable=too-many-locals
     """Wire all services.
 
     Must be called exactly once during application startup.
@@ -152,7 +161,9 @@ def initialize() -> None:
         _upload_service, _budget_goals_service, \
         _savings_service, _settings_service, \
         _recategorize_service, _transaction_db, \
-        _auto_update_service  # noqa: PLW0603
+        _auto_update_service, \
+        _payment_reconciliation_service, \
+        _recurring_analytics_service  # noqa: PLW0603
     # pylint: enable=global-statement
 
     # Logger
@@ -266,6 +277,21 @@ def initialize() -> None:
     )
     _savings_service = SavingsService()
     _settings_service = SettingsService(_logger, _prefs)
+
+    # Payment reconciliation service
+    _payment_reconciliation_service = PaymentReconciliationService(
+        db_path=settings.database_path, logger=_logger,
+    )
+
+    # Recurring analytics service
+    recurring_model = RecurringModel(
+        db_path=budget_db_path, logger=_logger,
+    )
+    _recurring_analytics_service = RecurringAnalyticsService(
+        model=recurring_model,
+        db_path=settings.database_path,
+        logger=_logger,
+    )
 
     # Auto-update service
     _auto_update_service = AutoUpdateService(
@@ -473,6 +499,22 @@ def get_recategorize_service() -> RecategorizeOrchestrator:
         "Call initialize() first"
     )
     return _recategorize_service
+
+
+def get_payment_reconciliation_service() -> PaymentReconciliationService:
+    """Return the PaymentReconciliationService."""
+    assert _payment_reconciliation_service is not None, (
+        "Call initialize() first"
+    )
+    return _payment_reconciliation_service
+
+
+def get_recurring_analytics_service() -> RecurringAnalyticsService:
+    """Return the RecurringAnalyticsService."""
+    assert _recurring_analytics_service is not None, (
+        "Call initialize() first"
+    )
+    return _recurring_analytics_service
 
 
 def get_auto_update_service() -> AutoUpdateService:

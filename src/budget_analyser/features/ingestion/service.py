@@ -163,6 +163,7 @@ class TransactionIngestionService:
         )
         csv_kwargs: dict[str, object] = {
             "encoding": "utf-8-sig",
+            "index_col": False,
         }
         if self._ini_config is not None:
             col_names = self._ini_config.get_csv_column_names(
@@ -447,17 +448,9 @@ class UploadService:
         Returns:
             Tuple of ``(is_valid, message, missing_columns)``.
         """
-        path_err = self._check_source_path(file_path)
-        if path_err:
-            return False, path_err, []
-        if not file_path.exists():
-            return False, f"File not found: {file_path}", []
-        if file_path.suffix.lower() != ".csv":
-            return (
-                False,
-                "File must be a CSV file (.csv extension)",
-                [],
-            )
+        pre_check_err = self._pre_validate_file(file_path)
+        if pre_check_err:
+            return False, pre_check_err, []
 
         ok, err, csv_cols = self._read_csv_columns(
             file_path, bank_name,
@@ -609,6 +602,7 @@ class UploadService:
         try:
             csv_kwargs: dict[str, object] = {
                 "nrows": 5, "encoding": "utf-8-sig",
+                "index_col": False,
             }
             if bank_name is not None:
                 col_names = (
@@ -717,6 +711,31 @@ class UploadService:
                 " | Warning: Failed to process "
                 f"transactions: {exc}",
             )
+
+    @staticmethod
+    def _pre_validate_file(file_path: Path) -> str | None:
+        """Return an error message if the file fails basic checks.
+
+        Combines path safety, existence, and extension checks.
+
+        Args:
+            file_path: The file path to validate.
+
+        Returns:
+            Error message string, or None if file is acceptable.
+        """
+        if not file_path.is_absolute():
+            return "File path must be absolute"
+        if ".." in file_path.parts:
+            return (
+                "File path must not contain traversal "
+                "components (..)"
+            )
+        if not file_path.exists():
+            return f"File not found: {file_path}"
+        if file_path.suffix.lower() != ".csv":
+            return "File must be a CSV file (.csv extension)"
+        return None
 
     @staticmethod
     def _check_source_path(path: Path) -> str | None:

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Map, Plus, AlertCircle, CheckCircle } from "lucide-react";
+import EditMappingKeywordDialog from "@/components/edit-mapping-keyword-dialog";
 import {
   useUnmappedDescriptions,
   useSubCategories,
@@ -40,30 +41,34 @@ export default function MapperHubPage() {
 
   // State for unmapped descriptions
   const [selectedMappings, setSelectedMappings] = useState<Record<string, string>>({});
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [pendingItem, setPendingItem] = useState<UnmappedDescription | null>(null);
 
   // State for new sub-category form
   const [newSubCategory, setNewSubCategory] = useState<string>("");
   const [newCategory, setNewCategory] = useState<string>("");
   const [newCashflow, setNewCashflow] = useState<string>("expense");
 
-  const handleAddMapping = async (item: UnmappedDescription) => {
-    const subCategory = selectedMappings[item.description];
-    if (!subCategory) {
-      alert("Please select a sub-category first");
-      return;
-    }
+  const handleOpenEditDialog = (item: UnmappedDescription) => {
+    setPendingItem(item);
+    setEditDialogOpen(true);
+  };
 
+  const handleConfirmKeyword = async (keyword: string) => {
+    if (!pendingItem) return;
+    const subCategory = selectedMappings[pendingItem.description];
     try {
       await addDescriptionsMutation.mutateAsync({
         sub_category: subCategory,
-        descriptions: [item.description],
+        descriptions: [keyword],
       });
-      // Clear selection
       setSelectedMappings((prev) => {
         const updated = { ...prev };
-        delete updated[item.description];
+        delete updated[pendingItem.description];
         return updated;
       });
+      setEditDialogOpen(false);
+      setPendingItem(null);
     } catch {
       // Error handled via onError toast in useAddDescriptions
     }
@@ -223,7 +228,7 @@ export default function MapperHubPage() {
                         </Select>
                       </div>
                       <Button
-                        onClick={() => handleAddMapping(item)}
+                        onClick={() => handleOpenEditDialog(item)}
                         disabled={
                           !selectedMappings[item.description] || addDescriptionsMutation.isPending
                         }
@@ -244,6 +249,19 @@ export default function MapperHubPage() {
               )}
             </CardContent>
           </Card>
+          {pendingItem && (
+            <EditMappingKeywordDialog
+              open={editDialogOpen}
+              onOpenChange={(open) => {
+                setEditDialogOpen(open);
+                if (!open) setPendingItem(null);
+              }}
+              originalDescription={pendingItem.description}
+              subCategory={selectedMappings[pendingItem.description] ?? ""}
+              onConfirm={handleConfirmKeyword}
+              isPending={addDescriptionsMutation.isPending}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="sub-categories" className="space-y-6">
