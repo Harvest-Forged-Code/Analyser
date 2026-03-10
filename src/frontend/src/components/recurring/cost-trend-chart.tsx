@@ -39,7 +39,7 @@ export default function RecurringCostTrendChart({
           <XAxis dataKey="month" />
           <YAxis tickFormatter={(v: number) => formatCurrency(v)} />
           <Tooltip
-            formatter={(value: number) => formatCurrency(value)}
+            formatter={(value?: number) => formatCurrency(value ?? 0)}
           />
           <Area
             type="monotone"

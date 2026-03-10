@@ -2,19 +2,32 @@
 
 from __future__ import annotations
 
+import os
+import sys
+
 import pytest
 from pydantic import ValidationError
 
 from budget_analyser.api.serializers import UploadRequest, ValidateRequest
 
+# Use a platform-appropriate absolute path for positive tests
+_ABS_CSV = "C:\\Users\\user\\statements\\citi.csv" if sys.platform == "win32" \
+    else "/home/user/statements/citi.csv"
+_ABS_DISCOVER = "C:\\Users\\user\\Downloads\\discover.csv" if sys.platform == "win32" \
+    else "/Users/user/Downloads/discover.csv"
+_ABS_TRAVERSAL = "C:\\Users\\user\\..\\..\\etc\\passwd" if sys.platform == "win32" \
+    else "/home/user/../../etc/passwd"
+_ABS_TRAVERSAL2 = "C:\\Users\\user\\..\\..\\..\\etc\\creds.csv" if sys.platform == "win32" \
+    else "/home/user/../../../etc/creds.csv"
+
 
 class TestValidateRequestPathSafety:
     def test_absolute_path_is_accepted(self) -> None:
         req = ValidateRequest(
-            file_path="/home/user/statements/citi.csv",
+            file_path=_ABS_CSV,
             bank_name="citi",
         )
-        assert req.file_path == "/home/user/statements/citi.csv"
+        assert req.file_path == _ABS_CSV
 
     def test_relative_path_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match="absolute"):
@@ -23,7 +36,7 @@ class TestValidateRequestPathSafety:
     def test_dotdot_traversal_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match=r"\.\.|absolute"):
             ValidateRequest(
-                file_path="/home/user/../../etc/passwd",
+                file_path=_ABS_TRAVERSAL,
                 bank_name="citi",
             )
 
@@ -38,11 +51,11 @@ class TestValidateRequestPathSafety:
 class TestUploadRequestPathSafety:
     def test_absolute_path_is_accepted(self) -> None:
         req = UploadRequest(
-            file_path="/Users/user/Downloads/discover.csv",
+            file_path=_ABS_DISCOVER,
             bank_name="discover",
             account_type="credit",
         )
-        assert req.file_path == "/Users/user/Downloads/discover.csv"
+        assert req.file_path == _ABS_DISCOVER
 
     def test_relative_path_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match="absolute"):
@@ -55,7 +68,7 @@ class TestUploadRequestPathSafety:
     def test_dotdot_traversal_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match=r"\.\.|absolute"):
             UploadRequest(
-                file_path="/home/user/../../../etc/creds.csv",
+                file_path=_ABS_TRAVERSAL2,
                 bank_name="discover",
                 account_type="credit",
             )
