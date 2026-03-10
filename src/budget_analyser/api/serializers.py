@@ -137,11 +137,61 @@ class RecurringTransactionSchema(BaseModel):
     id: int | None = None
     description: str
     expected_amount: float
+    amount_variance: float = 0.0
     frequency: str
     category: str
     sub_category: str
-    last_occurrence: str
+    last_occurrence: str | None = None
+    next_expected: str | None = None
+    confidence_score: float = 0.0
+    user_confirmed: bool = False
+    is_expected: bool = True
     is_active: bool = True
+    detection_method: str = "auto"
+
+
+class RecurringDetectionSchema(BaseModel):
+    """Serialized RecurringDetection."""
+
+    description: str
+    expected_amount: float
+    amount_variance: float = 0.0
+    frequency: str
+    category: str = ""
+    sub_category: str = ""
+    last_occurrence: str | None = None
+    occurrences: int = 0
+    confidence_score: float = 0.0
+    matching_dates: list[str] = Field(default_factory=list)
+
+
+class RecurringAnomalySchema(BaseModel):
+    """Serialized RecurringAnomaly."""
+
+    id: int | None = None
+    recurring_id: int
+    anomaly_type: str
+    expected_date: str | None = None
+    actual_date: str | None = None
+    expected_amount: float | None = None
+    actual_amount: float | None = None
+    severity: str = "info"
+    message: str
+    resolved: bool = False
+    detected_at: str | None = None
+
+
+class RecurringSummarySchema(BaseModel):
+    """Serialized RecurringSummary."""
+
+    total_monthly_cost: float = 0.0
+    total_yearly_projection: float = 0.0
+    active_count: int = 0
+    confirmed_count: int = 0
+    unconfirmed_count: int = 0
+    by_frequency: dict[str, int] = Field(default_factory=dict)
+    by_category: dict[str, float] = Field(default_factory=dict)
+    trend_data: list[dict[str, float]] = Field(default_factory=list)
 
 
 # ===================================================================
@@ -521,6 +571,24 @@ class AddRecurringRequest(BaseModel):
     frequency: str = "monthly"
     category: str = ""
     sub_category: str = ""
+    is_expected: bool = True
+
+
+class UpdateRecurringRequest(BaseModel):
+    """Request body for updating a recurring transaction."""
+
+    description: str | None = None
+    expected_amount: float | None = None
+    frequency: str | None = None
+    category: str | None = None
+    sub_category: str | None = None
+    is_expected: bool | None = None
+
+
+class MarkExpectedRequest(BaseModel):
+    """Request body for marking a recurring transaction as expected/unexpected."""
+
+    is_expected: bool
 
 
 def _validate_csv_file_path(v: str) -> str:
