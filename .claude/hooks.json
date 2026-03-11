@@ -7,6 +7,19 @@
           {
             "type": "command",
             "command": ".claude/hooks/sensitive-file-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/prompt-injection-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/large-file-guard.sh"
           }
         ]
       },
@@ -19,11 +32,27 @@
           },
           {
             "type": "command",
-            "command": ".claude/hooks/pre-commit-security.sh"
+            "command": ".claude/hooks/pre-commit-lint.sh"
           },
           {
             "type": "command",
-            "command": ".claude/hooks/pre-commit-lint.sh"
+            "command": ".claude/hooks/pylint-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/frontend-lint.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/type-check.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-gate.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-commit-security.sh"
           }
         ]
       }
@@ -38,7 +67,7 @@
           },
           {
             "type": "command",
-            "command": ".claude/hooks/test-reminder.sh"
+            "command": ".claude/hooks/docstring-check.sh"
           }
         ]
       }

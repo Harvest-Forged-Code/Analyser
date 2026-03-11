@@ -46,7 +46,7 @@ export default function RecurringCategoryChart({
           />
           <YAxis type="category" dataKey="name" width={80} />
           <Tooltip
-            formatter={(value: number) => formatCurrency(value)}
+            formatter={(value?: number) => formatCurrency(value ?? 0)}
           />
           <Bar dataKey="value" radius={[0, 4, 4, 0]}>
             {data.map((_, index) => (

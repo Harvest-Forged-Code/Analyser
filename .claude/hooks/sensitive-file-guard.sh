@@ -58,7 +58,38 @@ case "$FILE_PATH" in
     SENSITIVE=true
     REASON="File is in a credentials directory"
     ;;
+  *.sqlite|*.db)
+    SENSITIVE=true
+    REASON="Database file — should not be committed"
+    ;;
 esac
+
+# Check file content for sensitive patterns (if Write tool provides content)
+CONTENT=$(echo "$INPUT" | grep -oE '"content"\s*:\s*"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//')
+
+if [ -n "$CONTENT" ]; then
+  # Check for API keys in TSX/TSX files
+  case "$FILE_PATH" in
+    *.tsx|*.ts|*.jsx|*.js)
+      if echo "$CONTENT" | grep -qiE '(api[_-]?key|secret[_-]?key|auth[_-]?token)\s*[:=]\s*["\x27][A-Za-z0-9]'; then
+        SENSITIVE=true
+        REASON="Possible API key or secret token in frontend code"
+      fi
+      ;;
+  esac
+
+  # Check for hardcoded ports that differ from standard config
+  if echo "$CONTENT" | grep -qE 'localhost:[0-9]{4,5}' 2>/dev/null; then
+    case "$FILE_PATH" in
+      *config*|*test*|*spec*|*playwright*|*CLAUDE*|*.md)
+        # Skip config, test, and doc files — hardcoded ports are expected
+        ;;
+      *)
+        echo "INFO: Hardcoded localhost port detected in $FILENAME — consider using config/env variable."
+        ;;
+    esac
+  fi
+fi
 
 if [ "$SENSITIVE" = true ]; then
   echo "⚠️  SENSITIVE FILE WARNING: $REASON"

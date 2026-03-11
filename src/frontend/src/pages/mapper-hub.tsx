@@ -57,6 +57,7 @@ export default function MapperHubPage() {
   const handleConfirmKeyword = async (keyword: string) => {
     if (!pendingItem) return;
     const subCategory = selectedMappings[pendingItem.description];
+    if (!subCategory) return;
     try {
       await addDescriptionsMutation.mutateAsync({
         sub_category: subCategory,
