@@ -12,7 +12,6 @@ test.describe("Page rendering", () => {
     { url: "/budget-goals", heading: "Budget Goals" },
     { url: "/savings", heading: "Savings" },
     { url: "/net-worth", heading: "Net Worth" },
-    { url: "/recurring", heading: "Recurring" },
     { url: "/payments", heading: "Payments" },
     { url: "/upload", heading: "Upload" },
     { url: "/mapper-hub", heading: "Mapper" },
@@ -90,18 +89,23 @@ test.describe("Net Worth page", () => {
   });
 });
 
-test.describe("Recurring page", () => {
+test.describe("Payments page — Subscriptions tab", () => {
   test.beforeEach(async ({ page }) => {
     await bypassLogin(page);
-    await page.goto("/recurring");
+    await page.goto("/payments");
     await waitForShell(page);
   });
 
-  test("shows add recurring button", async ({ page }) => {
-    await page.waitForTimeout(2000);
+  test("shows add recurring button on subscriptions tab", async ({ page }) => {
+    await page.getByRole("tab", { name: /subscriptions/i }).click();
     await expect(
       page.getByRole("button", { name: /add recurring/i }),
     ).toBeVisible();
+  });
+
+  test("/recurring redirects to /payments", async ({ page }) => {
+    await page.goto("/recurring");
+    await expect(page).toHaveURL("/payments");
   });
 });
 

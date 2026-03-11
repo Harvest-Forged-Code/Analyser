@@ -42,8 +42,8 @@ Every commit MUST follow this exact structure:
 ```
 type: concise description in imperative mood
 
-| File (Location) | Summary of Change |
-|---|---|
+| File (Location) -| Summary of Change                      |
+|------------------|----------------------------------------|
 | path/to/file1.py | What specifically changed in this file |
 | path/to/file2.py | What specifically changed in this file |
 

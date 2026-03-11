@@ -16,7 +16,6 @@ import {
   CreditCard,
   Wallet,
   RefreshCw,
-  Repeat,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigationStore } from "@/stores/navigation-store";
@@ -34,7 +33,6 @@ const navItems = [
   { to: "/expenses", label: "Expenses", icon: TrendingDown },
   { to: "/budget-goals", label: "Budget Goals", icon: Target },
   { to: "/payments", label: "Payments", icon: CreditCard },
-  { to: "/recurring", label: "Recurring", icon: Repeat },
   { to: "/upload", label: "Upload", icon: Upload },
   { to: "/mapper-hub", label: "Mapper Hub", icon: Map },
   { to: "/settings", label: "Settings", icon: Settings },

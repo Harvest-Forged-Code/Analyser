@@ -17,7 +17,6 @@ test.describe("Navigation", () => {
     { label: "Budget Goals", url: "/budget-goals", heading: "Budget Goals" },
     { label: "Savings", url: "/savings", heading: "Savings" },
     { label: "Net Worth", url: "/net-worth", heading: "Net Worth" },
-    { label: "Recurring", url: "/recurring", heading: "Recurring" },
     { label: "Upload", url: "/upload", heading: "Upload" },
     { label: "Mapper Hub", url: "/mapper-hub", heading: "Mapper" },
     { label: "Settings", url: "/settings", heading: "Settings" },
