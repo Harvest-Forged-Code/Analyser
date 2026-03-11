@@ -3,10 +3,6 @@
     "gitkraken",
     "sqlite"
   ],
-  "enabledPlugins": {
-    "playwright@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true
-  },
   "hooks": {
     "PreToolUse": [
       {
