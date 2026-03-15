@@ -184,24 +184,67 @@ Author: PrabhukumarSivamoorthy@gmail.com
 
 ---
 
-## Git Command
+## Workflow — Use GitKraken MCP Tools
 
-Always use this command pattern:
+All git operations MUST use the GitKraken MCP tools. They produce structured, token-efficient output.
 
-```bash
-git commit -S -m "$(cat <<'EOF'
-type: concise description
+### Step 1: Check status
 
-| File (Location) | Summary of Change |
-|---|---|
-| path/to/file.py | What changed |
-
-Author: PrabhukumarSivamoorthy@gmail.com
-EOF
-)"
+```
+mcp__gitkraken__git_status(directory: ".")
 ```
 
-**Important:** Use HEREDOC (`<<'EOF'`) to preserve the table formatting in the commit message.
+Review untracked and modified files. Identify which files to stage.
+
+### Step 2: Review recent commits (for style reference)
+
+```
+mcp__gitkraken__git_log_or_diff(directory: ".", action: "log")
+```
+
+### Step 3: Review changes
+
+```
+mcp__gitkraken__git_log_or_diff(directory: ".", action: "diff")
+```
+
+Confirm the diff matches intent. Check for secrets or `.env` files.
+
+### Step 4: Stage specific files
+
+```
+mcp__gitkraken__git_add_or_commit(
+  directory: ".",
+  action: "add",
+  files: ["path/to/file1.py", "path/to/file2.py"]
+)
+```
+
+**Never stage all files blindly.** List each file explicitly.
+
+### Step 5: Compose and commit
+
+```
+mcp__gitkraken__git_add_or_commit(
+  directory: ".",
+  action: "commit",
+  message: "type: concise description\n\n| File (Location) | Summary of Change |\n|---|---|\n| path/to/file.py | What changed |\n\nAuthor: PrabhukumarSivamoorthy@gmail.com"
+)
+```
+
+### Step 6: Verify
+
+```
+mcp__gitkraken__git_log_or_diff(directory: ".", action: "log")
+```
+
+Confirm the commit appears with the correct message format.
+
+### Step 7: Push (only if requested)
+
+```
+mcp__gitkraken__git_push(directory: ".")
+```
 
 ---
 
@@ -215,31 +258,16 @@ EOF
 | Summary says "modified" | Doesn't explain what was modified | Describe the actual modification |
 | No blank line after header | Breaks git formatting conventions | Always blank line between header and body |
 | Table without header row | Invalid markdown table | Always include `| File (Location) | Summary of Change |` and `|---|---|` |
-| Unsigned commit | Violates project policy | Always use `git commit -S` |
 | Line > 72 chars in header | Breaks git log formatting | Keep first line under 72 characters |
 
 ---
 
-## Workflow
+## Pre-Commit Verification
 
-1. **Stage files** — `git add` specific files (never `git add .` blindly)
-2. **Review staged changes** — `git diff --staged` to confirm what's included
-3. **Compose message** — Write the semantic header + file-change table
-4. **Commit signed** — `git commit -S -m "..."` using HEREDOC for table
-5. **Verify** — `git log -1 --show-signature` to confirm signing and format
-
----
-
-## Enforced Standards
-
-### Google-Style Docstrings (MANDATORY)
-All code committed during this workflow must have Google-style docstrings on every function, method, and class. If committing code without docstrings, add them before committing. See CLAUDE.md [STANDARDS] for the full specification.
-
-### Pre-Commit Verification
 Before committing, verify:
-- [ ] All staged files are intentional (`git diff --staged`)
+- [ ] All staged files are intentional (reviewed via `git_log_or_diff` diff)
 - [ ] No secrets or `.env` files in the staged changes
 - [ ] All functions have Google-style docstrings
-- [ ] Tests pass (`pytest`)
-- [ ] Lint passes (`ruff check .`)
+- [ ] Tests pass (`uv run pytest src/test/unit/ -q`)
+- [ ] Lint passes (`uv run pylint src/budget_analyser`)
 - [ ] Commit message follows the format above
