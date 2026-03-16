@@ -220,9 +220,9 @@ mcp__gitkraken__git_log_or_diff(directory: ".", action: "log")
 
 Confirm the commit appears with the correct message format.
 
-### Step 8: Push (only if requested)
+### Step 8: Push to remote
 
-Push with `--force-with-lease` after rebasing (Step 1 already ensured the branch is up to date).
+Always push after committing. Use `--force-with-lease` after rebasing (Step 1 already ensured the branch is up to date). Do not ask the user — just push.
 
 ```
 mcp__gitkraken__git_push(directory: ".")
