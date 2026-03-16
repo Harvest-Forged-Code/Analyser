@@ -230,6 +230,76 @@ mcp__gitkraken__git_push(directory: ".")
 
 ---
 
+## Creating a Pull Request
+
+When the user asks to create a PR, review all commits on the branch and generate a comprehensive PR description.
+
+### Step 1: Identify the base branch
+
+```bash
+git merge-base origin/main HEAD
+```
+
+### Step 2: Review all commits since diverging from main
+
+```
+mcp__gitkraken__git_log_or_diff(directory: ".", action: "log", revision_range: "origin/main..HEAD")
+```
+
+Read every commit message — not just the latest one. Each commit's `Area | Change` table is your source of truth.
+
+### Step 3: Review the full diff
+
+```
+mcp__gitkraken__git_log_or_diff(directory: ".", action: "diff", revision_range: "origin/main..HEAD")
+```
+
+### Step 4: Compose the PR description
+
+Build the PR using this template:
+
+```markdown
+## Summary
+
+[2-3 sentences: what this PR does at a high level and why]
+
+## Changes
+
+| Area | Change |
+|------|--------|
+| [file/module] | [what changed — aggregated from all commits] |
+| ... | ... |
+
+## Commits
+
+- `abc1234` type(scope): description
+- `def5678` type(scope): description
+- ...
+
+## Test Plan
+
+- [ ] Unit tests pass (`uv run pytest src/test/unit/ -q`)
+- [ ] [Any specific manual verification steps]
+- [ ] No regressions in existing features
+```
+
+### Aggregation rules
+
+- **Merge related changes** — If multiple commits touched the same file, combine them into one row in the Changes table with a summary of the net effect.
+- **High-level summary first** — The Summary section should explain the "why" and overall intent, not list individual commits.
+- **Preserve commit history** — List every commit hash and message in the Commits section so reviewers can trace the history.
+- **PR title** — Derive from the overall theme. If all commits share a scope, use `type(scope): high-level description`. Keep under 70 characters.
+
+### Step 5: Create the PR
+
+```bash
+gh pr create --title "type(scope): high-level description" --body "..."
+```
+
+Use a HEREDOC for the body to preserve formatting.
+
+---
+
 ## Common Mistakes to Avoid
 
 | Mistake | Why It's Wrong | Correct Approach |
