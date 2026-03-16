@@ -233,65 +233,7 @@ def calculate_burn_rate(
 
 ## Git Commits
 
-**Always use signed commits and semantic commit messages.**
-
-```bash
-# Commit with GPG signing
-git commit -S -m "type(scope): short description"
-```
-
-**Semantic commit format:**
-```
-<type>(<scope>): <short description>
-
-| Area       | Change                              |
-|------------|-------------------------------------|
-| models.py  | Added Account frozen dataclass      |
-| service.py | Added calculate_net_worth_summary() |
-
-Author: Prabhukumar Sivamorthy
-```
-
-- `<type>` — commit category (see table below)
-- `<scope>` — affected feature or module (e.g. `budget_goals`, `net_worth`, `api`, `ingestion`)
-- `<short description>` — imperative, lowercase, no period, ≤72 chars
-- **Body is a markdown table** listing each changed area and what changed
-
-**Commit types:**
-| Type | Description |
-|------|-------------|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `docs` | Documentation changes |
-| `style` | Code style (formatting, no logic change) |
-| `refactor` | Code refactoring (no feature/fix) |
-| `test` | Adding or updating tests |
-| `chore` | Maintenance tasks, dependencies |
-
-**Examples:**
-```
-feat(net_worth): add account balance history tracking
-
-| Area             | Change                                   |
-|------------------|------------------------------------------|
-| models.py        | Added BalanceSnapshot frozen dataclass   |
-| repository.py    | Added save_snapshot() and get_history()  |
-| service.py       | Added compute_balance_trend() function   |
-| api/routers/     | Added GET /net-worth/history endpoint    |
-
-Author: Prabhukumar Sivamorthy
-```
-
-```
-fix(ingestion): handle empty CSV files without crashing
-
-| Area         | Change                                        |
-|--------------|-----------------------------------------------|
-| service.py   | Added early return guard for empty DataFrame  |
-| test_*.py    | Added regression test for empty file input    |
-
-Author: Prabhukumar Sivamorthy
-```
+**Use the `/git-skills` skill for all git operations.** It enforces signed commits, semantic format with scope (`type(scope): description`), file-change tables, rebase-before-commit workflow, and GitKraken MCP tools.
 
 ## Design Patterns & Modularity
 

@@ -31,9 +31,10 @@ Read the task description and determine scope:
 Launch the **Software Architect** agent (always) and relevant specialist agents simultaneously. Each agent receives the task description and answers:
 
 1. **Proposed approach** — How would you tackle this from your domain?
-2. **Risks and concerns** — What could go wrong from your perspective?
-3. **Dependencies** — What do you need from other agents?
-4. **Effort estimate** — How complex is your portion?
+2. **Impact on existing features** — Could this change break or alter any existing functionality?
+3. **Risks and concerns** — What could go wrong from your perspective?
+4. **Dependencies** — What do you need from other agents?
+5. **Effort estimate** — How complex is your portion?
 
 Use the Agent tool with these agent definitions:
 - `software-architect` — Architecture design, component analysis
@@ -42,9 +43,26 @@ Use the Agent tool with these agent definitions:
 - `frontend-engineer` — UI feasibility (if UI changes involved)
 - `backend-engineer` — API/data feasibility (if backend changes involved)
 
-### Step 3: Synthesize Consensus
+### Step 3: Impact Analysis
 
-After all agents return, the orchestrator (you) must:
+Before synthesizing consensus, assess whether the new feature could affect existing functionality. Each agent should flag potential impacts in their domain:
+
+- **Backend Engineer** — Does the change modify shared models, services, database schema, or API contracts used by other features?
+- **Frontend Engineer** — Does the change alter shared components, hooks, routes, or global state?
+- **Software Architect** — Does the change cross feature boundaries or modify `core/` infrastructure?
+- **Finance Analyst** — Does the change alter existing financial calculations, categories, or report logic?
+
+If **any agent identifies a potential impact on existing features**, you MUST:
+
+1. List every affected feature and describe the specific risk (e.g. "modifying `core/database.py` could break connection handling in all 13 features")
+2. **Stop and ask the user for approval** before proceeding to implementation
+3. Present the risks clearly with a recommendation (proceed with safeguards, redesign to avoid impact, or accept the risk)
+
+Only proceed to Step 4 after the user explicitly approves the approach when impacts are identified. If no impacts are found, proceed directly.
+
+### Step 4: Synthesize Consensus
+
+After all agents return and impact analysis is clear, the orchestrator (you) must:
 
 1. **Identify agreements** — Where do agents align?
 2. **Resolve conflicts** — If agents disagree, favor:
@@ -54,7 +72,7 @@ After all agents return, the orchestrator (you) must:
 3. **Create design decision** — Brief summary of the agreed approach
 4. **Define task breakdown** — What each agent will implement
 
-### Step 4: Dispatch Implementation
+### Step 5: Dispatch Implementation
 
 Based on the consensus:
 
@@ -66,7 +84,7 @@ Backend Engineer  ──→ Vertical slice: models + service + router  (parallel
 - Use `isolation: "worktree"` when both agents modify code simultaneously
 - Each agent gets the design decision and their specific task list
 
-### Step 5: Quality Gate
+### Step 6: Quality Gate
 
 After implementation completes:
 
@@ -88,6 +106,10 @@ After the round-table, present this summary:
 - Finance Analyst: [key insight] (if participated)
 - Frontend Engineer: [key insight] (if participated)
 - Backend Engineer: [key insight] (if participated)
+
+### Impact on Existing Features
+- [Feature X]: [Risk description] — **Approved / Pending Approval**
+- No impact identified ✓ (if none)
 
 ### Agreed Approach
 [2-3 sentences describing the consensus design]
@@ -112,5 +134,6 @@ After the round-table, present this summary:
 - Software Architect ALWAYS participates — no exceptions
 - Finance Analyst is MANDATORY for any financial logic changes
 - Never skip the round-table for multi-agent tasks
+- **Never proceed to implementation if existing features may be impacted without explicit user approval**
 - Keep the discussion focused — 2-3 key questions per agent, not open-ended exploration
 - The round-table should take minutes, not hours — if it is taking too long, the task needs to be decomposed
